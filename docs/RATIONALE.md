@@ -257,10 +257,12 @@ coverage availability). This makes the score **realized/effective access**, not 
 | **HRSA IMU/MUA** | poverty + elderly + supply as the underservice formula |
 
 **Gaps (missing from the picture):**
-- **No health-outcomes dimension.** CHR ranks outcomes (mortality/life-expectancy)
-  separately; we rank need + access only. *Partial fix shipped:* we now report a validation
-  anchor - the composite's correlation with PLACES fair/poor health (~0.85). *Backlog:* a
-  true outcomes layer from CDC USALEEP life-expectancy or preventable-mortality.
+- **Outcomes layer (shipped).** CHR ranks outcomes (mortality/life-expectancy) separately
+  from factors; we now do too - **CDC USALEEP life expectancy** is loaded as an independent
+  outcome (from death records, not BRFSS), shown in the panel, colorable on the map, and used
+  to derive the empirical weights and a validation anchor (composite ↔ fair/poor health ~0.85).
+  It is **not** in the access-gap composite (outcomes are the result, not a driver). *Backlog:*
+  preventable-hospitalization / infant-mortality outcomes; a newer-vintage life-expectancy source.
 - **Under-insurance** not measured (only uninsured); income proxies it.
 - **Other supply types** - dental, pharmacy (deserts), broadband/telehealth - not yet in.
 - **No empirical weights** - we use conceptual weights (see §10); HPI-style life-expectancy
@@ -287,9 +289,16 @@ exactly the stance County Health Rankings takes. The reasoning:
   contested axis, and equal-ish weighting is the most honest default.
 - **The sliders are the real answer.** Because the weights are a judgment, they're exposed
   and explorable - your weighting, not ours.
-- **Empirical alternative (backlog):** derive weights HPI-style by regressing the three
-  dimensions on a health outcome (life expectancy / fair-poor health), which would replace
-  the value judgment with a data-driven one. The validation anchor (§9) is the first step.
+- **Empirical alternative (shipped - the "Data-driven" preset).** Following the Healthy
+  Places Index, we derive weights by **non-negative least-squares regression of the three
+  dimensions on CDC USALEEP life expectancy** (5% floor, normalized to 100). The result:
+  **~76% health need / 20% social vulnerability / 5% care access** (R²≈0.38, n≈31k). This is
+  itself a finding: at the *area* level, disease burden predicts mortality far more than
+  provider supply does (consistent with County Health Rankings weighting clinical care only
+  20%) - and it's partly tautological (PLACES disease ≈ death). Because it nearly zeroes out
+  access, it actually *justifies* keeping access in the score by deliberate construct choice.
+  Both weightings are offered; the conceptual default stands, the data-driven preset is one
+  click away, and the honest takeaway is that "what predicts mortality" ≠ "the access gap."
 
 ## 11. Supply, enhanced - E2SFCA, and the "need-adjusted?" question
 

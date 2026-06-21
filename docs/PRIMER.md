@@ -158,6 +158,18 @@ PLACES (2025 release), ACS (2023), and TIGER (2020 cartographic) are all kept on
   ZCTAs have wide **margins of error (MOE)** - we flag low-population areas. Census uses
   **sentinel negatives** (e.g. `-666666666`) for suppressed values, scrubbed to null.
 
+### 5.3a CDC USALEEP — life expectancy (the independent outcome)
+- **What:** life expectancy at birth for census tracts (2010-2015), from the U.S. Small-area
+  Life Expectancy Estimates Project (NCHS + RWJF + NAPHSIS).
+- **Why it matters:** it's the **one input derived from death records, not BRFSS/PLACES** -
+  genuinely independent of the disease/behavior layers. We use it as a separate **outcome**
+  (shown, colorable) and to **derive the empirical weights** (regress dimensions on it).
+- **How we use it:** tract life expectancy → ZCTA via a population-weighted (POPPT) crosswalk
+  (Census 2010 ZCTA↔tract relationship). It is **never in the access-gap composite** -
+  outcomes are the result of poor access, not a driver of it (the County Health Rankings stance).
+- **Caveats:** 2010-2015 vintage; covers ~89% of tracts (no Maine/Wisconsin); 2010 tracts/ZCTAs
+  mapped onto 2020 ZCTAs.
+
 ### 5.4 Census geography — TIGER, Gazetteer, relationship files
 - **TIGER cartographic boundary** (`cb_2020_us_zcta520_500k`): the ZCTA polygons,
   simplified (mapshaper, 8%) and reprojected to WGS84 for web rendering. The 2020

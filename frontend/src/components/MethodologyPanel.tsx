@@ -28,12 +28,12 @@ const POINTS: Array<[string, string]> = [
     'Access ≠ supply. A provider you can\'t afford, reach, or communicate with isn\'t accessible. Per the 5 A\'s of access (Penchansky & Thomas) and Andersen\'s enabling factors, affordability (income), accessibility (transportation), and acceptability (language) are dimensions of access. The federal Medically Underserved formula itself uses % poverty + % elderly alongside provider supply. Proof it isn\'t just a descriptor: we DO have descriptors (age, % minority) and score them zero.',
   ],
   [
-    'Why these weights (35 / 30 / 35)',
-    'A conceptual value judgment, not empirical (as in County Health Rankings). Health need and barriers to care - the two sides of the gap - sit slightly above social vulnerability; all three are kept near-equal since there\'s no defensible basis to privilege one. The sliders are the honest resolution. An empirical alternative (regress dimensions on life expectancy, like the Healthy Places Index) is the principled upgrade.',
+    'Why these weights (35 / 30 / 35), and the data-driven alternative',
+    'The default is a conceptual value judgment (as in County Health Rankings) - need and barriers to care, the two sides of the gap, sit slightly above vulnerability; all near-equal. The "Data-driven" preset derives weights empirically (Healthy Places Index method: NNLS regression of the dimensions on CDC life expectancy) and comes out ~76% health need / 20% vulnerability / 5% access. That\'s a real finding - at the area level disease burden predicts mortality far more than provider supply does (also partly tautological: disease ≈ death). It nearly zeroes out access, which is why an access tool keeps access by deliberate choice. The sliders let you pick.',
   ],
   [
-    'Does the gap track real health? (a sanity anchor)',
-    'The composite correlates ~0.85 with PLACES fair/poor self-reported health - so it does surface genuinely unhealthy places. Caveat: not independent validation, since PLACES is SES-conditioned. A true outcomes layer (CDC life-expectancy) is the next step.',
+    'Outcomes layer (independent of the score)',
+    'Life expectancy at birth (CDC USALEEP, from death records - the one input NOT derived from BRFSS/PLACES) is shown as a separate outcome and used to derive the empirical weights. It is NOT in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). The composite also correlates ~0.85 with PLACES fair/poor health as a sanity anchor.',
   ],
   [
     'Different vintages & universes',
