@@ -90,15 +90,12 @@ DIMENSIONS: dict = {
                     M("no_hs_diploma_rate", 1, "No high-school diploma"),
                 ],
             },
-            "household": {
-                "label": "Household vulnerability",
-                "source": "acs",
-                "members": [
-                    M("age65_rate", 1, "Aged 65+"),
-                    M("age17_rate", 1, "Aged 17 & under"),
-                    M("limited_english_rate", 1, "Limited English"),
-                ],
-            },
+            # The former "household" sub-score (age 65+, age 17-, limited English) was removed
+            # after validation against 6 independent outcomes: age structure is demographic
+            # context (signal-less / wrong-signed at the area level - retirement areas read
+            # "vulnerable" but have good access) and limited English is wrong-signed vs
+            # mortality (the immigrant-health paradox: r=-0.25 vs infant mortality). These
+            # remain raw context columns, never scored. See docs/ROADMAP-ACCESS-SIGNAL.md A1.
             "housing_transport": {
                 "label": "Housing & transport barriers",
                 "source": "acs",
@@ -137,10 +134,14 @@ DIMENSIONS: dict = {
                 ],
             },
             "safetynet_access": {
-                "label": "Low safety-net access (FQHC)",
+                "label": "Unmet safety-net need (FQHC desert x poverty)",
                 "source": "fqhc",
+                # need-relative: the raw E2SFCA FQHC-access score (safetynet_2sfca) is
+                # wrong-signed because clinics cluster in high-need areas. safetynet_barrier
+                # = FQHC-distance percentile x poverty (computed in join_and_score) is the
+                # correctly-signed "unmet need" form. See docs/ROADMAP-ACCESS-SIGNAL.md A2.
                 "members": [
-                    M("safetynet_2sfca", -1, "FQHC access (2SFCA, capacity-weighted)"),
+                    M("safetynet_barrier", 1, "FQHC desert x poverty (unmet need)"),
                 ],
             },
             "insurance": {

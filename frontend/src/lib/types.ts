@@ -27,7 +27,6 @@ export interface SlimMetric {
   mental_social_health_pctile: number | null;
   disability_pctile: number | null;
   socioeconomic_pctile: number | null;
-  household_pctile: number | null;
   housing_transport_pctile: number | null;
   social_needs_pctile: number | null;
   provider_supply_pctile: number | null;
@@ -127,10 +126,9 @@ export const MODEL: DimSpec[] = [
   {
     key: 'social_vulnerability',
     label: 'Social vulnerability',
-    blurb: 'Socioeconomic deprivation, household vulnerability, housing/transport, unmet needs.',
+    blurb: 'Socioeconomic deprivation, housing/transport barriers, and unmet social needs.',
     subs: [
       { key: 'socioeconomic', label: 'Socioeconomic deprivation' },
-      { key: 'household', label: 'Household vulnerability' },
       { key: 'housing_transport', label: 'Housing & transport barriers' },
       { key: 'social_needs', label: 'Unmet social needs' },
     ],
@@ -138,10 +136,10 @@ export const MODEL: DimSpec[] = [
   {
     key: 'care_access',
     label: 'Barriers to care',
-    blurb: 'Low provider supply, low safety-net (FQHC) access, lack of insurance, unmet preventive care. Higher = more barriers.',
+    blurb: 'Low provider supply, unmet safety-net need (FQHC desert), lack of insurance, unmet preventive care. Higher = more barriers.',
     subs: [
       { key: 'provider_supply', label: 'Low provider supply (spatial)' },
-      { key: 'safetynet_access', label: 'Low safety-net access (FQHC)' },
+      { key: 'safetynet_access', label: 'Unmet safety-net need (FQHC desert)' },
       { key: 'insurance', label: 'Lack of insurance' },
       { key: 'preventive_use', label: 'Low preventive-care use' },
     ],

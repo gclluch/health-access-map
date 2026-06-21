@@ -113,6 +113,15 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["population"] = pop.astype("Int64")
     df["low_confidence"] = (pop < config.POPULATION_FLOOR) | pop.isna()
 
+    # Safety-net barrier = unmet need: FQHC-desert (distance percentile) x poverty. The raw
+    # E2SFCA FQHC-access score is wrong-signed against every outcome (clinics cluster in
+    # high-need areas, so "access" is highest where need is highest); this need-relative
+    # form is correctly signed and adds signal beyond poverty alone for the access-proximal
+    # outcomes (flu/maternity/premature death). See docs/ROADMAP-ACCESS-SIGNAL.md A2.
+    if "nearest_fqhc_km" in df.columns and "poverty_rate" in df.columns:
+        km = pd.to_numeric(df["nearest_fqhc_km"], errors="coerce")
+        df["safetynet_barrier"] = _pct(km) / 100.0 * pd.to_numeric(df["poverty_rate"], errors="coerce")
+
     # ---- sub-scores (re-ranked mean of available member percentiles) ----
     sub_by_dim: dict[str, list[str]] = {d: [] for d in DIMENSIONS}
     for spec in subscore_specs():

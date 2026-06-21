@@ -49,11 +49,6 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'unemployment_rate', label: 'Unemployment', unit: 'rate' },
     { col: 'no_hs_diploma_rate', label: 'No high-school diploma', unit: 'rate' },
   ],
-  household: [
-    { col: 'age65_rate', label: 'Aged 65+', unit: 'rate' },
-    { col: 'age17_rate', label: 'Aged 17 & under', unit: 'rate' },
-    { col: 'limited_english_rate', label: 'Limited English', unit: 'rate' },
-  ],
   housing_transport: [
     { col: 'no_vehicle_rate', label: 'No vehicle', unit: 'rate' },
     { col: 'crowding_rate', label: 'Crowded housing', unit: 'rate' },

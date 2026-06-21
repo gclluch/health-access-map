@@ -1,0 +1,163 @@
+# Roadmap: strengthen the access signal (gated, verify-after-each-layer)
+
+The composite is a strong *deprivation* gradient whose *care-access* dimension is its
+weakest link - today, **dropping care_access improves outcome agreement** (0.445 → 0.456),
+because `provider_supply` is confounded, `safetynet_access` is wrong-signed, and `household`
+is near-signal-less. This roadmap fixes that, cheapest-first, with a mandatory verification
+gate after every layer. No layer ships unless it passes its gate.
+
+Recommended order: **A (model fixes) → B (uncertainty) → C (capacity data)** - rising cost,
+falling certainty. A and B are self-contained; C is multi-step and partly shared with the
+supply-enrichment stream (coordinate via COORDINATION.md).
+
+---
+
+## 0. The verification harness (run after EVERY layer)
+
+Build once: `pipeline/diagnostics.py` reading `metrics.parquet` + the 6 independent outcomes
+(life_expectancy, preventable_hosp, premature_death, infant_mortality, flu_vaccination,
+mammography). Orient each higher = worse (negate LE / flu / mammography). It prints five
+checks; a layer **passes only if all five hold**.
+
+| # | Check | Pass criterion |
+|---|---|---|
+| 1 | **North star - dimension marginal value.** Composite mean-r vs 6 outcomes, FULL vs drop-each-dimension. | `drop_care_access` mean-r **decreases** vs the pre-layer run (care access becoming a net-positive contributor). Goal state: dropping care access *hurts* (drop_care_access < FULL). |
+| 2 | **Changed-component sign & strength.** For each sub-score/measure touched: signed r vs each outcome + mean\|r\|. | Signs correct (higher barrier → worse outcome; positive r). mean\|r\| **≥** its pre-layer value. |
+| 3 | **Composite outcome agreement.** Composite mean-r vs 6 outcomes. | **≥** pre-layer baseline (no regression). |
+| 4 | **Internal reliability.** Split-half Spearman-Brown (overall + low-pop). | **≥ 0.93** overall; low-pop not down >0.01. |
+| 5 | **Coverage & contracts.** scoreable count; percentile/rate ranges. | scoreable within ±1%; all percentiles ∈[0,100]; rates ∈[0,1]. |
+
+**Baselines to beat (current build, 2026-06-21):** FULL mean-r 0.445; drop_care_access 0.456
+(the number we must drive *down*); split-half 0.94; care sub-score mean\|r\|: provider_supply
+0.17, safetynet 0.12, insurance 0.34, preventive 0.27; household 0.10.
+
+**Rollback rule:** if check 1 or 3 regresses, revert or retune the layer before proceeding -
+exactly as state→county shrinkage was retuned when state-level dropped LE validity.
+
+---
+
+## Layer A - cheap model fixes (taxonomy/scoring only; do first)
+
+Two wrong components are actively subtracting signal. Both are config/scoring edits, no new data.
+
+### A1. Reclassify the `household` sub-score
+**Problem:** age65_rate / age17_rate are demographic *context*, not access barriers - at the
+area level they're near-signal-less and partly wrong-signed (retirement areas read "vulnerable"
+but have good access). limited_english_rate *is* a real barrier (Acceptability axis).
+**Change (`pipeline/taxonomy.py`):** remove `household` as a vulnerability sub-score; move
+`limited_english_rate` into `socioeconomic` (or a slim "language access" sub-score); demote
+`age65_rate`/`age17_rate` to `CONTEXT_ACS` (median_age/pct_under5 already live there).
+**Verify (harness):** social_vulnerability mean\|r\| should rise; composite mean-r ≥ baseline;
+care-access north-star unaffected (sanity). If limited_english alone underperforms as its own
+sub-score, fold it into socioeconomic and re-run.
+
+### A2. Fix or remove the FQHC `safetynet_access` wrong-sign
+**Problem:** FQHCs are *placed* in high-need areas, so raw "FQHC access" is highest where need
+is highest → the "low safety-net access" barrier reads wrong-signed (−0.21 vs LE).
+**Change - try in order, gated:**
+1. **Need-relative reframe (preferred), in `join_and_score.py` from existing columns:** define
+   the barrier as unmet safety-net need = high uninsured/poverty **AND** poor FQHC access, e.g.
+   `safetynet_barrier = pctile( uninsured_rate_pctile − fqhc_access_pctile )` clipped, or a
+   need-weighted FQHC shortfall using `nearest_fqhc_km` × `uninsured_rate`. Re-rank.
+2. If the reframe still doesn't flip positive, **remove `safetynet_access` from the composite**
+   (keep it as a displayed/diagnostic layer only) pending an E2SFCA redesign in the supply
+   stream (coordinate - that touches build_fqhc/build_supply).
+**Verify (harness):** safetynet sub-score signed r must become **positive** vs ≥4 of 6 outcomes;
+composite mean-r ≥ baseline; **drop_care_access north-star must improve** (this is the main win).
+
+**Layer A exit gate:** all 5 checks pass AND drop_care_access mean-r has fallen from 0.456.
+
+---
+
+## Layer B - put input noise into the rank bands (self-contained; do second)
+
+Today `access_gap_rank_lo/hi` capture only *weighting* sensitivity, so they're ~flat across
+reliability (low-conf 13.9 vs high-conf 12.4) and the Layer-0 ACS shrinkage produced no visible
+band change. The bigger uncertainty is *measurement noise*; we now compute ACS SEs but discard
+them. Propagating them both completes the honesty story and makes shrinkage's benefit visible.
+
+### B1. Persist per-ZCTA input uncertainty
+**Change (`pipeline/build_acs.py`):** stop dropping the `<rate>_se` columns - instead emit a
+per-ZCTA `acs_input_cv` summary (mean of SE/estimate across the scored rates) into acs.parquet.
+Cheap, no re-fetch beyond what Layer 0 already does.
+
+### B2. Two-source Monte-Carlo in `_rank_uncertainty`
+**Change (`pipeline/join_and_score.py`):** in each Monte-Carlo draw, in addition to perturbing
+weights (15-55%), perturb each dimension percentile by a measurement-noise term scaled to the
+ZCTA's `acs_input_cv` (Gaussian on the dimension percentile, σ calibrated so a median-CV ZCTA
+gets the current ~weighting-only width and a high-CV ZCTA widens). Re-rank per draw; keep the
+5-95 band. Document that the band is now weighting + ACS measurement noise (PLACES MOE = B3).
+### B3 (optional, larger). Pull PLACES confidence intervals for the health_need / preventive
+members and fold their noise in the same way.
+
+**Verify (dedicated, not the standard harness):**
+- **Differentiation:** median band width for low_confidence ZCTAs must exceed high-confidence by
+  a clear margin (target ≥ ~1.6×; today 13.9 vs 12.4 ≈ 1.1×).
+- **Shrinkage now visible:** rebuild once with Layer-0 shrinkage ON vs OFF; low-conf band width
+  must be *narrower* with shrinkage ON (closing the loop - shrinkage reduces the SE feeding B2).
+- **Calibration:** simulate - resample each ZCTA's inputs from their SEs N times, recompute rank,
+  and confirm the empirical 5-95 spread is within ~±20% of the reported band (not wildly over/under).
+- Standard harness checks 3-5 must still hold (this layer doesn't change point scores, only bands).
+
+**Layer B exit gate:** low-conf bands clearly wider than high-conf; shrinkage-ON narrower than OFF;
+calibration within tolerance.
+
+---
+
+## Layer C - capacity / realized-access data (the big lift; do last)
+
+The bottleneck is the **input**: NPPES counts registrations, not capacity/acceptance/use. Each
+sub-layer adds one data source and is gated independently. Several touch build_providers/
+build_supply (supply-enrichment stream) - coordinate, don't clobber.
+
+### C1. Realized utilization as a care-access INPUT (highest impact)
+**Data:** CMS Mapping Medicare Disparities and/or Dartmouth Atlas - county/ZIP service-use rates
+(annual wellness visit, diabetic HbA1c/eye-exam, etc.). **Guard against circularity:** flu &
+mammography are already *validation outcomes*; do NOT also use them as inputs. Use *different*
+utilization measures as the input, and validate against the held-out mortality/ACSC outcomes.
+**Change:** new stage `build_utilization.py` → county→ZCTA crosswalk (reuse geonames) → a new
+`realized_access` sub-score under care_access in `taxonomy.py`.
+**Verify (harness, emphasis on north star):** `realized_access` signed r positive vs held-out
+outcomes; care_access mean\|r\| rises; **drop_care_access must now HURT** (care access finally a
+net-positive contributor). If it doesn't, the utilization measure chosen is too proxy-distant -
+try another before shipping.
+
+### C2. Capacity-weight NPPES NPIs (shared with supply stream)
+**Data:** CMS Medicare Provider Utilization & Payment (claims volume per NPI) or HRSA Area Health
+Resource Files FTE counts. **Change (build_providers/build_supply - coordinate):** weight each NPI
+by activity (claims volume, or FTE) before the E2SFCA, so dormant/low-volume NPIs count less.
+**Verify:** capacity-weighted `provider_supply` signed r vs outcomes must beat raw-count supply's
+current ~0 vs mortality (target: clearly positive vs premature death / ACSC). Compare side-by-side
+(keep both columns during evaluation); ship only if the weighted version wins on the harness.
+
+### C3. Drive-time catchment (shared with supply stream)
+**Data:** OSRM road-network routing (open-source) or a precomputed ZCTA-centroid travel-time
+matrix. **Change (build_supply - coordinate):** replace the 16 km straight-line catchment with
+drive-time isochrones in the E2SFCA.
+**Verify (the confound test):** re-run the density-stratified supply-vs-outcome correlation
+(`validate.py` `supply_density_confound`). Today the sign flips across population quintiles
+(−0.10 rural → +0.09 urban). Pass: the sign is **consistent** across quintiles (the urbanicity
+artifact is gone). Plus standard harness.
+
+### C4. Medicaid / new-patient acceptance (stretch / research)
+**Data:** state Medicaid provider directories or a national acceptance proxy - the Acceptability
+axis NPPES omits entirely. Research feasibility first; likely partial coverage. **Verify:** as C2.
+
+**Layer C exit gate (the whole point of the project):** with C1-C3 in, the north-star flips -
+`drop_care_access` mean-r is **below** FULL, i.e. the access dimension finally *adds* outcome
+signal instead of subtracting it. That is the definition of done for "make this an access tool."
+
+---
+
+## One-glance sequence
+
+1. Build `pipeline/diagnostics.py` (the harness) + capture baselines. 
+2. **Layer A** (household reclass, FQHC reframe/remove) → gate → commit.
+3. **Layer B** (persist ACS CV, two-source bands, calibration) → gate → commit.
+4. **Layer C1** (realized utilization input) → gate → commit. **C2/C3** (capacity weight,
+   drive-time - with supply stream) → gate each → commit. **C4** (acceptance) research.
+5. Final: confirm `drop_care_access < FULL`. Re-run the full evaluation (`docs/COMPOSITE-EVALUATION.md`).
+
+Every arrow is gated on the harness. Anything that regresses checks 1 or 3 is reverted or retuned,
+never shipped - the same evidence discipline that turned state-shrinkage (a regression) into
+county-shrinkage (a win).

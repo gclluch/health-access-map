@@ -42,6 +42,21 @@ expectancy** - the same way `provider_supply_2sfca` already does (r = -0.01 vs L
 `safetynet_2sfca` is even wrong-signed at +0.21, a rural/urbanicity confound). That is a
 property of the *outcome*, not the supply metric: all-cause LE is a need outcome.
 
+### Update (2026-06-21, Stream B): FQHC safety-net sub-score reframed
+
+Heads-up for Stream A: the scored safety-net barrier no longer uses your `safetynet_2sfca`
+E2SFCA column directly - it was **wrong-signed against all 6 independent outcomes** (FQHCs
+cluster in high-need areas, so raw "FQHC access" is highest where need is highest). The
+composite now scores `safetynet_barrier = FQHC-distance-percentile x poverty` (computed in
+`join_and_score.py`), which is correctly signed (mean|r| 0.118 → 0.233) and adds signal
+beyond poverty for the access-proximal outcomes. Your `safetynet_2sfca` and the FQHC
+distance/sites columns are still built and shown in the detail panel - only the *scored*
+barrier changed. If you build a **need-relative E2SFCA** (FQHC capacity per uninsured/poor
+person, not per total population), that would be the principled upgrade and we should swap
+`safetynet_barrier` for it. Verify any such change with `python -m pipeline.diagnostics`.
+
+### Handoff insight for Stream A (from the empirical analysis)
+
 To validate a supply specialty you need an **access-sensitive** outcome matched to it:
 - dental / primary / overall supply  -> ACSC preventable hospitalizations (AHRQ PQI)
 - OB-GYN / maternity supply           -> infant mortality
