@@ -103,7 +103,10 @@ export default function RankingsList() {
             >
               <div className="flex items-center gap-2">
                 <span className="num text-[10px] text-graphite w-5 tabular-nums">{i + 1}</span>
-                <span className={`flex-1 truncate text-[12px] ${sel ? 'text-accent font-semibold' : 'text-ink'}`}>
+                <span
+                  className={`flex-1 truncate text-[12px] ${sel ? 'text-accent font-semibold' : 'text-ink'}`}
+                  title={r.label}
+                >
                   {r.label}
                 </span>
                 <span className="num text-[12px] text-ink font-medium w-9 text-right">{fmtRank(r.v, metric)}</span>

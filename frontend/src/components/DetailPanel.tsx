@@ -6,6 +6,7 @@ import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
 import { SUBSCORE_MEASURES, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal } from '../lib/format';
+import Tip from './Tip';
 
 // A percentile bar (0-100). Higher = worse (more gap), so more fill = worse.
 function PctBar({ pct }: { pct: number | null | undefined }) {
@@ -24,10 +25,17 @@ function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown
   return (
     <div className="px-3 py-1.5 bg-paper/60">
       {measures.map((mm) => (
-        <div key={mm.col} className="flex justify-between text-[11px] py-0.5">
-          <span className="text-graphite truncate pr-2">{mm.label}</span>
+        <Tip
+          key={mm.col}
+          tip={mm.desc ? `${mm.label} — ${mm.desc}` : mm.label}
+          className="flex justify-between text-[11px] py-0.5 cursor-help"
+        >
+          <span className="text-graphite truncate pr-2">
+            {mm.label}
+            {mm.desc ? <span className="text-graphite/60"> ⓘ</span> : null}
+          </span>
           <span className="num text-ink">{fmtMeasure(rec[mm.col], mm.unit)}</span>
-        </div>
+        </Tip>
       ))}
     </div>
   );
@@ -53,7 +61,7 @@ function SubScoreRow({
         aria-expanded={open}
       >
         <span className="text-graphite text-[9px] w-2">{open ? '▾' : '▸'}</span>
-        <span className="flex-1 text-[12px] text-ink truncate">{label}</span>
+        <span className="flex-1 text-[12px] text-ink truncate" title={label}>{label}</span>
         <span className="num text-[10px] text-graphite w-14 text-right">
           {pct == null ? 'no data' : `${ordinal(pct)} pct`}
         </span>
@@ -167,7 +175,10 @@ export default function DetailPanel() {
       <div className="px-4 pt-3 pb-2 border-b border-hairline sticky top-0 bg-surface z-10">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
-            <div className="font-serif text-[19px] text-ink leading-tight truncate">
+            <div
+              className="font-serif text-[19px] text-ink leading-tight truncate"
+              title={m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
+            >
               {m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
             </div>
             <div className="text-[11px] text-graphite mt-0.5">
