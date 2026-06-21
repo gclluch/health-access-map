@@ -1,0 +1,77 @@
+"""FastAPI app: dynamic attribute queries over the in-memory metrics table.
+
+The heavy static files (zcta.geojson, metrics.json) are served by Vite/CDN from
+frontend/public -- NOT routed through here. This API handles only the dynamic
+lookups: one ZIP, rankings, compare. CORS is opened to the Vite dev origin.
+"""
+from __future__ import annotations
+
+import re
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+from . import data
+
+ZCTA_RE = re.compile(r"^\d{5}$")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    data.load()  # fail fast at startup if metrics are missing
+    yield
+
+
+app = FastAPI(title="Health Access Map API", version="1.0.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
+
+def _norm_zcta(z: str) -> str:
+    z = z.strip()
+    if not z.isdigit():
+        raise HTTPException(422, detail=f"invalid ZIP '{z}': must be digits")
+    z = z.zfill(5)
+    if not ZCTA_RE.match(z):
+        raise HTTPException(422, detail=f"invalid ZIP '{z}': must be 5 digits")
+    return z
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"status": "ok", "zcta_count": data.count(), "states": data.states()}
+
+
+@app.get("/api/zcta/{zcta5}")
+def get_zcta(zcta5: str) -> dict:
+    rec = data.record(_norm_zcta(zcta5))
+    if rec is None:
+        raise HTTPException(404, detail=f"ZIP {zcta5} not found")
+    return rec
+
+
+@app.get("/api/rankings")
+def get_rankings(
+    metric: str = "access_gap_score",
+    state: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+    include_low_confidence: bool = False,
+) -> dict:
+    if metric not in data.RANKABLE_METRICS:
+        raise HTTPException(422, detail=f"metric must be one of {sorted(data.RANKABLE_METRICS)}")
+    rows = data.rankings(metric, state, limit, order, include_low_confidence)
+    return {"metric": metric, "state": state, "order": order, "count": len(rows), "results": rows}
+
+
+@app.get("/api/compare")
+def get_compare(zips: str = Query(..., description="comma-separated ZIPs")) -> dict:
+    parsed = [_norm_zcta(z) for z in zips.split(",") if z.strip()]
+    if not (1 <= len(parsed) <= 5):
+        raise HTTPException(422, detail="provide 1-5 ZIPs")
+    return {"results": data.compare(parsed)}

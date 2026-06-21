@@ -1,0 +1,12 @@
+# Python environment for pipeline + backend.
+# Install into an in-project virtualenv:  python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+# After install, freeze exact versions:    pip freeze > requirements.lock
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+pandas>=2,<3
+pyarrow>=15
+duckdb>=1
+httpx>=0.27
+python-dotenv>=1
+scikit-learn>=1.3
+pytest

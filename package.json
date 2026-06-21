@@ -1,0 +1,12 @@
+{
+  "name": "health-access-map-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build tooling for the pipeline (mapshaper). The web app lives in frontend/.",
+  "scripts": {
+    "mapshaper": "mapshaper"
+  },
+  "devDependencies": {
+    "mapshaper": "^0.6.102"
+  }
+}

@@ -1,0 +1,6 @@
+# Backend runtime deps (subset of the root requirements.txt, which installs the
+# full pipeline + backend env into .venv). Pinned exact versions in requirements.lock.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+pandas>=2,<3
+pyarrow>=15
