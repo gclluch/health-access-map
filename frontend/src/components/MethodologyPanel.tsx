@@ -180,7 +180,8 @@ export default function MethodologyPanel() {
           <p className="text-[13px] text-ink leading-relaxed mb-3">
             The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, CMS NPPES, and Census
             ACS roll up into 11 sub-scores, then 3 dimensions (health need, social vulnerability,
-            care access), then one 0-100 relative national rank. Darker = higher gap. Tap any layer
+            care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
+            blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
           </p>
 

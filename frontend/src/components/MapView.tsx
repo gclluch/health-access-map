@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { WebMercatorViewport } from '@deck.gl/core';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { buildQuantile, colorFor, SELECTED_OUTLINE } from '../lib/colors';
+import { buildQuantile, colorFor, SELECT_CASING, SELECT_LINE } from '../lib/colors';
 import { fmtScore } from '../lib/format';
 import { metricLabel } from '../lib/types';
 
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 function DeckOverlay(props: { layers: unknown[]; getTooltip?: (o: unknown) => unknown }) {
-  const overlay = useControl(() => new MapboxOverlay({ interleaved: false }));
+  // interleaved: the choropleth is inserted *beneath* the basemap's label/road layers
+  // (via each layer's beforeId), so place names and roads stay legible on top of the fill.
+  const overlay = useControl(() => new MapboxOverlay({ interleaved: true }));
   overlay.setProps(props as never);
   return null;
 }
@@ -27,6 +29,9 @@ export default function MapView() {
     useStore();
   const select = useStore((s) => s.select);
   const hover = useStore((s) => s.hover);
+  // id of the basemap's first label layer; the choropleth inserts beneath it so
+  // roads + place names render on top (set on map load).
+  const [labelLayerId, setLabelLayerId] = useState<string | undefined>(undefined);
 
   // Quantile color scale over the active metric's current value domain.
   const scale = useMemo(() => {
@@ -77,6 +82,7 @@ export default function MapView() {
       new GeoJsonLayer({
         id: 'zcta',
         data: geojson as never,
+        beforeId: labelLayerId, // insert beneath basemap labels/roads (interleaved)
         pickable: true,
         stroked: true,
         filled: true,
@@ -85,18 +91,18 @@ export default function MapView() {
           const m = metrics.get(f.properties.zcta5);
           const v = m ? metricValue(m, metric, weights) : null;
           const [r, g, b] = colorFor(v, scale);
-          // data polygons read solid; "no reliable data" recedes (quiet gray, §15.5).
-          const alpha = v == null || Number.isNaN(v) ? 70 : 218;
+          // semi-transparent so the basemap (roads, place names) shows through;
+          // "no reliable data" recedes further (quiet gray, §15.5).
+          const alpha = v == null || Number.isNaN(v) ? 55 : 158;
           return [r, g, b, alpha];
         },
         getLineColor: (f: { properties: { zcta5: string } }) => {
           const z = f.properties.zcta5;
-          if (z === selectedZcta) return SELECTED_OUTLINE;
-          if (z === hoveredZcta) return [20, 84, 90, 200];
-          return [255, 255, 255, 35];
+          if (z === hoveredZcta) return [20, 84, 90, 220];
+          return [120, 130, 145, 40];
         },
         getLineWidth: (f: { properties: { zcta5: string } }) =>
-          f.properties.zcta5 === selectedZcta ? 2.5 : f.properties.zcta5 === hoveredZcta ? 1.5 : 0.3,
+          f.properties.zcta5 === hoveredZcta ? 1.5 : 0.3,
         onClick: (info: { object?: { properties: { zcta5: string } } }) => {
           if (info.object) select(info.object.properties.zcta5);
         },
@@ -112,8 +118,28 @@ export default function MapView() {
           getLineWidth: [selectedZcta, hoveredZcta],
         },
       }),
-    [geojson, metrics, metric, weights, scale, selectedZcta, hoveredZcta, select, hover],
+    [geojson, metrics, metric, weights, scale, selectedZcta, hoveredZcta, select, hover, labelLayerId],
   );
+
+  // Selection halo: a thick near-black casing under a bright white line, drawn as a
+  // dedicated overlay so the selected ZIP reads clearly against BOTH ends of the ramp.
+  const selectionLayers = useMemo(() => {
+    if (!selectedZcta || !geojson) return [];
+    const feats = (geojson as { features: Array<{ properties: { zcta5: string } }> }).features;
+    const feat = feats.find((f) => f.properties.zcta5 === selectedZcta);
+    if (!feat) return [];
+    const data = { type: 'FeatureCollection', features: [feat] } as never;
+    const common = {
+      data, stroked: true, filled: false, pickable: false,
+      lineJointRounded: true, lineWidthUnits: 'pixels' as const,
+    };
+    return [
+      new GeoJsonLayer({ ...common, id: 'sel-casing', getLineColor: SELECT_CASING,
+        getLineWidth: 7, lineWidthMinPixels: 6 }),
+      new GeoJsonLayer({ ...common, id: 'sel-line', getLineColor: SELECT_LINE,
+        getLineWidth: 3, lineWidthMinPixels: 2.5 }),
+    ];
+  }, [selectedZcta, geojson]);
 
   const getTooltip = (info: { object?: { properties: { zcta5: string } } }) => {
     if (!info.object) return null;
@@ -140,9 +166,16 @@ export default function MapView() {
       initialViewState={initialViewState}
       mapStyle={BASEMAP}
       keyboard
+      onLoad={(e) => {
+        const style = (e.target as { getStyle: () => { layers: Array<{ id: string; type: string }> } }).getStyle();
+        // first symbol (label) layer; roads sit just below it, so inserting the
+        // choropleth here keeps both roads and labels on top.
+        const firstSymbol = style?.layers?.find((l) => l.type === 'symbol');
+        setLabelLayerId(firstSymbol?.id);
+      }}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
-      <DeckOverlay layers={[layer]} getTooltip={getTooltip as never} />
+      <DeckOverlay layers={[layer, ...selectionLayers]} getTooltip={getTooltip as never} />
     </Map>
   );
 }

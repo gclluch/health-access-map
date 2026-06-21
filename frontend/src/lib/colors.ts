@@ -3,12 +3,16 @@ import { interpolateCividis } from 'd3-scale-chromatic';
 
 // Cividis: perceptually-uniform AND optimized for color-vision deficiency
 // (§14.2). Rainbow/jet are forbidden -- they imply false thresholds.
-// Direction: 0 -> low (sand), 100 -> high (oxblood/dark). For the access gap,
-// higher = worse, which reads as darker = more gap. Good.
+// Direction: 0 -> deep blue (low), 100 -> bright yellow (high). For the access gap,
+// higher = worse, so BRIGHTER YELLOW = more gap and DEEP BLUE = less gap.
 export const RAMP = (t: number) => interpolateCividis(t);
 
 export const NO_DATA_RGB: [number, number, number] = [202, 206, 212]; // hairline-gray
 export const SELECTED_OUTLINE: [number, number, number, number] = [20, 84, 90, 255]; // petrol
+// Selection halo: a near-black casing under a white line reads clearly against BOTH
+// ends of the ramp (deep blue and bright yellow). Used as a dedicated overlay layer.
+export const SELECT_CASING: [number, number, number, number] = [16, 20, 27, 235]; // ink
+export const SELECT_LINE: [number, number, number, number] = [255, 255, 255, 255]; // white
 
 const seq = scaleSequential(interpolateCividis).domain([0, 100]);
 
