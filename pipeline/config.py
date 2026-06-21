@@ -134,6 +134,13 @@ TIGER_YEAR_FALLBACKS = [2020]  # only the 2020 vintage publishes ZCTA cartograph
 ZCTA_COUNTY_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/"
                    "zcta520/tab20_zcta520_county20_natl.txt")
 
+# CDC USALEEP census-tract life expectancy (2010-2015) -> the independent OUTCOME
+# used for the outcomes layer + empirical weight derivation. US_A.CSV has the 11-digit
+# "Tract ID" (leading-zero-stripped) + e(0) = life expectancy at birth.
+USALEEP_URL = "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NVSS/USALEEP/CSV/US_A.CSV"
+# ZCTA <-> census tract relationship (2010), with population in each part (POPPT).
+ZCTA_TRACT_REL = "https://www2.census.gov/geo/docs/maps-data/data/rel/zcta_tract_rel_10.txt"
+
 # ZCTA Gazetteer: internal-point lat/lon centroids (for the 2SFCA catchment).
 GAZETTEER_TMPL = ("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
                   "{year}_Gazetteer/{year}_Gaz_zcta_national.zip")

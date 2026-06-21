@@ -16,14 +16,15 @@ import argparse
 import time
 
 from . import (build_acs, build_gazetteer, build_geometry, build_geonames,
-               build_places, build_providers, build_supply, join_and_score)
+               build_lifeexp, build_places, build_providers, build_supply,
+               join_and_score)
 from .common import load_env, log
 from .preflight import check as preflight_check
 
 # ordered stages; geometry first (defines the ZCTA universe); supply needs
-# providers + acs + gazetteer; join is last.
+# providers + acs + gazetteer; lifeexp is the independent outcome; join is last.
 STAGES = ["geometry", "places", "providers", "acs", "geonames",
-          "gazetteer", "supply", "join"]
+          "gazetteer", "supply", "lifeexp", "join"]
 BUILDERS = {
     "geometry": build_geometry.build,
     "places": build_places.build,
@@ -32,6 +33,7 @@ BUILDERS = {
     "geonames": build_geonames.build,
     "gazetteer": build_gazetteer.build,
     "supply": build_supply.build,
+    "lifeexp": build_lifeexp.build,
     "join": join_and_score.build,
 }
 

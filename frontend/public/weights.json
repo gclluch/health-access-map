@@ -1,0 +1,17 @@
+{
+  "default": {
+    "health_need": 35,
+    "social_vulnerability": 30,
+    "care_access": 35
+  },
+  "empirical": {
+    "health_need": 75.5,
+    "social_vulnerability": 19.8,
+    "care_access": 4.8
+  },
+  "fit": {
+    "r2_vs_life_expectancy": 0.382,
+    "n": 31467
+  },
+  "note": "default = conceptual value judgment; empirical = NNLS regression of the dimensions on CDC USALEEP life expectancy (5% floor, normalized to 100)."
+}
