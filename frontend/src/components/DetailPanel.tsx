@@ -19,24 +19,47 @@ function PctBar({ pct }: { pct: number | null | undefined }) {
 }
 
 // Deepest level: individual measures for a sub-score, from the full API record.
+// Each row shows the RAW value (real-world units) and, where it exists, that value's
+// national percentile oriented so higher = worse access (same scale as the sub-scores).
 function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown> | null }) {
   const measures = SUBSCORE_MEASURES[subKey] ?? [];
   if (!rec) return <div className="px-3 py-1.5 text-[10px] text-graphite">Loading measures…</div>;
+  const anyPct = measures.some((mm) => typeof rec[`${mm.col}_natpct`] === 'number');
   return (
     <div className="px-3 py-1.5 bg-paper/60">
-      {measures.map((mm) => (
-        <Tip
-          key={mm.col}
-          tip={mm.desc ? `${mm.label} — ${mm.desc}` : mm.label}
-          className="flex justify-between text-[11px] py-0.5 cursor-help"
-        >
-          <span className="text-graphite truncate pr-2">
-            {mm.label}
-            {mm.desc ? <span className="text-graphite/60"> ⓘ</span> : null}
-          </span>
-          <span className="num text-ink">{fmtMeasure(rec[mm.col], mm.unit)}</span>
-        </Tip>
-      ))}
+      <div className="flex justify-between text-[9px] uppercase tracking-wide text-graphite/55 pb-1 border-b border-hairline/60 mb-0.5">
+        <span>Measure</span>
+        <span>{anyPct ? 'value · natl %ile' : 'value'}</span>
+      </div>
+      {measures.map((mm) => {
+        const natpct = rec[`${mm.col}_natpct`];
+        const hasPct = typeof natpct === 'number';
+        const tip = `${mm.label}${mm.desc ? ` — ${mm.desc}` : ''}${
+          hasPct
+            ? ` · This area ranks ${ordinal(Math.round(natpct as number))} nationally (higher = worse access).`
+            : ''
+        }`;
+        return (
+          <Tip
+            key={mm.col}
+            tip={tip}
+            className="flex justify-between items-baseline text-[11px] py-0.5 cursor-help"
+          >
+            <span className="text-graphite truncate pr-2 flex-1">
+              {mm.label}
+              {mm.desc ? <span className="text-graphite/60"> ⓘ</span> : null}
+            </span>
+            <span className="flex items-baseline gap-1.5 shrink-0">
+              <span className="num text-ink">{fmtMeasure(rec[mm.col], mm.unit)}</span>
+              {hasPct ? (
+                <span className="num text-[10px] text-graphite/80 tabular-nums w-9 text-right">
+                  {ordinal(Math.round(natpct as number))}
+                </span>
+              ) : null}
+            </span>
+          </Tip>
+        );
+      })}
     </div>
   );
 }

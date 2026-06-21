@@ -37,12 +37,33 @@ def _pct(s: pd.Series) -> pd.Series:
     return s.astype("float64").rank(pct=True) * 100.0
 
 
+# Layer B measurement-noise calibration. Per-dimension Gaussian σ (percentile points)
+# injected into each Monte-Carlo draw, scaled to the ZCTA's ACS input CV in EXCESS of the
+# national median CV: σ_z = SCALE * clip(cv_z - cv_floor, 0, EXCESS_CAP), cv_floor = the
+# FLOOR_Q quantile of CV. A median-or-better-measured ZCTA (cv ≤ cv_floor) gets zero added
+# noise, so its band stays the pre-Layer-B weighting-only width; only noisier (low-pop)
+# ZCTAs widen. Only the ACS-derived dimensions carry this term (social_vulnerability fully
+# ACS, care_access via insurance); health_need is PLACES, whose measurement noise is Layer
+# B3. Calibrated against the band-verification gate: floor_q=0.50/scale=15 yields high-conf
+# ≈9.5 (≈ pre-B), low-conf ≈17.8, ratio ≈1.88× (target ≥1.6). See docs/ROADMAP-ACCESS-SIGNAL.md B2.
+_RANK_CV_SIGMA_SCALE = 15.0
+_RANK_CV_FLOOR_Q = 0.50
+_RANK_CV_EXCESS_CAP = 1.5
+# Fraction of each dimension's percentile driven by ACS inputs (so ACS measurement noise
+# enters proportionally - social_vulnerability is fully ACS; care_access only via insurance
+# (~1 of 4 sub-scores) + the poverty term in safetynet_barrier; health_need is PLACES = 0).
+# Makes the σ(cv) injection per-dimension honest, so the gate-3 input-resample calibration
+# can match it dimension by dimension.
+_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.3}
+
+
 def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
                       n: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
-    """Per-ZCTA 5-95 national-rank interval under plausible re-weighting (each dimension
-    15-55%, renormalized) - the Saisana/OECD uncertainty-on-ranks standard. Deterministic
-    (fixed seed) so the build + acceptance tests are reproducible. Returns (lo, hi) arrays
-    aligned to df, NaN for non-scoreable rows."""
+    """Per-ZCTA 5-95 national-rank interval under (1) plausible re-weighting (each dimension
+    15-55%, renormalized) and (2) ACS measurement noise scaled to the ZCTA's input CV. The
+    band is therefore weighting + ACS measurement noise (PLACES MOE is Layer B3). Saisana/
+    OECD uncertainty-on-ranks standard. Deterministic (fixed seed) so the build + acceptance
+    tests are reproducible. Returns (lo, hi) arrays aligned to df, NaN for non-scoreable rows."""
     rng = np.random.default_rng(seed)
     sc = df["scoreable"].to_numpy()
     idx = np.where(sc)[0]
@@ -55,14 +76,42 @@ def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
     Xz = np.where(present, X, 0.0)
     W = rng.uniform(0.15, 0.55, size=(n, len(dim_cols)))
     W /= W.sum(axis=1, keepdims=True)
+
+    # per-ZCTA, per-dimension measurement-noise σ (0 for non-ACS dimensions)
+    sigma = _noise_sigma(df, dim_cols, idx)
+
     ranks = np.empty((len(idx), n))
     for j in range(n):
         w = W[j]
-        comp = (Xz @ w) / (present * w).sum(axis=1)   # renormalized over present dims
+        # perturb each present dimension percentile by its measurement noise, re-aggregate,
+        # re-rank. Independent per-dim noise partially cancels in the weighted mean (correct).
+        noise = rng.standard_normal((len(idx), len(dim_cols))) * sigma
+        Xp = np.clip(Xz + noise, 0.0, 100.0)
+        comp = (np.where(present, Xp, 0.0) @ w) / (present * w).sum(axis=1)
         ranks[:, j] = pd.Series(comp).rank(pct=True).to_numpy() * 100.0
     lo[idx] = np.percentile(ranks, 5, axis=1)
     hi[idx] = np.percentile(ranks, 95, axis=1)
     return lo, hi
+
+
+def _noise_sigma(df: pd.DataFrame, dim_cols: list[str], idx: np.ndarray) -> np.ndarray:
+    """(len(idx), len(dim_cols)) array of measurement-noise σ in percentile points. Scaled to
+    each ZCTA's acs_input_cv in excess of the national median, weighted per dimension by its
+    ACS-input share (_ACS_SHARE). Zeros if the CV column is absent (pre-Layer-B builds)."""
+    sigma = np.zeros((len(idx), len(dim_cols)))
+    if "acs_input_cv" not in df.columns:
+        return sigma
+    cv = df["acs_input_cv"].to_numpy(float)[idx]
+    floor = np.nanquantile(cv, _RANK_CV_FLOOR_Q)
+    if not np.isfinite(floor):
+        return sigma
+    excess = np.clip(np.where(np.isnan(cv), floor, cv) - floor, 0.0, _RANK_CV_EXCESS_CAP)
+    col_sigma = _RANK_CV_SIGMA_SCALE * excess  # per-ZCTA scalar; 0 for well-measured ZCTAs
+    for k, c in enumerate(dim_cols):
+        share = _ACS_SHARE.get(c, 0.0)
+        if share:
+            sigma[:, k] = share * col_sigma
+    return sigma
 
 
 def _geometry_universe() -> pd.Series:
@@ -125,7 +174,15 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     # ---- sub-scores (re-ranked mean of available member percentiles) ----
     sub_by_dim: dict[str, list[str]] = {d: [] for d in DIMENSIONS}
     for spec in subscore_specs():
-        mps = [mp for m in spec["members"] if (mp := _member_pctile(df, m)) is not None]
+        mps = []
+        for m in spec["members"]:
+            mp = _member_pctile(df, m)
+            if mp is not None:
+                # per-measure national percentile, oriented so higher = worse access
+                # (same convention as the sub-scores). Lets the UI show each raw value
+                # alongside where it ranks nationally. See docs.
+                df[f"{m['col']}_natpct"] = mp.round(1)
+                mps.append(mp)
         col = f"{spec['key']}_pctile"
         if mps:
             raw = pd.concat(mps, axis=1).mean(axis=1)  # skipna mean of member percentiles
