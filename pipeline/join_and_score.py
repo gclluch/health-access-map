@@ -27,7 +27,7 @@ OUT_PARQUET = config.PROCESSED / "metrics.parquet"
 OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
-OPTIONAL_STAGES = ("lifeexp",)  # merged if present (outcomes layer + empirical weights)
+OPTIONAL_STAGES = ("fqhc", "lifeexp")  # merged if present (safety-net + outcomes)
 WEIGHTS_JSON = config.FRONTEND_PUBLIC / "weights.json"
 
 
@@ -154,7 +154,8 @@ RAW_DISPLAY = (
     [m["col"] for s in subscore_specs() for m in s["members"]]
     + list(CONTEXT_PLACES) + list(CONTEXT_ACS)
     + ["primary_per_1k", "providers_total", "providers_primary", "providers_mental",
-       "primary_people_per_provider", "primary_shortage", "population"]
+       "primary_people_per_provider", "primary_shortage", "population",
+       "fqhc_sites_reachable", "nearest_fqhc_km", "life_expectancy"]
 )
 
 

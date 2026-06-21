@@ -28,6 +28,7 @@ export interface SlimMetric {
   housing_transport_pctile: number | null;
   social_needs_pctile: number | null;
   provider_supply_pctile: number | null;
+  safetynet_access_pctile: number | null;
   insurance_pctile: number | null;
   preventive_use_pctile: number | null;
   [k: string]: string | number | boolean | null;
@@ -99,9 +100,10 @@ export const MODEL: DimSpec[] = [
   {
     key: 'care_access',
     label: 'Barriers to care',
-    blurb: 'Low provider supply (spatial), lack of insurance, unmet preventive care. Higher = more barriers.',
+    blurb: 'Low provider supply, low safety-net (FQHC) access, lack of insurance, unmet preventive care. Higher = more barriers.',
     subs: [
       { key: 'provider_supply', label: 'Low provider supply (spatial)' },
+      { key: 'safetynet_access', label: 'Low safety-net access (FQHC)' },
       { key: 'insurance', label: 'Lack of insurance' },
       { key: 'preventive_use', label: 'Low preventive-care use' },
     ],

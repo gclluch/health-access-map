@@ -15,16 +15,16 @@ from __future__ import annotations
 import argparse
 import time
 
-from . import (build_acs, build_gazetteer, build_geometry, build_geonames,
-               build_lifeexp, build_places, build_providers, build_supply,
-               join_and_score)
+from . import (build_acs, build_fqhc, build_gazetteer, build_geometry,
+               build_geonames, build_lifeexp, build_places, build_providers,
+               build_supply, join_and_score)
 from .common import load_env, log
 from .preflight import check as preflight_check
 
-# ordered stages; geometry first (defines the ZCTA universe); supply needs
-# providers + acs + gazetteer; lifeexp is the independent outcome; join is last.
+# ordered stages; geometry first (defines the ZCTA universe); supply + fqhc need
+# acs + gazetteer; lifeexp is the independent outcome; join is last.
 STAGES = ["geometry", "places", "providers", "acs", "geonames",
-          "gazetteer", "supply", "lifeexp", "join"]
+          "gazetteer", "supply", "fqhc", "lifeexp", "join"]
 BUILDERS = {
     "geometry": build_geometry.build,
     "places": build_places.build,
@@ -33,6 +33,7 @@ BUILDERS = {
     "geonames": build_geonames.build,
     "gazetteer": build_gazetteer.build,
     "supply": build_supply.build,
+    "fqhc": build_fqhc.build,
     "lifeexp": build_lifeexp.build,
     "join": join_and_score.build,
 }

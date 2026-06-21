@@ -1,6 +1,6 @@
 // Member measures per sub-score (mirrors pipeline/taxonomy.py), used to render
 // the deepest drill-down level from the full API record. unit drives formatting.
-export type Unit = 'pct' | 'rate' | 'money' | 'per1k';
+export type Unit = 'pct' | 'rate' | 'money' | 'per1k' | 'count' | 'km';
 export interface Measure {
   col: string;
   label: string;
@@ -71,6 +71,10 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'primary_2sfca', label: 'Primary-care access (2SFCA)', unit: 'per1k', better: 'high' },
     { col: 'mental_2sfca', label: 'Mental-health access (2SFCA)', unit: 'per1k', better: 'high' },
   ],
+  safetynet_access: [
+    { col: 'fqhc_sites_reachable', label: 'FQHC sites within ~16 km', unit: 'count', better: 'high' },
+    { col: 'nearest_fqhc_km', label: 'Nearest FQHC', unit: 'km' },
+  ],
   insurance: [
     { col: 'uninsured_rate', label: 'Uninsured (all ages)', unit: 'rate' },
     { col: 'access2_pct', label: 'Uninsured adults 18-64', unit: 'pct' },
@@ -96,5 +100,9 @@ export function fmtMeasure(v: unknown, unit: Unit): string {
       return `$${Math.round(v).toLocaleString('en-US')}`;
     case 'per1k':
       return `${v.toFixed(1)}/1k`;
+    case 'count':
+      return Math.round(v).toLocaleString('en-US');
+    case 'km':
+      return `${v.toFixed(1)} km`;
   }
 }

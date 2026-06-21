@@ -134,6 +134,17 @@ TIGER_YEAR_FALLBACKS = [2020]  # only the 2020 vintage publishes ZCTA cartograph
 ZCTA_COUNTY_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/"
                    "zcta520/tab20_zcta520_county20_natl.txt")
 
+# HRSA Health Center (FQHC) service-delivery sites -> the safety-net access layer.
+# ~16,200 sites that serve everyone on a sliding fee scale (the access point for the
+# uninsured/Medicaid). Geocoded; operating hours used as an effective-capacity weight.
+FQHC_URL = ("https://data.hrsa.gov/DataDownload/DD_Files/"
+            "Health_Center_Service_Delivery_and_LookAlike_Sites.csv")
+FQHC_COL_LON = "Geocoding Artifact Address Primary X Coordinate"
+FQHC_COL_LAT = "Geocoding Artifact Address Primary Y Coordinate"
+FQHC_COL_STATUS = "Site Status Description"
+FQHC_COL_HOURS = "Operating Hours per Week"
+FQHC_HOURS_FLOOR, FQHC_HOURS_CEIL, FQHC_HOURS_DEFAULT = 8.0, 84.0, 40.0
+
 # CDC USALEEP census-tract life expectancy (2010-2015) -> the independent OUTCOME
 # used for the outcomes layer + empirical weight derivation. US_A.CSV has the 11-digit
 # "Tract ID" (leading-zero-stripped) + e(0) = life expectancy at birth.

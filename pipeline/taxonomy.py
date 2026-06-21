@@ -134,6 +134,13 @@ DIMENSIONS: dict = {
                     M("mental_2sfca", -1, "Mental-health access (2SFCA)"),
                 ],
             },
+            "safetynet_access": {
+                "label": "Low safety-net access (FQHC)",
+                "source": "fqhc",
+                "members": [
+                    M("safetynet_2sfca", -1, "FQHC access (2SFCA, capacity-weighted)"),
+                ],
+            },
             "insurance": {
                 "label": "Lack of insurance",
                 "source": "mixed",

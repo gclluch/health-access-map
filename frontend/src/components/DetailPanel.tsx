@@ -286,6 +286,25 @@ export default function DetailPanel() {
                 )}
               </div>
             )}
+            {typeof rec.fqhc_sites_reachable === 'number' && (
+              <div className="mt-1">
+                Safety net:{' '}
+                {(rec.fqhc_sites_reachable as number) > 0 ? (
+                  <span>
+                    <span className="num text-ink">{fmtInt(rec.fqhc_sites_reachable as number)}</span>{' '}
+                    FQHC site{rec.fqhc_sites_reachable === 1 ? '' : 's'} within ~16 km
+                    {typeof rec.nearest_fqhc_km === 'number'
+                      ? `, nearest ${(rec.nearest_fqhc_km as number).toFixed(1)} km`
+                      : ''}{' '}
+                    (sliding-fee clinics serving the uninsured)
+                  </span>
+                ) : (
+                  <span className="text-accent font-medium">
+                    no FQHC within ~16 km - a safety-net desert
+                  </span>
+                )}
+              </div>
+            )}
             <div className="mt-1">
               Population <span className="num text-ink">{fmtInt(m.population as number)}</span>
               {typeof rec.median_age === 'number'
