@@ -1,10 +1,15 @@
 # Roadmap: strengthen the access signal (gated, verify-after-each-layer)
 
-The composite is a strong *deprivation* gradient whose *care-access* dimension is its
-weakest link - today, **dropping care_access improves outcome agreement** (0.445 → 0.456),
-because `provider_supply` is confounded, `safetynet_access` is wrong-signed, and `household`
-is near-signal-less. This roadmap fixes that, cheapest-first, with a mandatory verification
-gate after every layer. No layer ships unless it passes its gate.
+> **STATUS (2026-06-21):** Branch `feat/composite-validation-uncertainty`. **Layer A is DONE
+> and committed (`aa21461`)** - the north star already flipped: `drop_care_access` is now
+> *below* FULL, i.e. care access ADDS outcome signal. **Layers B and C are open.** The harness
+> `python -m pipeline.diagnostics` exists; **run it first to re-baseline** before any B/C work.
+
+The composite is a strong *deprivation* gradient whose *care-access* dimension was its
+weakest link - originally **dropping care_access improved outcome agreement** (0.445 → 0.456),
+because `provider_supply` is confounded, `safetynet_access` was wrong-signed, and `household`
+was near-signal-less. Layer A fixed the latter two. This roadmap fixes the rest, cheapest-first,
+with a mandatory verification gate after every layer. No layer ships unless it passes its gate.
 
 Recommended order: **A (model fixes) → B (uncertainty) → C (capacity data)** - rising cost,
 falling certainty. A and B are self-contained; C is multi-step and partly shared with the
@@ -27,18 +32,24 @@ checks; a layer **passes only if all five hold**.
 | 4 | **Internal reliability.** Split-half Spearman-Brown (overall + low-pop). | **≥ 0.93** overall; low-pop not down >0.01. |
 | 5 | **Coverage & contracts.** scoreable count; percentile/rate ranges. | scoreable within ±1%; all percentiles ∈[0,100]; rates ∈[0,1]. |
 
-**Baselines to beat (current build, 2026-06-21):** FULL mean-r 0.445; drop_care_access 0.456
-(the number we must drive *down*); split-half 0.94; care sub-score mean\|r\|: provider_supply
-0.17, safetynet 0.12, insurance 0.34, preventive 0.27; household 0.10.
+**Baselines to beat (post-Layer-A, the current build):** FULL mean-r **0.479**;
+drop_care_access **0.469** (already < FULL → care access ADDS signal; keep it that way);
+composite_mean_r 0.479; split-half 0.955 / low-pop 0.939; scoreable 33176. Care sub-score
+mean\|r\|: provider_supply **0.17** (still weak - Layer C target), safetynet **0.233** (fixed),
+insurance 0.34, preventive 0.27. (Pre-Layer-A baseline was FULL 0.445 / drop_care_access 0.456.)
 
 **Rollback rule:** if check 1 or 3 regresses, revert or retune the layer before proceeding -
 exactly as state→county shrinkage was retuned when state-level dropped LE validity.
 
 ---
 
-## Layer A - cheap model fixes (taxonomy/scoring only; do first)
+## Layer A - cheap model fixes (taxonomy/scoring only) ✅ DONE (commit aa21461)
 
-Two wrong components are actively subtracting signal. Both are config/scoring edits, no new data.
+Two wrong components were actively subtracting signal. Both were config/scoring edits, no new
+data. **Result: FULL 0.445→0.479, drop_care_access 0.456→0.469 (flipped to net-positive).**
+A1 removed `household` (all 3 members failed; limited-English wrong-signed −0.25 vs infant
+mortality). A2 reframed FQHC to `safetynet_barrier = FQHC-distance-pctile × poverty` in
+`join_and_score.py` (verified it adds signal beyond poverty; sub-score 0.118→0.233). Details below.
 
 ### A1. Reclassify the `household` sub-score
 **Problem:** age65_rate / age17_rate are demographic *context*, not access barriers - at the
