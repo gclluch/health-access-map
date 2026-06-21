@@ -79,8 +79,9 @@ ACCESS GAP SCORE  (one 0-100 relative national rank, tunable weights)
 │  ├─ Household composition      (age 65+, age 17−, limited English)
 │  ├─ Housing & transport        (no vehicle, crowding, mobile homes, multi-unit)
 │  └─ Unmet social needs         (food/housing/transport/utility insecurity)
-└─ BARRIERS TO CARE       (35%)   ── CMS NPPES + Census ACS + CDC PLACES
-   ├─ Low provider supply (spatial) (2SFCA primary + mental health)
+└─ BARRIERS TO CARE       (35%)   ── CMS NPPES + HRSA + Census ACS + CDC PLACES
+   ├─ Low provider supply (spatial) (E2SFCA primary + mental health)
+   ├─ Low safety-net access         (E2SFCA to HRSA FQHC sites — sliding-fee clinics)
    ├─ Lack of insurance          (uninsured)
    └─ Low preventive-care use    (checkups, screenings — low use = barrier)
 ```
@@ -157,6 +158,19 @@ PLACES (2025 release), ACS (2023), and TIGER (2020 cartographic) are all kept on
 - **Critical caveats:** 5-year estimates are *centered ~2-3 years back* in time. Small
   ZCTAs have wide **margins of error (MOE)** - we flag low-population areas. Census uses
   **sentinel negatives** (e.g. `-666666666`) for suppressed values, scrubbed to null.
+
+### 5.2a HRSA FQHC sites — the safety net
+- **What:** ~18,000 active Federally Qualified Health Center service-delivery sites (HRSA),
+  geocoded, with operating hours.
+- **Why it matters:** FQHCs are mandated to serve everyone on a **sliding fee scale** - they
+  are the access point for the uninsured/Medicaid. A raw provider count is *provider-agnostic*
+  (it counts a concierge doctor like a community clinic); the safety-net layer captures whether
+  the people who most need care can actually get it. It's the supply-side answer to "will they
+  see *you*" (the Acceptability "A" of access).
+- **How we use it:** a **bipartite E2SFCA** (sites = supply, ZCTA centroids = demand, operating
+  hours = capacity weight) → a "Low safety-net access" sub-score, plus FQHC sites reachable +
+  nearest-FQHC distance in the panel. 37% of ZCTAs have **no FQHC within 16 km** (safety-net deserts).
+- **Caveat:** site presence ≠ unlimited capacity; sliding-fee ≠ free; hours are a rough capacity proxy.
 
 ### 5.3a CDC USALEEP — life expectancy (the independent outcome)
 - **What:** life expectancy at birth for census tracts (2010-2015), from the U.S. Small-area

@@ -311,3 +311,26 @@ provider further) is legitimate (demand-weighted SFCA), and it's computed and st
 (`primary_2sfca_needadj`). But it is **deliberately not the scored value**: health need is
 already its own 35% dimension, so need-adjusting supply would **double-count need**. We keep
 the scored supply un-need-adjusted and surface the need-adjusted variant for transparency.
+
+## 12. Safety-net access - the supply-side validity fix
+
+The deepest flaw in any provider-density metric is that it's **provider-agnostic**: it counts
+a cash-only concierge physician identically to a community clinic that serves everyone. For
+the uninsured/Medicaid populations this tool is about, that's the difference between *theoretical*
+and *real* access - it's the **Acceptability** "A" (will they see *you*) on the supply side, the
+analog to why we include social vulnerability on the demand side (§8).
+
+We address it with a **safety-net access** sub-score: bipartite **E2SFCA** over ~18,000 HRSA
+**FQHC** sites (mandated sliding-fee clinics), capacity-weighted by operating hours. This is the
+single most decisive thing we can add to the access dimension's *validity* - more than travel-time
+precision (the academic "next step," which improves the *measure* but not *what's measured*), and
+more than provider-type breadth (dental/OB/ER - valuable, but breadth not validity). True
+Medicaid-acceptance data has no clean national ZCTA source; FQHC presence is the authoritative
+stand-in.
+
+**What it revealed:** FQHCs are deliberately sited in underserved areas, so high-need places like
+the Mississippi Delta now correctly read as having a *functioning safety net* even where private
+provider density is low - a signal the raw count was blind to. Conversely, **~37% of ZCTAs have no
+FQHC within 16 km** (true safety-net deserts). *Caveat:* presence ≠ unlimited capacity, sliding-fee
+≠ free, and hours are a rough capacity proxy. *Backlog (validity, in priority order):* network
+travel-time E2SFCA; dental/maternity/ER provider types; claims-based active-provider FTEs.
