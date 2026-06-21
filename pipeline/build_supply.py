@@ -44,16 +44,17 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         return str(OUT)
 
     gaz = pd.read_parquet(config.PROCESSED / "gazetteer.parquet")
-    prov = pd.read_parquet(config.PROCESSED / "providers.parquet")[
-        ["zcta5", "providers_primary", "providers_mental"]]
+    ptypes = ["providers_primary", "providers_mental", "providers_dental", "providers_obgyn"]
+    pcols = pd.read_parquet(config.PROCESSED / "providers.parquet")
+    prov = pcols[["zcta5", *[c for c in ptypes if c in pcols.columns]]]
     acs = pd.read_parquet(config.PROCESSED / "acs.parquet")[["zcta5", "population"]]
     places = pd.read_parquet(config.PROCESSED / "places.parquet")
     df = (gaz.merge(prov, on="zcta5", how="left")
              .merge(acs, on="zcta5", how="left")
              .merge(places[["zcta5", *[c for c in config.NEED_WEIGHT_COLS if c in places.columns]]],
                     on="zcta5", how="left"))
-    for c in ("providers_primary", "providers_mental"):
-        df[c] = df[c].fillna(0).astype(float)
+    for c in ptypes:
+        df[c] = df[c].fillna(0).astype(float) if c in df.columns else 0.0
     df["population"] = pd.to_numeric(df["population"], errors="coerce").fillna(0).astype(float)
 
     # demand (need) weight: 1 + normalized chronic-disease burden  -> [1, 2]
@@ -75,18 +76,23 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     pop = df["population"].to_numpy()
     a_primary = _e2sfca(df["providers_primary"].to_numpy(), pop, ind, weights)
     a_mental = _e2sfca(df["providers_mental"].to_numpy(), pop, ind, weights)
+    a_dental = _e2sfca(np.asarray(df["providers_dental"], float), pop, ind, weights)
+    a_obgyn = _e2sfca(np.asarray(df["providers_obgyn"], float), pop, ind, weights)
     a_primary_need = _e2sfca(df["providers_primary"].to_numpy(),
                              pop * need_mult.to_numpy(), ind, weights)
 
     df["primary_2sfca"] = a_primary * 1000.0
     df["mental_2sfca"] = a_mental * 1000.0
+    df["dental_2sfca"] = a_dental * 1000.0
+    df["ob_2sfca"] = a_obgyn * 1000.0
     df["primary_2sfca_needadj"] = a_primary_need * 1000.0
     df["primary_people_per_provider"] = np.divide(
         1.0, a_primary, out=np.full_like(a_primary, np.inf), where=a_primary > 0)
     df["primary_shortage"] = df["primary_people_per_provider"] > config.HPSA_SHORTAGE_RATIO
 
-    out = df[["zcta5", "primary_2sfca", "mental_2sfca", "primary_2sfca_needadj",
-              "primary_people_per_provider", "primary_shortage"]].copy()
+    out = df[["zcta5", "primary_2sfca", "mental_2sfca", "dental_2sfca", "ob_2sfca",
+              "primary_2sfca_needadj", "primary_people_per_provider",
+              "primary_shortage"]].copy()
     out["primary_people_per_provider"] = out["primary_people_per_provider"].replace(np.inf, np.nan)
     _validate(out, dev_state)
     out.to_parquet(OUT, index=False)

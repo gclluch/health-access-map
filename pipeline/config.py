@@ -83,6 +83,8 @@ PRIMARY_CARE_NPPA_GROUPING = "Physician Assistants & Advanced Practice Nursing P
 MENTAL_HEALTH_GROUPING = "Behavioral Health & Social Service Providers"
 MENTAL_HEALTH_CLASSIFICATION = "Psychiatry & Neurology"  # narrowed to Psychiatry specialization
 PHYSICIAN_GROUPING = "Allopathic & Osteopathic Physicians"
+DENTAL_GROUPING = "Dental Providers"                     # dentists -> dental access
+OBGYN_CLASSIFICATION = "Obstetrics & Gynecology"         # maternity-care access
 
 # ---------------------------------------------------------------------------
 # Census ACS 5-year (economic / insurance)

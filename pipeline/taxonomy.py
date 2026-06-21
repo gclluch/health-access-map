@@ -132,6 +132,8 @@ DIMENSIONS: dict = {
                 "members": [
                     M("primary_2sfca", -1, "Primary-care access (2SFCA)"),
                     M("mental_2sfca", -1, "Mental-health access (2SFCA)"),
+                    M("dental_2sfca", -1, "Dental access (2SFCA)"),
+                    M("ob_2sfca", -1, "Maternity / OB-GYN access (2SFCA)"),
                 ],
             },
             "safetynet_access": {

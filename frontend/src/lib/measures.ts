@@ -70,6 +70,8 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
   provider_supply: [
     { col: 'primary_2sfca', label: 'Primary-care access (2SFCA)', unit: 'per1k', better: 'high' },
     { col: 'mental_2sfca', label: 'Mental-health access (2SFCA)', unit: 'per1k', better: 'high' },
+    { col: 'dental_2sfca', label: 'Dental access (2SFCA)', unit: 'per1k', better: 'high' },
+    { col: 'ob_2sfca', label: 'Maternity / OB-GYN access (2SFCA)', unit: 'per1k', better: 'high' },
   ],
   safetynet_access: [
     { col: 'fqhc_sites_reachable', label: 'FQHC sites within ~16 km', unit: 'count', better: 'high' },

@@ -45,11 +45,17 @@ def _resolve_nucc_url() -> str:
 
 def _classify_row(grouping: str, classification: str, specialization: str) -> str:
     g, c, s = grouping.strip(), classification.strip(), specialization.strip().lower()
-    # mental health first (psychiatrists are physicians; catch before primary/specialist)
+    # dentists -> dental access (own grouping)
+    if g == config.DENTAL_GROUPING and c == "Dentist":
+        return "dental"
+    # mental health (psychiatrists are physicians; catch before primary/specialist)
     if g == config.MENTAL_HEALTH_GROUPING:
         return "mental_health"
     if c == config.MENTAL_HEALTH_CLASSIFICATION and "psychiatry" in s:
         return "mental_health"
+    # maternity care: OB/GYN physicians (catch before the specialist fallback)
+    if c == config.OBGYN_CLASSIFICATION:
+        return "obgyn"
     # primary care: core PCP physician specialties + NP/PA
     if g == config.PHYSICIAN_GROUPING and c in config.PRIMARY_CARE_CLASSIFICATIONS:
         return "primary_care"
@@ -78,11 +84,13 @@ def _load_taxonomy_map() -> pd.DataFrame:
         ],
     })
     out = out[out["code"] != ""].drop_duplicates("code")
-    # assert every code resolves to exactly one of the four classes
-    assert set(out["class"]).issubset({"primary_care", "mental_health", "specialist", "other"})
+    assert set(out["class"]).issubset(
+        {"primary_care", "mental_health", "dental", "obgyn", "specialist", "other"})
     log("providers", f"NUCC {dest.name}: {len(out)} codes -> "
                      f"{(out['class']=='primary_care').sum()} primary, "
-                     f"{(out['class']=='mental_health').sum()} mental")
+                     f"{(out['class']=='mental_health').sum()} mental, "
+                     f"{(out['class']=='dental').sum()} dental, "
+                     f"{(out['class']=='obgyn').sum()} obgyn")
     return out
 
 
@@ -150,6 +158,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         count(*)                                          AS providers_total,
         count(*) FILTER (WHERE pclass = 'primary_care')   AS providers_primary,
         count(*) FILTER (WHERE pclass = 'mental_health')  AS providers_mental,
+        count(*) FILTER (WHERE pclass = 'dental')         AS providers_dental,
+        count(*) FILTER (WHERE pclass = 'obgyn')          AS providers_obgyn,
         mode(city)                                        AS city
     FROM keyed
     WHERE zcta5 ~ '^[0-9]{{5}}$' AND zcta5 <> '00000'
@@ -158,7 +168,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df = con.execute(q).fetch_df()
     con.close()
     df["zcta5"] = df["zcta5"].astype("string")
-    for c in ("providers_total", "providers_primary", "providers_mental"):
+    for c in ("providers_total", "providers_primary", "providers_mental",
+              "providers_dental", "providers_obgyn"):
         df[c] = df[c].astype("int64")
     # NPPES cities are uppercase; title-case for display ("LOS ANGELES" -> "Los Angeles")
     df["city"] = df["city"].astype("string").str.title()
