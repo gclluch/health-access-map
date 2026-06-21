@@ -3,8 +3,11 @@ import { loadData, type FeatureCollection } from './lib/data';
 import {
   COMPOSITE_METRIC,
   DEFAULT_WEIGHTS,
+  parseAnchors,
   PRESETS,
+  type AnchorPreset,
   type SlimMetric,
+  type SubscoreCorrelations,
   type Weights,
 } from './lib/types';
 
@@ -29,8 +32,8 @@ interface AppState {
 
   metric: string;
   weights: Weights;
-  empiricalWeights: Weights | null;
-  empiricalFit: { r2_vs_life_expectancy: number; n: number } | null;
+  anchors: AnchorPreset[];
+  subscoreCorrelations: SubscoreCorrelations;
   selectedZcta: string | null;
   hoveredZcta: string | null;
   stateFilter: string | null;
@@ -100,8 +103,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   metric: COMPOSITE_METRIC,
   weights: { ...DEFAULT_WEIGHTS },
-  empiricalWeights: null,
-  empiricalFit: null,
+  anchors: [],
+  subscoreCorrelations: {},
   selectedZcta: null,
   hoveredZcta: null,
   stateFilter: null,
@@ -118,11 +121,12 @@ export const useStore = create<AppState>((set, get) => ({
     loadStarted = true;
     try {
       const data = await loadData();
-      // empirical (life-expectancy-derived) weights, if the pipeline produced them
+      // multi-anchor outcome validation (pipeline/validate.py), if present
       fetch('/weights.json')
         .then((r) => (r.ok ? r.json() : null))
         .then((w) => {
-          if (w?.empirical) set({ empiricalWeights: w.empirical, empiricalFit: w.fit ?? null });
+          if (w?.anchors)
+            set({ anchors: parseAnchors(w), subscoreCorrelations: w.subscore_correlations ?? {} });
         })
         .catch(() => {});
       // Fit to the continental US by default: AK/HI/PR centroids otherwise stretch

@@ -64,6 +64,7 @@ def test_no_nan_inf_in_score(df):
 
 
 DIM_COLS = ["health_need_pctile", "social_vulnerability_pctile", "care_access_pctile"]
+DIM_COLS_BARE = [c[:-7] for c in DIM_COLS]  # strip "_pctile"
 SUB_COLS = [f"{s['key']}_pctile" for s in __import__("pipeline.taxonomy",
             fromlist=["subscore_specs"]).subscore_specs()]
 
@@ -150,3 +151,70 @@ def test_api_rankings_sorted(client):
     assert r.status_code == 200
     scores = [row["access_gap_score"] for row in r.json()["results"]]
     assert scores == sorted(scores, reverse=True)
+
+
+# ---- Outcomes + multi-anchor validation (Phase 1) ----
+OUTCOMES = PROCESSED / "outcomes.parquet"
+WEIGHTS = ROOT / "frontend" / "public" / "weights.json"
+
+
+def test_outcomes_format():
+    if not OUTCOMES.exists():
+        pytest.skip("outcomes stage not run")
+    o = pd.read_parquet(OUTCOMES)
+    assert o["zcta5"].astype(str).str.match(r"^\d{5}$").all()
+    assert "preventable_hosp" in o.columns
+    v = o["preventable_hosp"].dropna()
+    assert len(v) and (v > 0).all(), "ACSC rates must be positive"
+
+
+def test_weights_json_multi_anchor_shape():
+    if not WEIGHTS.exists():
+        pytest.skip("validate stage not run")
+    w = json.loads(WEIGHTS.read_text())
+    assert set(w) >= {"default", "anchors", "subscore_correlations", "note"}
+    assert set(w["default"]) == set(DIM_COLS_BARE)
+    for name, a in w["anchors"].items():
+        assert set(a["weights"]) == set(DIM_COLS_BARE), name
+        assert abs(sum(a["weights"].values()) - 100) < 0.5, name
+        assert min(a["weights"].values()) >= 4.9, f"{name}: 5% floor"
+        assert "r2" in a["fit"] and "n" in a["fit"], name
+        assert a["scope"] in ("county", "zcta")
+
+
+def test_validate_idempotent():
+    """Re-running validate against the same metrics must be deterministic - the cheap
+    re-tune contract (run --only validate after supply changes) depends on this."""
+    from pipeline import validate
+    validate.build()
+    first = WEIGHTS.read_text()
+    validate.build()
+    assert WEIGHTS.read_text() == first
+
+
+def test_rank_uncertainty_band(df):
+    """Each scoreable ZCTA carries a 5-95 rank band (Saisana sensitivity) that contains
+    its point percentile, plus a coarse tier - the comparability machinery."""
+    s = df[df["scoreable"]]
+    for c in ("access_gap_rank_lo", "access_gap_rank_hi", "tier"):
+        assert c in df.columns, c
+    lo, hi, p = s["access_gap_rank_lo"], s["access_gap_rank_hi"], s["access_gap_pctile"]
+    assert (lo.notna() & hi.notna()).all(), "scoreable rows need a band"
+    assert (hi >= lo).all(), "band hi must be >= lo"
+    # point percentile lies within the band (small tolerance for rank discretization)
+    assert ((p >= lo - 3) & (p <= hi + 3)).mean() > 0.99
+    assert s["tier"].between(1, 10).all()
+
+
+def test_access_signal_against_access_sensitive_outcome():
+    """The core Phase-1 finding: spatial provider supply carries ~no signal against
+    all-cause life expectancy but real, correctly-signed signal against an
+    access-sensitive outcome (infant mortality). Guards the rationale for the rework."""
+    if not WEIGHTS.exists():
+        pytest.skip("validate stage not run")
+    sc = json.loads(WEIGHTS.read_text())["subscore_correlations"]
+    if "infant_mortality" not in sc or "provider_supply" not in sc.get("infant_mortality", {}):
+        pytest.skip("infant mortality anchor unavailable (e.g. dev-state slice)")
+    assert sc["infant_mortality"]["provider_supply"] > 0.1, "supply should track infant mortality"
+    if "life_expectancy" in sc and "provider_supply" in sc["life_expectancy"]:
+        assert abs(sc["life_expectancy"]["provider_supply"]) < 0.1, "supply ~uncorrelated with LE"

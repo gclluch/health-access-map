@@ -12,6 +12,9 @@ export interface SlimMetric {
   life_expectancy_pctile: number | null;
   access_gap_score: number | null;
   access_gap_pctile: number | null;
+  access_gap_rank_lo: number | null;  // 5-95 national-rank band under plausible re-weighting
+  access_gap_rank_hi: number | null;
+  tier: number | null;                // decile 1-10 (the resolution the data supports)
   low_confidence: boolean;
   scoreable: boolean;
   // dimensions
@@ -68,6 +71,41 @@ export const PRESETS: Record<string, Weights> = {
   'Access-focused': { health_need: 20, social_vulnerability: 25, care_access: 55 },
   'Vulnerability-focused': { health_need: 25, social_vulnerability: 50, care_access: 25 },
 };
+
+// Outcome-anchored validation, produced by pipeline/validate.py -> weights.json. Each
+// anchor is an independent (non-PLACES) outcome; `weights` are correlation-based presets
+// (care access stays visible), `regressionWeights` is the NNLS diagnostic that collapses
+// it via collinearity. See docs/COMPOSITE-ENHANCEMENT.md.
+export interface AnchorPreset {
+  key: string;
+  label: string;
+  scope: string;
+  caveat: string;
+  weights: Weights;
+  regressionWeights: Weights | null;
+  fit: { r2: number; n: number } | null;
+  dimensionCorr: Partial<Record<DimKey, number | null>>;
+}
+// anchor key -> sub-score key -> signed correlation
+export type SubscoreCorrelations = Record<string, Record<string, number>>;
+
+interface RawAnchor {
+  label: string; scope: string; caveat: string; weights: Weights;
+  regression_weights: Weights | null; fit: { r2: number; n: number } | null;
+  dimension_corr: Partial<Record<DimKey, number | null>>;
+}
+interface RawWeights {
+  default: Weights;
+  anchors?: Record<string, RawAnchor>;
+  subscore_correlations?: SubscoreCorrelations;
+}
+
+export function parseAnchors(raw: RawWeights): AnchorPreset[] {
+  return Object.entries(raw.anchors ?? {}).map(([key, a]) => ({
+    key, label: a.label, scope: a.scope, caveat: a.caveat, weights: a.weights,
+    regressionWeights: a.regression_weights, fit: a.fit, dimensionCorr: a.dimension_corr,
+  }));
+}
 
 // The hierarchy, mirroring pipeline/taxonomy.py — drives the Color-by menu,
 // the drill-down panel, and the rankings selector.

@@ -20,26 +20,112 @@ const POINTS: Array<[string, string]> = [
     'Health need, social vulnerability, and care access are correlated (~0.5), so the weighted sum double-counts shared variance. The tunable weights make that subjectivity explicit rather than hidden.',
   ],
   [
-    'Small-area noise',
-    'Low-population ZIPs have wide margins of error; they are flagged low-confidence and excluded from the headline rankings. Uninhabited/data-starved ZIPs render gray ("no reliable data").',
+    'Small-area noise (and what we do about it)',
+    'Low-population ZIPs have wide ACS margins of error. We apply empirical-Bayes (Fay-Herriot) shrinkage to the social/economic rates - each ZIP is pulled toward its county mean in proportion to its own noise, so a tiny, uncertain ZIP borrows strength from its county while a well-measured one keeps its own value. This improves agreement with independent outcomes. The noisiest ZIPs are still flagged low-confidence and kept out of the headline rankings; uninhabited/data-starved ZIPs render gray.',
+  ],
+  [
+    'Can you compare two ZIPs? Only coarsely',
+    'Internally the score is reliable (split-half reliability 0.94) and it tracks independent outcomes - but a ZIP\'s national rank moves ~±6 points under any reasonable re-weighting and ~±4 more from measurement noise. So two ZIPs are reliably different only if they differ by ~10-15 percentile points - about 7-10 distinct tiers, not 33,000 ranks. Each ZIP shows a "reliable range"; if two ranges overlap, treat the ZIPs as indistinguishable. No federal index (ADI, SVI, County Health Rankings) publishes this - they show point ranks the data cannot support.',
   ],
   [
     'Why social vulnerability is access, not a descriptor',
     'Access ≠ supply. A provider you can\'t afford, reach, or communicate with isn\'t accessible. Per the 5 A\'s of access (Penchansky & Thomas) and Andersen\'s enabling factors, affordability (income), accessibility (transportation), and acceptability (language) are dimensions of access. The federal Medically Underserved formula itself uses % poverty + % elderly alongside provider supply. Proof it isn\'t just a descriptor: we DO have descriptors (age, % minority) and score them zero.',
   ],
   [
-    'Why these weights (35 / 30 / 35), and the data-driven alternative',
-    'The default is a conceptual value judgment (as in County Health Rankings) - need and barriers to care, the two sides of the gap, sit slightly above vulnerability; all near-equal. The "Data-driven" preset derives weights empirically (Healthy Places Index method: NNLS regression of the dimensions on CDC life expectancy) and comes out ~76% health need / 20% vulnerability / 5% access. That\'s a real finding - at the area level disease burden predicts mortality far more than provider supply does (also partly tautological: disease ≈ death). It nearly zeroes out access, which is why an access tool keeps access by deliberate choice. The sliders let you pick.',
+    'Why these weights (35 / 30 / 35), and the outcome-anchored alternatives',
+    'The default is a conceptual value judgment (as in County Health Rankings) - need and barriers to care, the two sides of the gap, sit slightly above vulnerability; all near-equal. Care access is kept meaningful by deliberate choice because it is the actionable lever - exactly as County Health Rankings weights clinical care at 20% even though it predicts less outcome variance than social factors. The "Weight by what tracks an outcome" presets are an empirical alternative: each weights the dimensions by how strongly they correlate with an independent outcome. Across every outcome and method, care access lands modest (it is collinear with need, and area outcomes are disease-dominated) - that is a real finding about outcomes, not proof access is irrelevant.',
   ],
   [
-    'Outcomes layer (independent of the score)',
-    'Life expectancy at birth (CDC USALEEP, from death records - the one input NOT derived from BRFSS/PLACES) is shown as a separate outcome and used to derive the empirical weights. It is NOT in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). The composite also correlates ~0.85 with PLACES fair/poor health as a sanity anchor.',
+    'Outcomes layer (independent of the score, used only to validate it)',
+    'Four independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) are used to validate - never to build - the composite: preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. They are shown as separate layers, never in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). Note the honest split: spatial provider supply tracks infant mortality but is ~uncorrelated with all-cause life expectancy, because life expectancy is a need outcome. That is why we validate against access-sensitive outcomes, not all-cause mortality.',
   ],
   [
     'Different vintages & universes',
     'NPPES (this month), ACS 5-year (centered ~2-3 yrs back), and PLACES (a BRFSS year) describe different times and populations (adults 18+, civilian noninstitutionalized, total). See provenance.json.',
   ],
 ];
+
+// Live multi-anchor validation, straight from weights.json (pipeline/validate.py). Shows
+// the correlation-based preset weights per outcome + how the regression collapses care
+// access - the honest, in-product version of docs/COMPOSITE-ENHANCEMENT.md.
+function ValidationTable() {
+  const anchors = useStore((s) => s.anchors);
+  const subCorr = useStore((s) => s.subscoreCorrelations);
+  if (anchors.length === 0) return null;
+  const careRows: Array<[string, string]> = [
+    ['provider_supply', 'Provider supply'],
+    ['insurance', 'Insurance'],
+    ['safetynet_access', 'Safety-net (FQHC)'],
+  ];
+  const fmt = (n: number | null | undefined) => (n == null ? '–' : n.toFixed(2));
+  return (
+    <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
+      <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
+        Validation against independent outcomes
+      </div>
+      <table className="w-full text-[11px] num">
+        <thead>
+          <tr className="text-graphite text-left">
+            <th className="font-normal py-0.5">Outcome</th>
+            <th className="font-normal text-right">Need</th>
+            <th className="font-normal text-right">Vuln</th>
+            <th className="font-normal text-right">Access</th>
+            <th className="font-normal text-right">R²</th>
+          </tr>
+        </thead>
+        <tbody className="text-ink">
+          {anchors.map((a) => (
+            <tr key={a.key} className="border-t border-hairline/60">
+              <td className="py-0.5 pr-1">{a.label}</td>
+              <td className="text-right">{a.weights.health_need}</td>
+              <td className="text-right">{a.weights.social_vulnerability}</td>
+              <td className="text-right font-medium">{a.weights.care_access}</td>
+              <td className="text-right text-graphite">{a.fit ? a.fit.r2 : '–'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[10px] text-graphite mt-2 leading-snug">
+        Weights ∝ each dimension's correlation with the outcome. A pure regression instead
+        loads ~75-90% onto health need and floors access at ~5% - because the dimensions are
+        collinear and area outcomes are disease-dominated, not because access doesn't matter.
+      </p>
+      <div className="text-[10px] text-graphite mt-2 leading-snug">
+        <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>
+        <table className="w-full num mt-1">
+          <thead>
+            <tr className="text-left">
+              <th className="font-normal" />
+              {anchors.map((a) => (
+                <th key={a.key} className="font-normal text-right">{a.key.split('_')[0]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {careRows.map(([key, label]) => (
+              <tr key={key}>
+                <td className="pr-1 text-ink">{label}</td>
+                {anchors.map((a) => {
+                  const r = subCorr[a.key]?.[key];
+                  return (
+                    <td key={a.key} className={'text-right ' + (r != null && r < 0 ? 'text-rose-500' : '')}>
+                      {fmt(r)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-1 leading-snug">
+          Provider supply tracks infant mortality (+) but is ~0 vs life expectancy; safety-net
+          (FQHC) reads wrong-signed (red) - clinics sit in the highest-need areas. Diagnostics
+          that guide the supply layer, not the composite weights.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function MethodologyPanel() {
   const show = useStore((s) => s.showMethodology);
@@ -130,6 +216,7 @@ export default function MethodologyPanel() {
               variance - the sliders exist precisely so that judgment is yours, not hidden.
             </p>
           </div>
+          <ValidationTable />
           {POINTS.map(([title, body]) => (
             <div key={title} className="mb-3">
               <div className="text-[13px] font-medium text-ink">{title}</div>

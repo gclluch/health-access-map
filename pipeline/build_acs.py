@@ -19,12 +19,49 @@ import time
 
 import pandas as pd
 
+import numpy as np
+
 from . import config
 from .common import (assert_zcta, dev_filter, die, http_client, log,
                      norm_zcta, scrub_sentinels, write_provenance)
+from .zip_states import zip3_to_state
 
 OUT = config.PROCESSED / "acs.parquet"
 GEO = "zip code tabulation area"
+ACS_MOE_Z = 1.645  # ACS publishes 90% margins of error: SE = MOE / 1.645
+
+
+def _moe(series: pd.Series) -> pd.Series:
+    """Parse an ACS margin-of-error column. Census uses negative sentinels for
+    'not applicable'/suppressed margins; scrub to null and take the magnitude."""
+    return scrub_sentinels(series).abs()
+
+
+def _proportion_se(moe_num: pd.Series, moe_den: pd.Series, p: pd.Series, den: pd.Series) -> pd.Series:
+    """Standard error of a proportion p = num/den from component MOEs (ACS ratio
+    formula, always real): SE = (1/(1.645*den)) * sqrt(MOE_num^2 + p^2 * MOE_den^2)."""
+    moe_p = np.sqrt(moe_num ** 2 + (p ** 2) * (moe_den ** 2)) / den.where(den > 0)
+    return moe_p / ACS_MOE_Z
+
+
+def _eb_shrink(rate: pd.Series, se: pd.Series, state: pd.Series) -> pd.Series:
+    """Fay-Herriot empirical-Bayes shrinkage of a small-area rate toward its STATE
+    mean, weighted by reliability: shrunk = gamma*rate + (1-gamma)*mean_s, with
+    gamma = tau_s^2 / (tau_s^2 + SE^2) and tau_s^2 = max(0, Var(rate) - mean(SE^2))
+    estimated per state (method of moments). Noisy (small-pop) ZCTAs shrink hard;
+    well-measured ones keep their own value. Rows without an SE are left untouched."""
+    out = rate.copy()
+    df = pd.DataFrame({"r": rate, "se": se, "st": state})
+    for st, g in df.groupby("st"):
+        v = g["r"].notna() & g["se"].notna()
+        if v.sum() < 5:
+            continue
+        r, s = g.loc[v, "r"], g.loc[v, "se"]
+        m = r.mean()
+        tau2 = max(0.0, r.var() - (s ** 2).mean())
+        gamma = tau2 / (tau2 + s ** 2)
+        out.loc[r.index] = gamma * r + (1 - gamma) * m
+    return out.clip(0, 1)
 
 
 class CensusError(RuntimeError):
@@ -99,13 +136,16 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
     resolved = _resolve_and_assert_vars()
 
-    # Call 1: detailed table vars (5 vars, well under the 50 cap)
+    # Call 1: detailed table vars (+ poverty margins for shrinkage; well under the 50 cap)
+    pov_total_m = config.ACS_VAR_POVERTY_TOTAL[:-1] + "M"
+    pov_below_m = config.ACS_VAR_POVERTY_BELOW[:-1] + "M"
     det_vars = [config.ACS_VAR_MEDIAN_INCOME, config.ACS_VAR_POVERTY_TOTAL,
                 config.ACS_VAR_POVERTY_BELOW, config.ACS_VAR_POPULATION,
                 config.ACS_VAR_MEDIAN_AGE]
     log("acs", "fetching detailed table (income/poverty/population), national ZCTA...")
     det = _rows_to_df(_census_get(config.ACS_BASE_DETAILED,
-                                  {"get": ",".join(det_vars), "for": f"{GEO}:*"}))
+                                  {"get": ",".join(det_vars + [pov_total_m, pov_below_m]),
+                                   "for": f"{GEO}:*"}))
 
     # Call 2: B27001 whole group for uninsured
     log("acs", "fetching B27001 group (uninsured), national ZCTA...")
@@ -115,29 +155,38 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     det["zcta5"] = norm_zcta(det[GEO])
     grp["zcta5"] = norm_zcta(grp[GEO])
 
-    df = det[["zcta5"] + det_vars].copy()
+    df = det[["zcta5"] + det_vars + [pov_total_m, pov_below_m]].copy()
     df["median_income"] = scrub_sentinels(df[config.ACS_VAR_MEDIAN_INCOME])
     pov_total = scrub_sentinels(df[config.ACS_VAR_POVERTY_TOTAL])
     pov_below = scrub_sentinels(df[config.ACS_VAR_POVERTY_BELOW])
     df["poverty_rate"] = (pov_below / pov_total).where(pov_total > 0)
+    df["poverty_rate_se"] = _proportion_se(_moe(df[pov_below_m]), _moe(df[pov_total_m]),
+                                           df["poverty_rate"], pov_total)
     df["population"] = scrub_sentinels(df[config.ACS_VAR_POPULATION])
     df["median_age"] = scrub_sentinels(df[config.ACS_VAR_MEDIAN_AGE])
 
-    # uninsured = sum(no-coverage members) / B27001_001E   -> fraction
+    # uninsured = sum(no-coverage members) / B27001_001E   -> fraction (+ SE from margins)
     denom = scrub_sentinels(grp["B27001_001E"])
     nocov = grp[resolved["no_cov"]].apply(scrub_sentinels).sum(axis=1, min_count=1)
+    moe_nocov = np.sqrt((grp[[m[:-1] + "M" for m in resolved["no_cov"]]]
+                         .apply(_moe) ** 2).sum(axis=1, min_count=1))
     unins = pd.DataFrame({"zcta5": grp["zcta5"],
                           "uninsured_rate": (nocov / denom).where(denom > 0)})
+    unins["uninsured_rate_se"] = _proportion_se(moe_nocov, _moe(grp["B27001_001M"]),
+                                                unins["uninsured_rate"], denom)
     df = df.merge(unins, on="zcta5", how="left")
 
-    keep = ["zcta5", "median_income", "poverty_rate", "uninsured_rate",
-            "population", "median_age"]
+    keep = ["zcta5", "median_income", "poverty_rate", "poverty_rate_se",
+            "uninsured_rate", "uninsured_rate_se", "population", "median_age"]
     df = df[keep]
 
-    # SVI-style rates from detailed B-tables (each its own group() call).
+    # SVI-style rates from detailed B-tables (each its own group() call) + their SEs.
     svi = _fetch_svi_rates()
     if svi is not None:
         df = df.merge(svi, on="zcta5", how="left")
+
+    # ---- empirical-Bayes shrinkage of the noisy [0,1] rates toward the state mean ----
+    df = _apply_shrinkage(df)
 
     df["population"] = df["population"].round().astype("Int64")
     df = df.drop_duplicates("zcta5")
@@ -154,8 +203,9 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
 
 def _fetch_svi_rates() -> pd.DataFrame | None:
-    """One group() call per ACS table -> a fraction rate. Failures are skipped
-    (the hierarchical score averages over whichever members are present)."""
+    """One group() call per ACS table -> a fraction rate + its SE (from the table's
+    margins). Failures are skipped (the hierarchical score averages over whichever
+    members are present)."""
     frames: list[pd.DataFrame] = []
     for name, (table, nums, denom) in config.ACS_SVI.items():
         try:
@@ -163,14 +213,19 @@ def _fetch_svi_rates() -> pd.DataFrame | None:
                                           {"get": f"group({table})", "for": f"{GEO}:*"}))
             grp["zcta5"] = norm_zcta(grp[GEO])
             den = scrub_sentinels(grp[f"{table}_{denom}E"])
+            moe_den = _moe(grp[f"{table}_{denom}M"])
             if name == "pct_minority":
                 white = scrub_sentinels(grp[f"{table}_003E"])
                 rate = ((den - white) / den).where(den > 0)
+                moe_num = np.sqrt(moe_den ** 2 + _moe(grp[f"{table}_003M"]) ** 2)  # complement
             else:
                 num = grp[[f"{table}_{s}E" for s in nums]].apply(scrub_sentinels).sum(axis=1, min_count=1)
+                moe_num = np.sqrt((grp[[f"{table}_{s}M" for s in nums]].apply(_moe) ** 2)
+                                  .sum(axis=1, min_count=1))
                 rate = (num / den).where(den > 0)
             rate = rate.clip(0, 1)
-            frames.append(pd.DataFrame({"zcta5": grp["zcta5"], name: rate}))
+            se = _proportion_se(moe_num, moe_den, rate, den)
+            frames.append(pd.DataFrame({"zcta5": grp["zcta5"], name: rate, f"{name}_se": se}))
             log("acs", f"  svi {name}: median {rate.median():.3f}")
         except Exception as e:  # noqa: BLE001
             log("acs", f"  svi {name}: FAILED ({type(e).__name__}); skipping")
@@ -180,6 +235,47 @@ def _fetch_svi_rates() -> pd.DataFrame | None:
     for f in frames[1:]:
         out = out.merge(f, on="zcta5", how="outer")
     return out
+
+
+def _local_group(zcta5: pd.Series, min_per_county: int = 8) -> pd.Series:
+    """Shrinkage group key per ZCTA: its county (from the geonames crosswalk) when that
+    county has >= min_per_county ZCTAs to estimate a stable mean, else the state. Falls
+    back to state entirely if geonames isn't built yet."""
+    state = zcta5.map(zip3_to_state)
+    geo_path = config.PROCESSED / "geonames.parquet"
+    if not geo_path.exists():
+        return "ST:" + state.fillna("?")
+    geo = pd.read_parquet(geo_path)[["zcta5", "county_fips"]]
+    cf = zcta5.to_frame("zcta5").merge(geo, on="zcta5", how="left")["county_fips"]
+    big = cf.value_counts()
+    big = set(big[big >= min_per_county].index)
+    return pd.Series(
+        ["CO:" + c if (c in big) else "ST:" + (s if isinstance(s, str) else "?")
+         for c, s in zip(cf, state)],
+        index=zcta5.index,
+    )
+
+
+def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
+    """Shrink every rate that has a sibling `<rate>_se` column (Fay-Herriot, state-grouped),
+    then drop the SE helper columns so the output schema is unchanged. Records how far the
+    low-population ZCTAs moved - that is the point: their noise is pulled toward the state."""
+    df = df.reset_index(drop=True)
+    # Shrink toward the finest stable local mean: county where it has enough ZCTAs to
+    # estimate one, else state. County preserves real sub-state variation that shrinking
+    # to the whole state would wash out.
+    group = _local_group(df["zcta5"])
+    rate_cols = [c[:-3] for c in df.columns if c.endswith("_se") and c[:-3] in df.columns]
+    moved = {}
+    for col in rate_cols:
+        before = df[col].copy()
+        df[col] = _eb_shrink(df[col], df[f"{col}_se"], group)
+        moved[col] = round(float((df[col] - before).abs().mean()), 4)
+    df = df.drop(columns=[f"{c}_se" for c in rate_cols])
+    log("acs", f"EB-shrinkage applied to {len(rate_cols)} rates; mean |Δ| per rate: {moved}")
+    write_provenance({"acs_shrinkage": {"method": "Fay-Herriot EB toward state mean (MOE-weighted)",
+                                        "rates": rate_cols, "mean_abs_shift": moved}})
+    return df
 
 
 def _validate(df: pd.DataFrame, dev_state: str | None) -> None:

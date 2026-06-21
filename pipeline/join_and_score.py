@@ -27,13 +27,42 @@ OUT_PARQUET = config.PROCESSED / "metrics.parquet"
 OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
-OPTIONAL_STAGES = ("fqhc", "lifeexp")  # merged if present (safety-net + outcomes)
-WEIGHTS_JSON = config.FRONTEND_PUBLIC / "weights.json"
+# merged if present (safety-net + independent outcomes for display/validation). The
+# multi-anchor weight derivation lives in pipeline/validate.py (runs after join).
+OPTIONAL_STAGES = ("fqhc", "lifeexp", "outcomes")
 
 
 def _pct(s: pd.Series) -> pd.Series:
     """Deterministic national percentile rank [0,100]; NaN stays NaN."""
     return s.astype("float64").rank(pct=True) * 100.0
+
+
+def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
+                      n: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """Per-ZCTA 5-95 national-rank interval under plausible re-weighting (each dimension
+    15-55%, renormalized) - the Saisana/OECD uncertainty-on-ranks standard. Deterministic
+    (fixed seed) so the build + acceptance tests are reproducible. Returns (lo, hi) arrays
+    aligned to df, NaN for non-scoreable rows."""
+    rng = np.random.default_rng(seed)
+    sc = df["scoreable"].to_numpy()
+    idx = np.where(sc)[0]
+    lo = np.full(len(df), np.nan)
+    hi = np.full(len(df), np.nan)
+    if len(idx) < 10:
+        return lo, hi
+    X = df[dim_cols].to_numpy(float)[idx]
+    present = ~np.isnan(X)
+    Xz = np.where(present, X, 0.0)
+    W = rng.uniform(0.15, 0.55, size=(n, len(dim_cols)))
+    W /= W.sum(axis=1, keepdims=True)
+    ranks = np.empty((len(idx), n))
+    for j in range(n):
+        w = W[j]
+        comp = (Xz @ w) / (present * w).sum(axis=1)   # renormalized over present dims
+        ranks[:, j] = pd.Series(comp).rank(pct=True).to_numpy() * 100.0
+    lo[idx] = np.percentile(ranks, 5, axis=1)
+    hi[idx] = np.percentile(ranks, 95, axis=1)
+    return lo, hi
 
 
 def _geometry_universe() -> pd.Series:
@@ -119,6 +148,16 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
     df["access_gap_pctile"] = _pct(df["access_gap_score"])  # true rank of the composite
 
+    # Rank uncertainty (Saisana sensitivity): how much would this ZCTA's national rank
+    # move under any defensible weighting? The honest answer to "can we compare two ZIPs":
+    # only when their bands don't overlap. No production index (ADI/SVI/CHR) ships this.
+    lo, hi = _rank_uncertainty(df, dim_cols)
+    df["access_gap_rank_lo"] = lo
+    df["access_gap_rank_hi"] = hi
+    # coarse, communicable tier (decile 1-10) - the resolution the data actually supports
+    df["tier"] = np.ceil(df["access_gap_pctile"] / 10.0).clip(1, 10)
+    df.loc[~df["scoreable"], "tier"] = np.nan
+
     # OUTCOMES layer (separate from the access gap, never in the composite): life
     # expectancy as a national rank where LOW life expectancy = HIGH percentile (worse),
     # consistent with everything else reading higher = worse.
@@ -128,23 +167,20 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     _validate(df, dim_cols, dev_state)
     corr = _dimension_correlations(df, dim_cols)
     anchor = _outcome_anchor(df)
-    emp = _empirical_weights(df, dim_cols)
     df.to_parquet(OUT_PARQUET, index=False)
     _write_slim_json(df, dim_cols)
-    _write_weights(emp)
     write_provenance({"score": {
         "method": "hierarchical percentile (SVI-style), re-ranked per level",
         "dimension_weights": DIMENSION_WEIGHTS,
-        "empirical_weights": emp,
         "rows": len(df), "with_score": int(df["access_gap_score"].notna().sum()),
         "low_confidence": int(df["low_confidence"].sum()),
         "dimension_correlations": corr,
         "outcome_anchor": anchor, "scope": dev_state or "national",
     }})
-    log("join", f"empirical weights (life-expectancy regression): {emp}")
     log("join", f"outcome anchor (vs fair/poor health): {anchor}")
     log("join", f"wrote {OUT_PARQUET.name} ({len(df)} rows, {df.shape[1]} cols) + {OUT_JSON.name}")
     log("join", f"dimension correlations: {corr}")
+    log("join", "dimension weights derived by pipeline/validate.py (multi-anchor)")
     return str(OUT_PARQUET)
 
 
@@ -162,7 +198,8 @@ RAW_DISPLAY = (
 def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     # slim payload: geography + composite + dimensions + sub-scores + flags.
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
-            "access_gap_score", "access_gap_pctile", "low_confidence", "scoreable",
+            "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
+            "access_gap_rank_hi", "tier", "low_confidence", "scoreable",
             "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
@@ -195,50 +232,6 @@ def _outcome_anchor(df: pd.DataFrame) -> dict:
         "care_access": round(float(sub["care_access_pctile"].corr(sub["ghlth_pct"])), 3),
         "caveat": "not independent — PLACES estimates are SES-conditioned",
     }
-
-
-def _empirical_weights(df: pd.DataFrame, dim_cols: list[str]) -> dict:
-    """Derive dimension weights HPI-style: non-negative least-squares regression of the
-    3 dimension percentiles on the LE *deficit* (an independent outcome), with a 5%
-    floor, normalized to 100. Replaces the value judgment with a data-driven one."""
-    if "life_expectancy" not in df.columns:
-        return {}
-    try:
-        from scipy.optimize import nnls
-    except Exception:  # noqa: BLE001
-        return {}
-    sub = df.loc[df["scoreable"], [*dim_cols, "life_expectancy"]].dropna()
-    if len(sub) < 1000:
-        return {}
-    X = sub[dim_cols].to_numpy(float)
-    Xs = (X - X.mean(0)) / X.std(0)
-    le = sub["life_expectancy"].to_numpy(float)
-    y = (le.max() - le)          # life-expectancy deficit: higher = worse health
-    y = y - y.mean()
-    coef, _ = nnls(Xs, y)
-    if coef.sum() == 0:
-        return {}
-    floored = np.maximum(coef / coef.sum() * 100, 5.0)   # 5% minimum per dimension (HPI)
-    w = floored / floored.sum() * 100
-    pred = Xs @ coef
-    ss_tot = float((y ** 2).sum())
-    r2 = 1.0 - float(((y - pred) ** 2).sum()) / ss_tot if ss_tot > 0 else 0.0
-    out = {c[:-7]: round(float(v), 1) for c, v in zip(dim_cols, w)}  # strip "_pctile"
-    out["fit"] = {"r2_vs_life_expectancy": round(r2, 3), "n": int(len(sub))}
-    return out
-
-
-def _write_weights(emp: dict) -> None:
-    default_pct = {k: round(v * 100) for k, v in DIMENSION_WEIGHTS.items()}
-    payload = {
-        "default": default_pct,
-        "empirical": {k: v for k, v in emp.items() if k != "fit"} if emp else None,
-        "fit": emp.get("fit") if emp else None,
-        "note": ("default = conceptual value judgment; empirical = NNLS regression of the "
-                 "dimensions on CDC USALEEP life expectancy (5% floor, normalized to 100)."),
-    }
-    WEIGHTS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    WEIGHTS_JSON.write_text(json.dumps(payload, indent=2))
 
 
 def _dimension_correlations(df: pd.DataFrame, dim_cols: list[str]) -> dict:

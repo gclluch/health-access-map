@@ -8,6 +8,17 @@ const ROWS: Array<{ key: keyof Weights; label: string }> = [
   { key: 'care_access', label: 'Barriers to care' },
 ];
 
+// compact chip labels for the outcome-anchored presets (full label is in the tooltip)
+const ANCHOR_SHORT: Record<string, string> = {
+  preventable_hosp: 'Preventable hosp.',
+  amenable_mortality: 'Amenable mortality',
+  premature_death: 'Premature death',
+  infant_mortality: 'Infant mortality',
+  flu_vaccination: 'Flu vaccination',
+  mammography: 'Mammography',
+  life_expectancy: 'Life expectancy',
+};
+
 // The standout feature, made legible (§13.5): tucked behind a disclosure, with
 // presets, a reset, and a live active-weighting readout. The sliders are the
 // *honest* resolution to a subjective, collinear composite (§15.7).
@@ -18,8 +29,7 @@ export default function WeightSliders() {
   const resetWeights = useStore((s) => s.resetWeights);
   const applyPreset = useStore((s) => s.applyPreset);
   const setMetric = useStore((s) => s.setMetric);
-  const empiricalWeights = useStore((s) => s.empiricalWeights);
-  const empiricalFit = useStore((s) => s.empiricalFit);
+  const anchors = useStore((s) => s.anchors);
 
   // Local mirror keeps the thumb + readout instant; commits to the store (which
   // recolors 33k polygons + re-sorts rankings) are throttled so a drag doesn't
@@ -64,31 +74,45 @@ export default function WeightSliders() {
             {name}
           </button>
         ))}
-        {empiricalWeights && (
-          <button
-            onClick={() => {
-              setLocal(empiricalWeights);
-              setWeights(empiricalWeights);
-              if (metric !== 'access_gap_score') setMetric('access_gap_score');
-            }}
-            title={
-              empiricalFit
-                ? `NNLS regression on life expectancy (R²=${empiricalFit.r2_vs_life_expectancy}, n=${empiricalFit.n})`
-                : 'Derived from life expectancy'
-            }
-            className="text-[11px] px-2 py-1 rounded border border-accent/40 text-accent hover:bg-accent/5 transition-colors"
-          >
-            Data-driven ✦
-          </button>
-        )}
       </div>
-      {empiricalWeights && (
-        <p className="text-[10px] text-graphite mb-2 leading-snug">
-          "Data-driven" derives weights by regressing the dimensions on life expectancy - it
-          loads heavily onto health need (disease predicts mortality far more than supply does
-          at the area level, and is near-tautological with it). The default is the deliberate
-          access-construct balance.
-        </p>
+
+      {anchors.length > 0 && (
+        <>
+          <div className="text-[10px] uppercase tracking-wide text-graphite mb-1">
+            Weight by what tracks an outcome
+          </div>
+          <div className="flex gap-1.5 mb-2 flex-wrap">
+            {anchors.map((a) => (
+              <button
+                key={a.key}
+                onClick={() => {
+                  setLocal(a.weights);
+                  setWeights(a.weights);
+                  if (metric !== 'access_gap_score') setMetric('access_gap_score');
+                }}
+                title={
+                  `${a.label} - weights ∝ each dimension's correlation with this outcome` +
+                  (a.fit ? ` (model R²=${a.fit.r2}, n=${a.fit.n}).` : '.') +
+                  ` ${a.caveat}`
+                }
+                className={
+                  'text-[11px] px-2 py-1 rounded border transition-colors ' +
+                  (a.key === 'life_expectancy'
+                    ? 'border-hairline text-graphite/70 hover:border-graphite'
+                    : 'border-accent/40 text-accent hover:bg-accent/5')
+                }
+              >
+                {ANCHOR_SHORT[a.key] ?? a.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-graphite mb-2 leading-snug">
+            These weight each dimension by how strongly it tracks an independent outcome (CMS/NCHS
+            records, not PLACES). Care access stays modest everywhere - area outcomes are
+            disease-dominated - so the default keeps it by deliberate choice, not regression.
+            Life expectancy is a need outcome (a validity check, not a recommended weighting).
+          </p>
+        </>
       )}
 
       {ROWS.map(({ key, label }) => (

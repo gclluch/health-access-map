@@ -202,6 +202,16 @@ export default function DetailPanel() {
             ? 'Insufficient reliable data to score this area.'
             : `Worse access than ${fmtScore(scorePercentile)}% of U.S. ZIPs (relative rank)`}
         </div>
+        {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
+          <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
+            <span className="text-ink font-medium">Tier {Math.ceil(scorePercentile / 10)} of 10</span>
+            {' · reliable range '}
+            <span className="num text-ink">
+              {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
+            </span>
+            {' pct under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
+          </div>
+        )}
 
         {score != null && (
           <p className="font-serif text-[13.5px] text-ink leading-snug mt-2.5">
