@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { RAMP } from '../lib/colors';
-import { COMPOSITE_METRIC, MODEL } from '../lib/types';
+import { COMPOSITE_METRIC, MODEL, OUTCOME_METRICS } from '../lib/types';
 import { fmtScore } from '../lib/format';
 
 const BINS = 44;
@@ -52,6 +52,13 @@ export default function Legend() {
               ))}
             </optgroup>
           ))}
+          <optgroup label="Outcomes (not in the score)">
+            {OUTCOME_METRICS.map((o) => (
+              <option key={o.key} value={`${o.key}_pctile`}>
+                {o.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </div>
 

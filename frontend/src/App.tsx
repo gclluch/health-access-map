@@ -92,16 +92,22 @@ export default function App() {
             </button>
             {railOpen && (
               <>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-hidden">
                   <RankingsList />
                 </div>
-                <button
-                  onClick={toggleWeights}
-                  className="px-3 py-2 text-[12px] text-left text-accent border-t border-hairline hover:bg-paper"
-                >
-                  {showWeights ? '▾ Customize the score' : '▸ Customize the score'}
-                </button>
-                {showWeights && <WeightSliders />}
+                <div className="shrink-0 bg-surface">
+                  <button
+                    onClick={toggleWeights}
+                    className="w-full px-3 py-2 text-[12px] text-left text-accent border-t border-hairline hover:bg-paper"
+                  >
+                    {showWeights ? '▾ Customize the score' : '▸ Customize the score'}
+                  </button>
+                  {showWeights && (
+                    <div className="max-h-[46vh] overflow-y-auto">
+                      <WeightSliders />
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

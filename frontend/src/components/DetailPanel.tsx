@@ -298,6 +298,18 @@ export default function DetailPanel() {
           </div>
         )}
 
+        {/* OUTCOME (independent, not in the score) */}
+        {m.life_expectancy != null && (
+          <div className="mt-2 text-[11px] text-graphite">
+            Outcome - life expectancy at birth:{' '}
+            <span className="num text-ink font-medium">{m.life_expectancy} yrs</span>
+            {m.life_expectancy_pctile != null
+              ? ` (lower than ${fmtScore(m.life_expectancy_pctile)}% of U.S. ZIPs)`
+              : ''}
+            <span className="text-graphite/80"> · CDC USALEEP, independent of the score</span>
+          </div>
+        )}
+
         <div className="mt-3 text-[10px] text-graphite leading-snug">
           Disease/behavior values are modeled CDC PLACES estimates (BRFSS), not counts. Provider
           access is a 2SFCA catchment metric over registered providers. Every score is a relative

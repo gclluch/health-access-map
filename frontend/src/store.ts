@@ -29,6 +29,8 @@ interface AppState {
 
   metric: string;
   weights: Weights;
+  empiricalWeights: Weights | null;
+  empiricalFit: { r2_vs_life_expectancy: number; n: number } | null;
   selectedZcta: string | null;
   hoveredZcta: string | null;
   stateFilter: string | null;
@@ -98,6 +100,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   metric: COMPOSITE_METRIC,
   weights: { ...DEFAULT_WEIGHTS },
+  empiricalWeights: null,
+  empiricalFit: null,
   selectedZcta: null,
   hoveredZcta: null,
   stateFilter: null,
@@ -114,6 +118,13 @@ export const useStore = create<AppState>((set, get) => ({
     loadStarted = true;
     try {
       const data = await loadData();
+      // empirical (life-expectancy-derived) weights, if the pipeline produced them
+      fetch('/weights.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((w) => {
+          if (w?.empirical) set({ empiricalWeights: w.empirical, empiricalFit: w.fit ?? null });
+        })
+        .catch(() => {});
       // Fit to the continental US by default: AK/HI/PR centroids otherwise stretch
       // the initial view off-center. Fall back to full extent if nothing is in the
       // CONUS box (e.g. a dev-state run of HI/AK).

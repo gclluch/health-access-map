@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { COMPOSITE_METRIC, metricLabel, MODEL } from '../lib/types';
+import { COMPOSITE_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
 
 // access_gap spreads 0-100; the raw-percentile metrics cluster near 100/0 at the
 // ends, so show one decimal there to keep the ordering legible.
@@ -58,6 +58,13 @@ export default function RankingsList() {
                 ))}
               </optgroup>
             ))}
+            <optgroup label="Outcomes (not in the score)">
+              {OUTCOME_METRICS.map((o) => (
+                <option key={o.key} value={`${o.key}_pctile`}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
           </select>
           <div className="flex rounded border border-hairline overflow-hidden shrink-0" role="group" aria-label="Sort direction">
             <button

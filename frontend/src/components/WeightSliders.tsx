@@ -18,6 +18,8 @@ export default function WeightSliders() {
   const resetWeights = useStore((s) => s.resetWeights);
   const applyPreset = useStore((s) => s.applyPreset);
   const setMetric = useStore((s) => s.setMetric);
+  const empiricalWeights = useStore((s) => s.empiricalWeights);
+  const empiricalFit = useStore((s) => s.empiricalFit);
 
   // Local mirror keeps the thumb + readout instant; commits to the store (which
   // recolors 33k polygons + re-sorts rankings) are throttled so a drag doesn't
@@ -49,7 +51,7 @@ export default function WeightSliders() {
         </button>
       </div>
 
-      <div className="flex gap-1.5 mb-2.5">
+      <div className="flex gap-1.5 mb-2 flex-wrap">
         {Object.keys(PRESETS).map((name) => (
           <button
             key={name}
@@ -62,7 +64,32 @@ export default function WeightSliders() {
             {name}
           </button>
         ))}
+        {empiricalWeights && (
+          <button
+            onClick={() => {
+              setLocal(empiricalWeights);
+              setWeights(empiricalWeights);
+              if (metric !== 'access_gap_score') setMetric('access_gap_score');
+            }}
+            title={
+              empiricalFit
+                ? `NNLS regression on life expectancy (R²=${empiricalFit.r2_vs_life_expectancy}, n=${empiricalFit.n})`
+                : 'Derived from life expectancy'
+            }
+            className="text-[11px] px-2 py-1 rounded border border-accent/40 text-accent hover:bg-accent/5 transition-colors"
+          >
+            Data-driven ✦
+          </button>
+        )}
       </div>
+      {empiricalWeights && (
+        <p className="text-[10px] text-graphite mb-2 leading-snug">
+          "Data-driven" derives weights by regressing the dimensions on life expectancy - it
+          loads heavily onto health need (disease predicts mortality far more than supply does
+          at the area level, and is near-tautological with it). The default is the deliberate
+          access-construct balance.
+        </p>
+      )}
 
       {ROWS.map(({ key, label }) => (
         <div key={key} className="mb-2">

@@ -8,6 +8,8 @@ export interface SlimMetric {
   city: string | null;
   county_name: string | null;
   population: number | null;
+  life_expectancy: number | null;
+  life_expectancy_pctile: number | null;
   access_gap_score: number | null;
   access_gap_pctile: number | null;
   low_confidence: boolean;
@@ -106,8 +108,14 @@ export const MODEL: DimSpec[] = [
   },
 ];
 
-// Any colorable / rankable metric column = the composite, a dimension, or a sub-score.
+// Any colorable / rankable metric column = the composite, a dimension, a sub-score,
+// or an outcome (life expectancy, which is NOT in the composite — outcomes are the
+// result, not a driver; kept separate à la County Health Rankings).
 export const COMPOSITE_METRIC = 'access_gap_score';
+
+export const OUTCOME_METRICS: SubSpec[] = [
+  { key: 'life_expectancy', label: 'Low life expectancy' }, // colors by life_expectancy_pctile
+];
 
 export function metricLabel(metric: string): string {
   if (metric === COMPOSITE_METRIC) return 'Access gap';
@@ -117,6 +125,8 @@ export function metricLabel(metric: string): string {
     const s = d.subs.find((x) => x.key === base);
     if (s) return s.label;
   }
+  const o = OUTCOME_METRICS.find((x) => x.key === base);
+  if (o) return o.label;
   return metric;
 }
 
@@ -124,4 +134,5 @@ export const ALL_METRICS: string[] = [
   COMPOSITE_METRIC,
   ...MODEL.map((d) => `${d.key}_pctile`),
   ...MODEL.flatMap((d) => d.subs.map((s) => `${s.key}_pctile`)),
+  ...OUTCOME_METRICS.map((o) => `${o.key}_pctile`),
 ];
