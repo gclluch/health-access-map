@@ -80,7 +80,7 @@ ACCESS GAP SCORE  (one 0-100 relative national rank, tunable weights)
 │  ├─ Housing & transport        (no vehicle, crowding, mobile homes, multi-unit)
 │  └─ Unmet social needs         (food/housing/transport/utility insecurity)
 └─ BARRIERS TO CARE       (35%)   ── CMS NPPES + HRSA + Census ACS + CDC PLACES
-   ├─ Low provider supply (spatial) (E2SFCA primary + mental health)
+   ├─ Low provider supply (spatial) (E2SFCA: primary, mental, dental, maternity/OB)
    ├─ Low safety-net access         (E2SFCA to HRSA FQHC sites — sliding-fee clinics)
    ├─ Lack of insurance          (uninsured)
    └─ Low preventive-care use    (checkups, screenings — low use = barrier)
@@ -139,7 +139,10 @@ PLACES (2025 release), ACS (2023), and TIGER (2020 cartographic) are all kept on
 - **Source:** CMS monthly "Full Replacement" file, `download.cms.gov/nppes`.
 - **We keep:** individual providers (Entity Type 1), their practice ZIP, and taxonomy.
 - **Classification:** the **NUCC** Provider Taxonomy crosswalk maps each provider's
-  taxonomy code to a class. We derive **primary care**, **mental health**, and total.
+  taxonomy code to a class. We derive **primary care**, **mental health**, **dental**, and
+  **maternity (OB/GYN)** - each run through E2SFCA separately, so the supply sub-score spans
+  the spectrum of care types and surfaces **dental deserts** (~6,600 ZCTAs) and
+  **maternity-care deserts** (~15,800 ZCTAs with no OB access in catchment).
 - **Critical caveats:** an NPI is a *registration*, not a full-time-equivalent clinician.
   It says nothing about whether the provider is active, accepts Medicaid/uninsured, or
   takes new patients. Counts **over-state effective capacity**, especially for the
@@ -235,10 +238,12 @@ occupant per room · `mobile_home_rate` · `multi_unit_rate` 10+ unit structures
 `shututility_pct` utility shut-off threat · `foodstamp_pct` receives SNAP/food stamps.
 
 ### CARE ACCESS
-**Provider supply (spatial, 2SFCA):** `primary_2sfca` primary-care providers per 1,000
-people *reachable within ~16 km* (*↑better*) · `mental_2sfca` same for mental health.
-Derived: `primary_people_per_provider` (catchment people-per-provider) and
-`primary_shortage` (boolean, true if > HRSA 3,500:1).
+**Provider supply (spatial, E2SFCA):** `primary_2sfca` primary-care providers per 1,000
+people *reachable within ~16 km* (*↑better*) · `mental_2sfca` mental health · `dental_2sfca`
+dental · `ob_2sfca` maternity/OB-GYN. Derived: `primary_people_per_provider` (catchment
+people-per-provider) and `primary_shortage` (boolean, true if > HRSA 3,500:1).
+**Safety-net access:** `safetynet_2sfca` FQHC capacity reachable · `fqhc_sites_reachable` ·
+`nearest_fqhc_km`.
 **Insurance:** `uninsured_rate` (ACS, all ages) · `access2_pct` (PLACES, adults 18-64).
 **Preventive-care use (PLACES %, all `↑better` — low use = a barrier):** `checkup_pct`
 annual checkup · `dental_pct` dental visit · `cholscreen_pct` cholesterol screening ·
