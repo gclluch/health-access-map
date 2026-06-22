@@ -147,6 +147,21 @@ FQHC_COL_STATUS = "Site Status Description"
 FQHC_COL_HOURS = "Operating Hours per Week"
 FQHC_HOURS_FLOOR, FQHC_HOURS_CEIL, FQHC_HOURS_DEFAULT = 8.0, 84.0, 40.0
 
+# CMS Medicare Geographic Variation PUF (county-level) -> the realized-access layer (C1).
+# NPPES counts provider *registrations*; this measures whether people actually USE routine
+# care. "% of Original-Medicare beneficiaries with a visit" = realized-access breadth.
+# Non-circular with the validation outcomes (excludes ED/readmission/inpatient = the ACSC
+# preventable-hosp outcome; no flu/mammography). Caveat: Medicare 65+/disabled FFS = an area
+# proxy (cf. Dartmouth Atlas), not all-ages. Mapped county -> ZCTA via geonames county_fips.
+UTILIZATION_URL = ("https://data.cms.gov/sites/default/files/2026-04/"
+                   "cc600d1e-d475-4b0e-80dc-1f64c01ca68c/"
+                   "2014-2024%20Original%20Medicare%20Geographic%20Variation%20Public%20Use%20File.csv")
+UTILIZATION_MEASURES = {            # GV PUF column -> our column (all fractions [0,1])
+    "BENES_EM_PCT": "em_visit_rate",     # share with a physician E&M (office) visit
+    "BENES_TESTS_PCT": "lab_test_rate",  # share with lab tests
+    "BENES_OP_PCT": "op_visit_rate",     # share with an outpatient visit
+}
+
 # CDC USALEEP census-tract life expectancy (2010-2015) -> the independent OUTCOME
 # used for the outcomes layer + empirical weight derivation. US_A.CSV has the 11-digit
 # "Tract ID" (leading-zero-stripped) + e(0) = life expectancy at birth.

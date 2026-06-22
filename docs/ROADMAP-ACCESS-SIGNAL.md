@@ -1,9 +1,12 @@
 # Roadmap: strengthen the access signal (gated, verify-after-each-layer)
 
-> **STATUS (2026-06-21):** Branch `feat/composite-validation-uncertainty`. **Layer A is DONE
-> and committed (`aa21461`)** - the north star already flipped: `drop_care_access` is now
-> *below* FULL, i.e. care access ADDS outcome signal. **Layers B and C are open.** The harness
-> `python -m pipeline.diagnostics` exists; **run it first to re-baseline** before any B/C work.
+> **STATUS (2026-06-21):** Branch `feat/composite-validation-uncertainty`. **Layers A and B
+> are DONE.** Layer A (`aa21461`) flipped the north star: `drop_care_access` is now *below* FULL
+> (care access ADDS signal). Layer B propagated ACS measurement noise into the rank bands -
+> low-confidence ZCTAs now get visibly wider 5-95 bands (median ≈27 vs ≈10 for high-confidence),
+> calibrated to an independent input-resample. **Layer C is open.** Two harnesses gate the work:
+> `python -m pipeline.diagnostics` (point-score signal) and `python -m pipeline.verify_bands`
+> (the band gates); **run both first to re-baseline** before any C work.
 
 The composite is a strong *deprivation* gradient whose *care-access* dimension was its
 weakest link - originally **dropping care_access improved outcome agreement** (0.445 → 0.456),
@@ -80,38 +83,53 @@ composite mean-r ≥ baseline; **drop_care_access north-star must improve** (thi
 
 ---
 
-## Layer B - put input noise into the rank bands (self-contained; do second)
+## Layer B - put input noise into the rank bands ✅ DONE
 
-Today `access_gap_rank_lo/hi` capture only *weighting* sensitivity, so they're ~flat across
-reliability (low-conf 13.9 vs high-conf 12.4) and the Layer-0 ACS shrinkage produced no visible
-band change. The bigger uncertainty is *measurement noise*; we now compute ACS SEs but discard
-them. Propagating them both completes the honesty story and makes shrinkage's benefit visible.
+Before B, `access_gap_rank_lo/hi` captured only *weighting* sensitivity, so they were ~flat
+across reliability (low-conf ≈10 vs high-conf ≈9, ratio 1.15×). Layer B propagates ACS
+**measurement noise** into the bands, so the band now answers "how precisely can we place this
+ZCTA" honestly. **Result: low-conf median band ≈27 vs high-conf ≈10 (ratio 2.66×); overall
+median ≈13 - matching `docs/COMPOSITE-EVALUATION.md`'s independent ~10-15pt comparability
+threshold.** Point scores are unchanged (composite mean-r 0.479, reliability 0.955/0.939,
+scoreable 33176 all hold). New gate harness: `python -m pipeline.verify_bands`.
 
-### B1. Persist per-ZCTA input uncertainty
-**Change (`pipeline/build_acs.py`):** stop dropping the `<rate>_se` columns - instead emit a
-per-ZCTA `acs_input_cv` summary (mean of SE/estimate across the scored rates) into acs.parquet.
-Cheap, no re-fetch beyond what Layer 0 already does.
+### B1. Persist per-ZCTA input uncertainty ✅
+**`pipeline/build_acs.py`:** `_apply_shrinkage` now emits a per-ZCTA `acs_input_cv` (mean of
+**raw** SE/estimate across the scored rates, clipped [0,2]) into acs.parquet before dropping
+the `<rate>_se` columns. Uses the *raw* published SE, not the post-shrinkage posterior SD -
+see the gate-2 note below for why. `HAM_SE_DEBUG=1` additionally dumps per-rate raw SEs to a
+gitignored `acs_se_debug.parquet` that the gate-3 calibration resamples from (no re-fetch).
 
-### B2. Two-source Monte-Carlo in `_rank_uncertainty`
-**Change (`pipeline/join_and_score.py`):** in each Monte-Carlo draw, in addition to perturbing
-weights (15-55%), perturb each dimension percentile by a measurement-noise term scaled to the
-ZCTA's `acs_input_cv` (Gaussian on the dimension percentile, σ calibrated so a median-CV ZCTA
-gets the current ~weighting-only width and a high-CV ZCTA widens). Re-rank per draw; keep the
-5-95 band. Document that the band is now weighting + ACS measurement noise (PLACES MOE = B3).
-### B3 (optional, larger). Pull PLACES confidence intervals for the health_need / preventive
-members and fold their noise in the same way.
+### B2. Two-source Monte-Carlo in `_rank_uncertainty` ✅
+**`pipeline/join_and_score.py`:** each Monte-Carlo draw now perturbs weights (15-55%) AND each
+ACS-derived dimension percentile by σ_z = SCALE·share_dim·clip(cv−cv_floor, 0, cap), cv_floor =
+the national-median CV (so well-measured ZCTAs get zero added noise and keep their weighting-
+only width). `share_dim` = the per-dimension ACS-noise propagation share (social_vulnerability
+1.0, care_access 0.60 - both *measured* by gate 3, not guessed; health_need is PLACES → 0).
+SCALE=36 is calibrated so the injected σ lands within ±20% of the gate-3 input resample.
 
-**Verify (dedicated, not the standard harness):**
-- **Differentiation:** median band width for low_confidence ZCTAs must exceed high-confidence by
-  a clear margin (target ≥ ~1.6×; today 13.9 vs 12.4 ≈ 1.1×).
-- **Shrinkage now visible:** rebuild once with Layer-0 shrinkage ON vs OFF; low-conf band width
-  must be *narrower* with shrinkage ON (closing the loop - shrinkage reduces the SE feeding B2).
-- **Calibration:** simulate - resample each ZCTA's inputs from their SEs N times, recompute rank,
-  and confirm the empirical 5-95 spread is within ~±20% of the reported band (not wildly over/under).
-- Standard harness checks 3-5 must still hold (this layer doesn't change point scores, only bands).
+### B3 (optional, larger; NOT done). Pull PLACES confidence intervals for the health_need /
+preventive members and fold their noise in the same way (health_need currently carries no
+measurement-noise term).
 
-**Layer B exit gate:** low-conf bands clearly wider than high-conf; shrinkage-ON narrower than OFF;
-calibration within tolerance.
+**Verify (`pipeline/verify_bands.py`, dedicated - not the standard harness):**
+- **Gate 1 - Differentiation:** ✅ low-conf median band ≥1.6× high-conf. Result **2.66×** (27.0 vs 10.1).
+- **Gate 2 - Shrinkage visible: DROPPED (reframed).** The original plan ("low-conf bands *narrower*
+  with shrinkage ON, using the post-shrinkage effective SE √γ·SE that feeds B2") is statistically
+  incoherent here: EB shrinkage drives γ→0 for the noisiest ZCTAs, collapsing their posterior
+  variance *below* well-measured ones, which **inverts** Gate 1 (empirically: effective-SE CV
+  ratio low/high = 0.52, vs raw-SE CV ratio 3.12). Gates 1 and 2 cannot both hold via the
+  posterior-SD route. Decision: the bands use the **raw** input CV (honest "how precisely do we
+  measure this ZCTA"); shrinkage's value is a *point-estimate* improvement, already proven and
+  gated in Layer 0 (it improved 3/4 independent outcomes). We do not double-credit it in the band.
+- **Gate 3 - Calibration:** ✅ the injected σ(cv) matches an independent member-input resample
+  (perturb each ACS rate by its published SE, propagate member→sub-score→dimension percentile)
+  within ±20% per ACS dimension. Result: social_vulnerability inj/emp **0.93**, care_access **1.15**.
+- **Standard harness checks 3-5** still hold (point scores unchanged): ✅ composite 0.479,
+  reliability 0.955/0.939, scoreable 33176.
+
+**Layer B exit gate (MET):** low-conf bands clearly wider than high-conf (gate 1); injection
+calibrated to the input resample (gate 3); point scores unregressed. Gate 2 retired as above.
 
 ---
 
@@ -122,6 +140,25 @@ sub-layer adds one data source and is gated independently. Several touch build_p
 build_supply (supply-enrichment stream) - coordinate, don't clobber.
 
 ### C1. Realized utilization as a care-access INPUT (highest impact)
+
+> **RESULT (2026-06-21): ATTEMPTED, FAILED THE GATE, BACKED OUT (kept as merged context, not
+> scored).** Built `build_utilization.py` from the **CMS Medicare Geographic Variation PUF**
+> (county-level, 2024): `BENES_EM_PCT` / `BENES_TESTS_PCT` / `BENES_OP_PCT` ("% of FFS benes
+> with a visit"), mapped county→ZCTA via `geonames.county_fips`, as a `realized_access`
+> sub-score. Across all 6 outcomes it *looked* like a win (FULL 0.479→0.487, sub-score
+> mean|r| 0.247). **But that lift was circular:** the only strong correlations were with
+> flu (+0.66) and mammography (+0.54) - themselves validation outcomes, and mechanically the
+> same construct ("engaged with healthcare"). Against the **independent death-records
+> outcomes** it carries ~no signal (**life_expectancy r = −0.00**, premature_death +0.21,
+> infant_mortality +0.03, preventable_hosp −0.05). The honest north star (composite mean-r vs
+> the clean mortality/ACSC outcomes only, dropping flu+mammo) **regressed 0.4796 → 0.4695**.
+> Root causes: Medicare visit-rates are **saturated** (~90% median), **need-endogenous** (sick
+> areas use more care, not less), and **65+/disabled only**. Raw visit-rates are the wrong
+> instrument. A future C1 needs *condition-specific quality-of-care* rates (e.g. HbA1c testing
+> *among diabetics*, diabetic eye exams) from the **Dartmouth Atlas / CMS MMD**, which measure
+> realized access conditional on need - not raw use. The stage + data remain for that work and
+> for display; they are deliberately not in the composite.
+
 **Data:** CMS Mapping Medicare Disparities and/or Dartmouth Atlas - county/ZIP service-use rates
 (annual wellness visit, diabetic HbA1c/eye-exam, etc.). **Guard against circularity:** flu &
 mammography are already *validation outcomes*; do NOT also use them as inputs. Use *different*

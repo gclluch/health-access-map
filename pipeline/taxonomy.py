@@ -144,6 +144,14 @@ DIMENSIONS: dict = {
                     M("safetynet_barrier", 1, "FQHC desert x poverty (unmet need)"),
                 ],
             },
+            # Layer C1 (CMS Medicare realized utilization) was BUILT and GATE-TESTED but NOT
+            # scored: it failed the honest gate. Its apparent lift came entirely from circular
+            # correlation with the flu/mammography validation outcomes (all three are just
+            # "engaged with healthcare"); against the independent death-records outcomes it adds
+            # noise (life_expectancy r=-0.00, clean-outcome composite mean-r 0.480 -> 0.470).
+            # Medicare visit-rates are saturated (~90%), need-endogenous, and 65+-only. The
+            # utilization columns still merge (build_utilization) for display/diagnostics; they
+            # are deliberately kept OUT of the composite. See docs/ROADMAP-ACCESS-SIGNAL.md C1.
             "insurance": {
                 "label": "Lack of insurance",
                 "source": "mixed",

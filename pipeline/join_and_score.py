@@ -29,7 +29,7 @@ OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
 # merged if present (safety-net + independent outcomes for display/validation). The
 # multi-anchor weight derivation lives in pipeline/validate.py (runs after join).
-OPTIONAL_STAGES = ("fqhc", "lifeexp", "outcomes")
+OPTIONAL_STAGES = ("fqhc", "utilization", "lifeexp", "outcomes")
 
 
 def _pct(s: pd.Series) -> pd.Series:
@@ -38,23 +38,24 @@ def _pct(s: pd.Series) -> pd.Series:
 
 
 # Layer B measurement-noise calibration. Per-dimension Gaussian σ (percentile points)
-# injected into each Monte-Carlo draw, scaled to the ZCTA's ACS input CV in EXCESS of the
-# national median CV: σ_z = SCALE * clip(cv_z - cv_floor, 0, EXCESS_CAP), cv_floor = the
-# FLOOR_Q quantile of CV. A median-or-better-measured ZCTA (cv ≤ cv_floor) gets zero added
-# noise, so its band stays the pre-Layer-B weighting-only width; only noisier (low-pop)
-# ZCTAs widen. Only the ACS-derived dimensions carry this term (social_vulnerability fully
-# ACS, care_access via insurance); health_need is PLACES, whose measurement noise is Layer
-# B3. Calibrated against the band-verification gate: floor_q=0.50/scale=15 yields high-conf
-# ≈9.5 (≈ pre-B), low-conf ≈17.8, ratio ≈1.88× (target ≥1.6). See docs/ROADMAP-ACCESS-SIGNAL.md B2.
-_RANK_CV_SIGMA_SCALE = 15.0
+# injected into each Monte-Carlo draw, scaled to the ZCTA's RAW ACS input CV in EXCESS of the
+# national median CV: σ_z = SCALE * share_dim * clip(cv_z - cv_floor, 0, EXCESS_CAP), cv_floor
+# = the FLOOR_Q quantile of CV. A median-or-better-measured ZCTA (cv ≤ cv_floor) gets zero
+# added noise, so its band stays the pre-Layer-B weighting-only width; only noisier (low-pop)
+# ZCTAs widen. SCALE is calibrated by pipeline.verify_bands gate 3 to an independent member-
+# input resample (perturb each ACS rate by its published SE, propagate to the dimension
+# percentile): scale=36 puts social_vulnerability within ±20% of that ground truth. Resulting
+# bands: high-conf ≈10, low-conf ≈25, ratio ≈2.5× (gate 1 target ≥1.6), median ≈13-15 -
+# consistent with docs/COMPOSITE-EVALUATION.md's ~10-15pt comparability threshold.
+_RANK_CV_SIGMA_SCALE = 36.0
 _RANK_CV_FLOOR_Q = 0.50
 _RANK_CV_EXCESS_CAP = 1.5
-# Fraction of each dimension's percentile driven by ACS inputs (so ACS measurement noise
-# enters proportionally - social_vulnerability is fully ACS; care_access only via insurance
-# (~1 of 4 sub-scores) + the poverty term in safetynet_barrier; health_need is PLACES = 0).
-# Makes the σ(cv) injection per-dimension honest, so the gate-3 input-resample calibration
-# can match it dimension by dimension.
-_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.3}
+# Per-dimension ACS-input share = how much ACS measurement noise propagates into each
+# dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.6 × social_
+# vulnerability SD - care access is ACS only via insurance + the poverty term in safetynet,
+# vs social vulnerability's two fully-ACS sub-scores). health_need is PLACES (0; its noise is
+# Layer B3). Not a guess: the 0.60 is the empirical inter-dimension propagation ratio.
+_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.60}
 
 
 def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
