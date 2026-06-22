@@ -2,9 +2,11 @@
 
 A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
 
-> **New here? Read [`docs/PRIMER.md`](docs/PRIMER.md)** - the comprehensive guide to the
-> app, the problem space, every dataset and field, the math, and the jargon. Scoring
-> rationale + precedent: [`docs/RATIONALE.md`](docs/RATIONALE.md).
+> **New here?** Start with [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) - the "follow the
+> logic" guide: every design choice, its rationale, the validation gate, and the decision log
+> of what we tried and rejected (enough for a person or agent to safely extend the model).
+> Then [`docs/PRIMER.md`](docs/PRIMER.md) for the dataset/field dictionary, and
+> [`docs/RATIONALE.md`](docs/RATIONALE.md) for the per-formula math + precedent.
 
 The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
 11 sub-scores → ~50 measures, all drill-downable in the detail panel.

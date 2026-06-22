@@ -14,6 +14,7 @@ Design choices honoring the brief:
 """
 from __future__ import annotations
 
+import os
 import re
 import time
 
@@ -258,14 +259,43 @@ def _local_group(zcta5: pd.Series, min_per_county: int = 8) -> pd.Series:
 
 def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
     """Shrink every rate that has a sibling `<rate>_se` column (Fay-Herriot, state-grouped),
-    then drop the SE helper columns so the output schema is unchanged. Records how far the
-    low-population ZCTAs moved - that is the point: their noise is pulled toward the state."""
+    emit a per-ZCTA `acs_input_cv` from the *raw published* SE, then drop the SE helper
+    columns. Records how far the low-population ZCTAs moved - that is the point: their noise
+    is pulled toward the state.
+
+    The CV uses the RAW SE (not the post-shrinkage posterior SD): it is the honest 'how
+    precisely do we measure this ZCTA's inputs' that feeds the Layer-B rank bands, so noisy
+    (low-pop) ZCTAs get wider bands. Shrinkage's own value is a point-estimate improvement
+    (validated separately in Layer 0 against outcomes), not a band-narrowing - using the
+    posterior SD here would invert the confidence ordering (heavy shrinkage collapses the
+    band of the noisiest ZCTAs below the well-measured ones). See docs/ROADMAP-ACCESS-SIGNAL.md B."""
     df = df.reset_index(drop=True)
     # Shrink toward the finest stable local mean: county where it has enough ZCTAs to
     # estimate one, else state. County preserves real sub-state variation that shrinking
     # to the whole state would wash out.
     group = _local_group(df["zcta5"])
     rate_cols = [c[:-3] for c in df.columns if c.endswith("_se") and c[:-3] in df.columns]
+
+    # Per-ZCTA input-noise summary fed to the Layer-B rank bands: mean coefficient of
+    # variation (raw SE / pre-shrinkage estimate) across the scored rates. Computed BEFORE
+    # shrinkage smooths the estimate. Per-rate CV clipped to [0,2] so a near-zero denominator
+    # can't blow up the mean. See docs/ROADMAP-ACCESS-SIGNAL.md B1.
+    cvs = []
+    for col in rate_cols:
+        est = df[col].where(df[col] > 0)
+        cvs.append((df[f"{col}_se"] / est).clip(0, 2))
+    df["acs_input_cv"] = pd.concat(cvs, axis=1).mean(axis=1, skipna=True) if cvs else np.nan
+
+    # Debug-only (HAM_SE_DEBUG=1): dump per-rate raw estimate + raw SE so the Layer-B gate-3
+    # calibration can resample real inputs without a re-fetch. Gitignored, never shipped.
+    if os.environ.get("HAM_SE_DEBUG"):
+        dbg = {"zcta5": df["zcta5"]}
+        for col in rate_cols:
+            dbg[col] = df[col]
+            dbg[f"{col}_se"] = df[f"{col}_se"]
+        pd.DataFrame(dbg).to_parquet(config.PROCESSED / "acs_se_debug.parquet", index=False)
+        log("acs", f"HAM_SE_DEBUG: wrote acs_se_debug.parquet ({len(rate_cols)} rates)")
+
     moved = {}
     for col in rate_cols:
         before = df[col].copy()
@@ -273,7 +303,7 @@ def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
         moved[col] = round(float((df[col] - before).abs().mean()), 4)
     df = df.drop(columns=[f"{c}_se" for c in rate_cols])
     log("acs", f"EB-shrinkage applied to {len(rate_cols)} rates; mean |Δ| per rate: {moved}")
-    write_provenance({"acs_shrinkage": {"method": "Fay-Herriot EB toward state mean (MOE-weighted)",
+    write_provenance({"acs_shrinkage": {"method": "Fay-Herriot EB toward county/state mean (MOE-weighted)",
                                         "rates": rate_cols, "mean_abs_shift": moved}})
     return df
 

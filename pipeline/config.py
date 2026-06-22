@@ -60,7 +60,6 @@ DISEASE_COLS = list(PLACES_MEASURES.values())
 NPPES_PAGE = "https://download.cms.gov/nppes/NPI_Files.html"
 NPPES_NBER_MIRROR_TMPL = "https://data.nber.org/npi/{year}/"  # fallback
 # Confirmed header strings inside npidata_pfile_*.csv (brief 11.4):
-NPPES_COL_NPI = "NPI"
 NPPES_COL_POSTAL = "Provider Business Practice Location Address Postal Code"
 NPPES_COL_TAXONOMY = "Healthcare Provider Taxonomy Code_1"
 NPPES_COL_ENTITY = "Entity Type Code"
@@ -86,17 +85,6 @@ MENTAL_HEALTH_CLASSIFICATION = "Psychiatry & Neurology"  # narrowed to Psychiatr
 PHYSICIAN_GROUPING = "Allopathic & Osteopathic Physicians"
 DENTAL_GROUPING = "Dental Providers"                     # dentists -> dental access
 OBGYN_CLASSIFICATION = "Obstetrics & Gynecology"         # maternity-care access
-
-# CMS Medicare Physician & Other Practitioners - by Provider (per-NPI, 2024) -> Layer C2
-# capacity weight. Tot_Benes = # Medicare FFS beneficiaries the NPI served = an activity
-# signal that down-weights dormant NPPES registrations. Valid only for Medicare-billing
-# types, so weighting is SCOPED to primary + mental (dental/OB/peds barely bill Medicare).
-# Saturating weight w = benes/(benes + K) -> dormant ~0, active ~1, no mega-biller blowup.
-PHYSICIAN_PUF_URL = ("https://data.cms.gov/sites/default/files/2026-05/"
-                     "7323ba02-52e7-4a86-b2ce-ad210c25d9aa/MUP_PHY_R26_P05_V10_D24_Prov.csv")
-PHYSICIAN_PUF_NPI = "Rndrng_NPI"
-PHYSICIAN_PUF_BENES = "Tot_Benes"
-PHYSICIAN_PUF_ENTITY = "Rndrng_Prvdr_Ent_Cd"
 
 # ---------------------------------------------------------------------------
 # Census ACS 5-year (economic / insurance)
@@ -156,23 +144,6 @@ FQHC_URL = ("https://data.hrsa.gov/DataDownload/DD_Files/"
 FQHC_COL_LON = "Geocoding Artifact Address Primary X Coordinate"
 FQHC_COL_LAT = "Geocoding Artifact Address Primary Y Coordinate"
 FQHC_COL_STATUS = "Site Status Description"
-FQHC_COL_HOURS = "Operating Hours per Week"
-FQHC_HOURS_FLOOR, FQHC_HOURS_CEIL, FQHC_HOURS_DEFAULT = 8.0, 84.0, 40.0
-
-# CMS Medicare Geographic Variation PUF (county-level) -> the realized-access layer (C1).
-# NPPES counts provider *registrations*; this measures whether people actually USE routine
-# care. "% of Original-Medicare beneficiaries with a visit" = realized-access breadth.
-# Non-circular with the validation outcomes (excludes ED/readmission/inpatient = the ACSC
-# preventable-hosp outcome; no flu/mammography). Caveat: Medicare 65+/disabled FFS = an area
-# proxy (cf. Dartmouth Atlas), not all-ages. Mapped county -> ZCTA via geonames county_fips.
-UTILIZATION_URL = ("https://data.cms.gov/sites/default/files/2026-04/"
-                   "cc600d1e-d475-4b0e-80dc-1f64c01ca68c/"
-                   "2014-2024%20Original%20Medicare%20Geographic%20Variation%20Public%20Use%20File.csv")
-UTILIZATION_MEASURES = {            # GV PUF column -> our column (all fractions [0,1])
-    "BENES_EM_PCT": "em_visit_rate",     # share with a physician E&M (office) visit
-    "BENES_TESTS_PCT": "lab_test_rate",  # share with lab tests
-    "BENES_OP_PCT": "op_visit_rate",     # share with an outpatient visit
-}
 
 # CDC USALEEP census-tract life expectancy (2010-2015) -> the independent OUTCOME
 # used for the outcomes layer + empirical weight derivation. US_A.CSV has the 11-digit
@@ -190,18 +161,18 @@ GAZETTEER_YEARS = [2023, 2022, 2021, 2020]
 CATCHMENT_KM = 16.0          # ~10 mi catchment radius (urban-calibrated; rural reads low)
 DECAY_SIGMA_KM = 8.0         # Gaussian distance-decay scale (weight ~0.6 at half-radius)
 EARTH_KM = 6371.0
-# Layer C3: VARIABLE (adaptive) catchment - the feasible analog to drive-time isochrones.
-# Each ZCTA's Gaussian bandwidth = distance to the K-th nearest centroid (local settlement
-# density), clipped to [MIN, MAX] km: ~MIN in dense cities, up to MAX in sparse rural. This
-# removes the urbanicity artifact of a single fixed radius (McGrail & Humphreys 2009).
-ADAPTIVE_CATCHMENT = True
+# VARIABLE (adaptive) catchment (Layer C3, shipped) - the feasible analog to drive-time
+# isochrones and THE scored supply method. Each ZCTA's Gaussian bandwidth = distance to the
+# K-th nearest centroid (local settlement density), clipped to [MIN, MAX] km: ~MIN in dense
+# cities, up to MAX in sparse rural. Removes the urbanicity artifact of a single fixed radius
+# (McGrail & Humphreys 2009); roughly doubled supply's correlation with independent mortality.
+# The fixed CATCHMENT_KM above is retained only for the HRSA-shortage benchmark (an absolute
+# 3,500:1 ratio needs a fixed service area). See docs/METHODOLOGY.md + ROADMAP-ACCESS-SIGNAL C3.
 ADAPTIVE_K = 30
 ADAPTIVE_SIGMA_MIN_KM = 8.0
 ADAPTIVE_SIGMA_MAX_KM = 60.0
 ADAPTIVE_KNN = 400           # bounded neighbor set per centroid (captures the decay tail)
 HPSA_SHORTAGE_RATIO = 3500   # HRSA primary-care shortage threshold (pop : provider)
-# chronic-disease columns used to build a demand (need) weight for the need-adjusted variant
-NEED_WEIGHT_COLS = ["diabetes_pct", "bphigh_pct", "chd_pct", "copd_pct", "obesity_pct"]
 # ZCTA field name varies by vintage; detected at runtime.
 TIGER_ZCTA_FIELDS = ["ZCTA5CE20", "ZCTA5CE10"]
 

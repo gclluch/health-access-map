@@ -136,22 +136,19 @@ DIMENSIONS: dict = {
             "safetynet_access": {
                 "label": "Unmet safety-net need (FQHC desert x poverty)",
                 "source": "fqhc",
-                # need-relative: the raw E2SFCA FQHC-access score (safetynet_2sfca) is
-                # wrong-signed because clinics cluster in high-need areas. safetynet_barrier
-                # = FQHC-distance percentile x poverty (computed in join_and_score) is the
-                # correctly-signed "unmet need" form. See docs/ROADMAP-ACCESS-SIGNAL.md A2.
+                # need-relative: a raw FQHC-access (E2SFCA) score is wrong-signed because
+                # clinics cluster in high-need areas. safetynet_barrier = FQHC-distance
+                # percentile x poverty (computed in join_and_score) is the correctly-signed
+                # "unmet need" form. See docs/METHODOLOGY.md + ROADMAP-ACCESS-SIGNAL.md A2.
                 "members": [
                     M("safetynet_barrier", 1, "FQHC desert x poverty (unmet need)"),
                 ],
             },
-            # Layer C1 (CMS Medicare realized utilization) was BUILT and GATE-TESTED but NOT
-            # scored: it failed the honest gate. Its apparent lift came entirely from circular
-            # correlation with the flu/mammography validation outcomes (all three are just
-            # "engaged with healthcare"); against the independent death-records outcomes it adds
-            # noise (life_expectancy r=-0.00, clean-outcome composite mean-r 0.480 -> 0.470).
-            # Medicare visit-rates are saturated (~90%), need-endogenous, and 65+-only. The
-            # utilization columns still merge (build_utilization) for display/diagnostics; they
-            # are deliberately kept OUT of the composite. See docs/ROADMAP-ACCESS-SIGNAL.md C1.
+            # NB: a realized-utilization sub-score (CMS Medicare visit-rates, Layer C1) and a
+            # Medicare claims-volume capacity weighting (C2) were both built, gate-tested, and
+            # REJECTED - C1's lift was circular with the flu/mammography outcomes, C2 was a wash.
+            # The access-signal fix that worked was spatial: the variable catchment (C3). See
+            # docs/METHODOLOGY.md "What we tried and rejected" + ROADMAP-ACCESS-SIGNAL.md.
             "insurance": {
                 "label": "Lack of insurance",
                 "source": "mixed",

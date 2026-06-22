@@ -29,7 +29,7 @@ OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
 # merged if present (safety-net + independent outcomes for display/validation). The
 # multi-anchor weight derivation lives in pipeline/validate.py (runs after join).
-OPTIONAL_STAGES = ("fqhc", "utilization", "lifeexp", "outcomes")
+OPTIONAL_STAGES = ("fqhc", "lifeexp", "outcomes")
 
 
 def _pct(s: pd.Series) -> pd.Series:
