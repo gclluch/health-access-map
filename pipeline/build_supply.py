@@ -44,7 +44,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         return str(OUT)
 
     gaz = pd.read_parquet(config.PROCESSED / "gazetteer.parquet")
-    ptypes = ["providers_primary", "providers_mental", "providers_dental", "providers_obgyn"]
+    ptypes = ["providers_primary", "providers_mental", "providers_dental", "providers_obgyn",
+              "providers_primary_cap", "providers_mental_cap"]
     pcols = pd.read_parquet(config.PROCESSED / "providers.parquet")
     prov = pcols[["zcta5", *[c for c in ptypes if c in pcols.columns]]]
     acs = pd.read_parquet(config.PROCESSED / "acs.parquet")[["zcta5", "population"]]
@@ -80,17 +81,24 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     a_obgyn = _e2sfca(np.asarray(df["providers_obgyn"], float), pop, ind, weights)
     a_primary_need = _e2sfca(df["providers_primary"].to_numpy(),
                              pop * need_mult.to_numpy(), ind, weights)
+    # Layer C2 capacity-weighted variants (Medicare-activity-weighted supply) for the gate
+    # comparison vs the raw-count versions; scored only if they win on the harness.
+    a_primary_cap = _e2sfca(np.asarray(df["providers_primary_cap"], float), pop, ind, weights)
+    a_mental_cap = _e2sfca(np.asarray(df["providers_mental_cap"], float), pop, ind, weights)
 
     df["primary_2sfca"] = a_primary * 1000.0
     df["mental_2sfca"] = a_mental * 1000.0
     df["dental_2sfca"] = a_dental * 1000.0
     df["ob_2sfca"] = a_obgyn * 1000.0
+    df["primary_2sfca_cap"] = a_primary_cap * 1000.0
+    df["mental_2sfca_cap"] = a_mental_cap * 1000.0
     df["primary_2sfca_needadj"] = a_primary_need * 1000.0
     df["primary_people_per_provider"] = np.divide(
         1.0, a_primary, out=np.full_like(a_primary, np.inf), where=a_primary > 0)
     df["primary_shortage"] = df["primary_people_per_provider"] > config.HPSA_SHORTAGE_RATIO
 
     out = df[["zcta5", "primary_2sfca", "mental_2sfca", "dental_2sfca", "ob_2sfca",
+              "primary_2sfca_cap", "mental_2sfca_cap",
               "primary_2sfca_needadj", "primary_people_per_provider",
               "primary_shortage"]].copy()
     out["primary_people_per_provider"] = out["primary_people_per_provider"].replace(np.inf, np.nan)

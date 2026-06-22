@@ -60,6 +60,7 @@ DISEASE_COLS = list(PLACES_MEASURES.values())
 NPPES_PAGE = "https://download.cms.gov/nppes/NPI_Files.html"
 NPPES_NBER_MIRROR_TMPL = "https://data.nber.org/npi/{year}/"  # fallback
 # Confirmed header strings inside npidata_pfile_*.csv (brief 11.4):
+NPPES_COL_NPI = "NPI"
 NPPES_COL_POSTAL = "Provider Business Practice Location Address Postal Code"
 NPPES_COL_TAXONOMY = "Healthcare Provider Taxonomy Code_1"
 NPPES_COL_ENTITY = "Entity Type Code"
@@ -85,6 +86,17 @@ MENTAL_HEALTH_CLASSIFICATION = "Psychiatry & Neurology"  # narrowed to Psychiatr
 PHYSICIAN_GROUPING = "Allopathic & Osteopathic Physicians"
 DENTAL_GROUPING = "Dental Providers"                     # dentists -> dental access
 OBGYN_CLASSIFICATION = "Obstetrics & Gynecology"         # maternity-care access
+
+# CMS Medicare Physician & Other Practitioners - by Provider (per-NPI, 2024) -> Layer C2
+# capacity weight. Tot_Benes = # Medicare FFS beneficiaries the NPI served = an activity
+# signal that down-weights dormant NPPES registrations. Valid only for Medicare-billing
+# types, so weighting is SCOPED to primary + mental (dental/OB/peds barely bill Medicare).
+# Saturating weight w = benes/(benes + K) -> dormant ~0, active ~1, no mega-biller blowup.
+PHYSICIAN_PUF_URL = ("https://data.cms.gov/sites/default/files/2026-05/"
+                     "7323ba02-52e7-4a86-b2ce-ad210c25d9aa/MUP_PHY_R26_P05_V10_D24_Prov.csv")
+PHYSICIAN_PUF_NPI = "Rndrng_NPI"
+PHYSICIAN_PUF_BENES = "Tot_Benes"
+PHYSICIAN_PUF_ENTITY = "Rndrng_Prvdr_Ent_Cd"
 
 # ---------------------------------------------------------------------------
 # Census ACS 5-year (economic / insurance)

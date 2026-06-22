@@ -171,6 +171,20 @@ net-positive contributor). If it doesn't, the utilization measure chosen is too 
 try another before shipping.
 
 ### C2. Capacity-weight NPPES NPIs (shared with supply stream)
+
+> **RESULT (2026-06-21): ATTEMPTED, FAILED THE GATE, NOT SCORED (columns kept as diagnostics).**
+> Built a per-NPI Medicare-activity weight `w = benes/(benes+K)` (K=128 median benes) from the
+> **CMS Medicare Physician & Other Practitioners by-Provider PUF** (1.24M individual NPIs),
+> joined in the `build_providers` DuckDB pass, summed per ZCTA for primary + mental (scoped:
+> Medicare doesn't validly cover dental/OB/peds). E2SFCA'd into `primary_2sfca_cap` /
+> `mental_2sfca_cap`. **Offline gate vs the clean outcomes: provider_supply mean signed-r
+> 0.132 (count) → 0.129 (capacity) - a non-win.** premature_death nudged up (+0.249→+0.264)
+> but infant_mortality dropped (+0.246→+0.237, the pediatrician-zeroing predicted by the
+> Medicare population mismatch), netting flat-to-worse. Conclusion: provider_supply's weakness
+> is **not** dormant registrations - it is the spatial/urbanicity confound (→ C3) plus the
+> intrinsic weak ecological link of supply to mortality. Capacity columns remain for diagnostics
+> and possible reuse under C3; deliberately not in the composite.
+
 **Data:** CMS Medicare Provider Utilization & Payment (claims volume per NPI) or HRSA Area Health
 Resource Files FTE counts. **Change (build_providers/build_supply - coordinate):** weight each NPI
 by activity (claims volume, or FTE) before the E2SFCA, so dormant/low-volume NPIs count less.

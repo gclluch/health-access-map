@@ -97,6 +97,24 @@ def _load_taxonomy_map() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # NPPES extraction + DuckDB aggregate
 # ---------------------------------------------------------------------------
+def _load_capacity() -> tuple[pd.DataFrame, float]:
+    """Per-NPI Medicare activity (Tot_Benes) from the by-Provider PUF -> capacity weight.
+    Returns (df[npi, benes], K) where K = median benes among active individuals (the
+    half-saturation constant for w = benes/(benes+K)). Used to down-weight dormant NPIs."""
+    dest = config.RAW / "medicare_phys_by_provider.csv"
+    download_file(config.PHYSICIAN_PUF_URL, dest, min_bytes=50_000_000)
+    cols = [config.PHYSICIAN_PUF_NPI, config.PHYSICIAN_PUF_BENES, config.PHYSICIAN_PUF_ENTITY]
+    df = pd.read_csv(dest, usecols=cols, dtype=str)
+    df = df[df[config.PHYSICIAN_PUF_ENTITY] == "I"]  # individuals only (match NPPES entity 1)
+    benes = pd.to_numeric(df[config.PHYSICIAN_PUF_BENES], errors="coerce")
+    out = pd.DataFrame({"npi": df[config.PHYSICIAN_PUF_NPI].astype(str).str.strip(),
+                        "benes": benes.fillna(0.0)})
+    out = out[out["npi"].str.match(r"^\d{10}$")].drop_duplicates("npi")
+    k = float(out.loc[out["benes"] > 0, "benes"].median())
+    log("providers", f"Medicare capacity: {len(out):,} individual NPIs, K(median benes)={k:.0f}")
+    return out, k
+
+
 def _extract_main_csv() -> Path:
     if not NPPES_ZIP.exists():
         die("providers", f"NPPES zip not found: {NPPES_ZIP} (run download first)")
@@ -125,6 +143,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         return str(OUT)
 
     taxmap = _load_taxonomy_map()
+    capacity, k_benes = _load_capacity()
     csv_path = _extract_main_csv()
 
     state_where = ""
@@ -134,10 +153,12 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
     con = duckdb.connect()
     con.register("taxmap", taxmap)
+    con.register("capacity", capacity)
     log("providers", "DuckDB streaming aggregate over NPPES...")
     q = f"""
     WITH prov AS (
         SELECT
+            "{config.NPPES_COL_NPI}"      AS npi,
             "{config.NPPES_COL_POSTAL}"   AS postal,
             "{config.NPPES_COL_TAXONOMY}" AS taxonomy,
             "{config.NPPES_COL_STATE}"    AS col_state,
@@ -150,8 +171,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         SELECT
             lpad(substr(regexp_replace(postal, '[^0-9]', '', 'g'), 1, 5), 5, '0') AS zcta5,
             COALESCE(taxmap."class", 'other') AS pclass,
-            nullif(trim(city), '') AS city
-        FROM prov LEFT JOIN taxmap ON prov.taxonomy = taxmap.code
+            nullif(trim(city), '') AS city,
+            -- Medicare-activity weight w = benes/(benes+K); 0 if the NPI never billed
+            -- Medicare (dormant, or a non-Medicare type). Scoped to primary + mental below.
+            COALESCE(capacity.benes, 0.0) / (COALESCE(capacity.benes, 0.0) + {k_benes}) AS act_w
+        FROM prov
+        LEFT JOIN taxmap ON prov.taxonomy = taxmap.code
+        LEFT JOIN capacity ON trim(prov.npi) = capacity.npi
     )
     SELECT
         zcta5,
@@ -160,6 +186,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         count(*) FILTER (WHERE pclass = 'mental_health')  AS providers_mental,
         count(*) FILTER (WHERE pclass = 'dental')         AS providers_dental,
         count(*) FILTER (WHERE pclass = 'obgyn')          AS providers_obgyn,
+        sum(act_w) FILTER (WHERE pclass = 'primary_care')  AS providers_primary_cap,
+        sum(act_w) FILTER (WHERE pclass = 'mental_health') AS providers_mental_cap,
         mode(city)                                        AS city
     FROM keyed
     WHERE zcta5 ~ '^[0-9]{{5}}$' AND zcta5 <> '00000'
@@ -171,6 +199,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     for c in ("providers_total", "providers_primary", "providers_mental",
               "providers_dental", "providers_obgyn"):
         df[c] = df[c].astype("int64")
+    for c in ("providers_primary_cap", "providers_mental_cap"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
     # NPPES cities are uppercase; title-case for display ("LOS ANGELES" -> "Los Angeles")
     df["city"] = df["city"].astype("string").str.title()
 
