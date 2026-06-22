@@ -38,6 +38,16 @@ def _e2sfca(providers: np.ndarray, demand: np.ndarray,
     return np.array([(Rj[idx] * w).sum() for idx, w in zip(neighbors, weights)])
 
 
+def _e2sfca_adaptive(providers: np.ndarray, demand: np.ndarray, ni: np.ndarray,
+                     w1: np.ndarray, w2: np.ndarray) -> np.ndarray:
+    """Variable-bandwidth E2SFCA (vectorized, bounded kNN). w1[j] uses each demand
+    neighbour's own bandwidth (step 1, pooling at supply j); w2[i] uses ZCTA i's own
+    bandwidth (step 2, access at i). ni = (n, k) neighbour indices."""
+    pooled = (demand[ni] * w1).sum(axis=1)                       # demand pooled at each supply j
+    Rj = np.divide(providers, pooled, out=np.zeros(len(providers)), where=pooled > 0)
+    return (Rj[ni] * w2).sum(axis=1)                             # access at each ZCTA i
+
+
 def build(dev_state: str | None = None, force: bool = False) -> str:
     if OUT.exists() and not force:
         log("supply", f"skip (exists): {OUT.name}")
@@ -64,27 +74,41 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     lo, hi = burden.quantile(0.02), burden.quantile(0.98)
     need_mult = 1.0 + ((burden - lo) / (hi - lo)).clip(0, 1).fillna(0.0)
 
-    log("supply", f"E2SFCA over {len(df)} centroids, {config.CATCHMENT_KM} km catchment, "
-                  f"Gaussian σ={config.DECAY_SIGMA_KM} km...")
+    pop = df["population"].to_numpy()
     coords = np.radians(df[["lat", "lon"]].to_numpy())
     tree = BallTree(coords, metric="haversine")
-    radius = config.CATCHMENT_KM / config.EARTH_KM
-    ind, dist = tree.query_radius(coords, r=radius, return_distance=True)
-    # Gaussian decay weights on travel distance (km)
-    sigma = config.DECAY_SIGMA_KM / config.EARTH_KM
-    weights = [np.exp(-0.5 * (d / sigma) ** 2) for d in dist]
 
-    pop = df["population"].to_numpy()
-    a_primary = _e2sfca(df["providers_primary"].to_numpy(), pop, ind, weights)
-    a_mental = _e2sfca(df["providers_mental"].to_numpy(), pop, ind, weights)
-    a_dental = _e2sfca(np.asarray(df["providers_dental"], float), pop, ind, weights)
-    a_obgyn = _e2sfca(np.asarray(df["providers_obgyn"], float), pop, ind, weights)
-    a_primary_need = _e2sfca(df["providers_primary"].to_numpy(),
-                             pop * need_mult.to_numpy(), ind, weights)
-    # Layer C2 capacity-weighted variants (Medicare-activity-weighted supply) for the gate
-    # comparison vs the raw-count versions; scored only if they win on the harness.
-    a_primary_cap = _e2sfca(np.asarray(df["providers_primary_cap"], float), pop, ind, weights)
-    a_mental_cap = _e2sfca(np.asarray(df["providers_mental_cap"], float), pop, ind, weights)
+    if config.ADAPTIVE_CATCHMENT:
+        # variable-bandwidth catchment (Layer C3): each ZCTA's σ = distance to the K-th
+        # nearest centroid (local density), clipped -> small in cities, large in rural.
+        k = min(config.ADAPTIVE_KNN, len(df))
+        nd, ni = tree.query(coords, k=k)
+        nd_km = nd * config.EARTH_KM
+        dK = nd_km[:, min(config.ADAPTIVE_K, k - 1)]
+        sig = np.clip(dK, config.ADAPTIVE_SIGMA_MIN_KM, config.ADAPTIVE_SIGMA_MAX_KM)
+        log("supply", f"E2SFCA over {len(df)} centroids, ADAPTIVE catchment "
+                      f"(σ {np.percentile(sig,10):.0f}-{np.percentile(sig,90):.0f} km, "
+                      f"median {np.median(sig):.0f})...")
+        w1 = np.exp(-0.5 * (nd_km / sig[ni]) ** 2)      # step 1: neighbour's own bandwidth
+        w2 = np.exp(-0.5 * (nd_km / sig[:, None]) ** 2)  # step 2: ZCTA i's own bandwidth
+        sfca = lambda prov, dem: _e2sfca_adaptive(np.asarray(prov, float), dem, ni, w1, w2)  # noqa: E731
+    else:
+        radius = config.CATCHMENT_KM / config.EARTH_KM
+        ind, dist = tree.query_radius(coords, r=radius, return_distance=True)
+        sigma = config.DECAY_SIGMA_KM / config.EARTH_KM
+        weights = [np.exp(-0.5 * (d / sigma) ** 2) for d in dist]
+        log("supply", f"E2SFCA over {len(df)} centroids, {config.CATCHMENT_KM} km fixed "
+                      f"catchment, Gaussian σ={config.DECAY_SIGMA_KM} km...")
+        sfca = lambda prov, dem: _e2sfca(np.asarray(prov, float), dem, ind, weights)  # noqa: E731
+
+    a_primary = sfca(df["providers_primary"], pop)
+    a_mental = sfca(df["providers_mental"], pop)
+    a_dental = sfca(df["providers_dental"], pop)
+    a_obgyn = sfca(df["providers_obgyn"], pop)
+    a_primary_need = sfca(df["providers_primary"], pop * need_mult.to_numpy())
+    # Layer C2 capacity-weighted variants (kept for diagnostics; not scored).
+    a_primary_cap = sfca(df["providers_primary_cap"], pop)
+    a_mental_cap = sfca(df["providers_mental_cap"], pop)
 
     df["primary_2sfca"] = a_primary * 1000.0
     df["mental_2sfca"] = a_mental * 1000.0
@@ -93,8 +117,17 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["primary_2sfca_cap"] = a_primary_cap * 1000.0
     df["mental_2sfca_cap"] = a_mental_cap * 1000.0
     df["primary_2sfca_needadj"] = a_primary_need * 1000.0
+
+    # People-per-provider + the HRSA 3,500:1 shortage flag need a FIXED, interpretable
+    # service area (the adaptive catchment is for the scored percentile, not an absolute
+    # benchmark). So compute these from the fixed 16 km catchment regardless.
+    radius = config.CATCHMENT_KM / config.EARTH_KM
+    find, fdist = tree.query_radius(coords, r=radius, return_distance=True)
+    fsig = config.DECAY_SIGMA_KM / config.EARTH_KM
+    fw = [np.exp(-0.5 * (d / fsig) ** 2) for d in fdist]
+    a_primary_fixed = _e2sfca(df["providers_primary"].to_numpy(), pop, find, fw)
     df["primary_people_per_provider"] = np.divide(
-        1.0, a_primary, out=np.full_like(a_primary, np.inf), where=a_primary > 0)
+        1.0, a_primary_fixed, out=np.full_like(a_primary_fixed, np.inf), where=a_primary_fixed > 0)
     df["primary_shortage"] = df["primary_people_per_provider"] > config.HPSA_SHORTAGE_RATIO
 
     out = df[["zcta5", "primary_2sfca", "mental_2sfca", "dental_2sfca", "ob_2sfca",
@@ -105,7 +138,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     _validate(out, dev_state)
     out.to_parquet(OUT, index=False)
     write_provenance({"supply": {
-        "method": "E2SFCA (Luo & Qi 2009), Gaussian distance decay",
+        "method": ("E2SFCA (Luo & Qi 2009) with VARIABLE/adaptive catchment "
+                   "(McGrail & Humphreys 2009): per-ZCTA Gaussian σ = distance to the "
+                   f"{config.ADAPTIVE_K}-th nearest centroid, clipped "
+                   f"[{config.ADAPTIVE_SIGMA_MIN_KM:.0f},{config.ADAPTIVE_SIGMA_MAX_KM:.0f}] km"
+                   if config.ADAPTIVE_CATCHMENT else
+                   "E2SFCA (Luo & Qi 2009), fixed-radius Gaussian distance decay"),
+        "shortage_basis": "fixed 16 km catchment vs HRSA 3,500:1 (interpretable benchmark)",
         "catchment_km": config.CATCHMENT_KM, "decay_sigma_km": config.DECAY_SIGMA_KM,
         "hpsa_threshold": config.HPSA_SHORTAGE_RATIO,
         "shortage_zctas": int(out["primary_shortage"].sum()),

@@ -1,6 +1,11 @@
 # Roadmap: strengthen the access signal (gated, verify-after-each-layer)
 
-> **STATUS (2026-06-21):** Branch `feat/composite-validation-uncertainty`. **Layers A and B
+> **STATUS (2026-06-21):** **Layers A, B DONE; Layer C: C1 + C2 gate-failed (not scored), C3
+> SHIPPED (the win).** C3's variable/adaptive catchment doubled provider_supply's clean-outcome
+> signal (+0.13 → +0.265) and lifted FULL 0.479 → 0.486 - supply now tracks all-cause mortality.
+> Earlier baseline note below is pre-C3.
+>
+> **Original status:** Branch `feat/composite-validation-uncertainty`. **Layers A and B
 > are DONE.** Layer A (`aa21461`) flipped the north star: `drop_care_access` is now *below* FULL
 > (care access ADDS signal). Layer B propagated ACS measurement noise into the rank bands -
 > low-confidence ZCTAs now get visibly wider 5-95 bands (median ≈27 vs ≈10 for high-confidence),
@@ -193,6 +198,21 @@ current ~0 vs mortality (target: clearly positive vs premature death / ACSC). Co
 (keep both columns during evaluation); ship only if the weighted version wins on the harness.
 
 ### C3. Drive-time catchment (shared with supply stream)
+
+> **RESULT (2026-06-21): SHIPPED - the first Layer-C win.** True OSRM drive-time was
+> infeasible here, so we used its most-cited feasible analog: a **variable/adaptive catchment**
+> (McGrail & Humphreys 2009). Each ZCTA's Gaussian bandwidth = distance to the 30th-nearest
+> centroid, clipped to [8, 60] km (median 36) - small in cities, wide in sparse rural areas,
+> directly removing the fixed-radius urbanicity artifact. **All five gate checks pass:**
+> provider_supply mean|r| **0.173 → 0.273**; vs the clean death-records/ACSC outcomes its signed
+> r **roughly doubled, +0.13 → +0.265** (premature_death +0.37, infant_mortality +0.39,
+> life_expectancy ~0 → **+0.16**, preventable_hosp ~0 → +0.14 - all now correctly signed and
+> non-circular); FULL composite 0.479 → 0.486; composite agreement 0.479 → 0.488; split-half
+> 0.956 (held); scoreable unchanged. The HRSA 3,500:1 shortage flag is now computed from a fixed
+> 16 km service area (the adaptive catchment is for the scored percentile, not an absolute
+> benchmark). `config.ADAPTIVE_CATCHMENT` toggles it. This is the lever the whole project needed:
+> the access dimension's weakest link is now solid, and supply finally tracks all-cause mortality.
+
 **Data:** OSRM road-network routing (open-source) or a precomputed ZCTA-centroid travel-time
 matrix. **Change (build_supply - coordinate):** replace the 16 km straight-line catchment with
 drive-time isochrones in the E2SFCA.

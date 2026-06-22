@@ -207,9 +207,10 @@ def test_rank_uncertainty_band(df):
 
 
 def test_access_signal_against_access_sensitive_outcome():
-    """The core Phase-1 finding: spatial provider supply carries ~no signal against
-    all-cause life expectancy but real, correctly-signed signal against an
-    access-sensitive outcome (infant mortality). Guards the rationale for the rework."""
+    """Post-Layer-C3 (variable/adaptive catchment): spatial provider supply now carries
+    real, correctly-signed signal against BOTH infant mortality AND all-cause life
+    expectancy. The adaptive catchment fixed the urbanicity confound that had left supply
+    ~uncorrelated with life expectancy under the fixed 16 km catchment. Guards that gain."""
     if not WEIGHTS.exists():
         pytest.skip("validate stage not run")
     sc = json.loads(WEIGHTS.read_text())["subscore_correlations"]
@@ -217,4 +218,5 @@ def test_access_signal_against_access_sensitive_outcome():
         pytest.skip("infant mortality anchor unavailable (e.g. dev-state slice)")
     assert sc["infant_mortality"]["provider_supply"] > 0.1, "supply should track infant mortality"
     if "life_expectancy" in sc and "provider_supply" in sc["life_expectancy"]:
-        assert abs(sc["life_expectancy"]["provider_supply"]) < 0.1, "supply ~uncorrelated with LE"
+        # C3 win: supply now positively tracks life expectancy (was ~0 under fixed catchment)
+        assert sc["life_expectancy"]["provider_supply"] > 0.08, "supply should now track LE (C3)"

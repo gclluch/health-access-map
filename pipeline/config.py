@@ -190,6 +190,15 @@ GAZETTEER_YEARS = [2023, 2022, 2021, 2020]
 CATCHMENT_KM = 16.0          # ~10 mi catchment radius (urban-calibrated; rural reads low)
 DECAY_SIGMA_KM = 8.0         # Gaussian distance-decay scale (weight ~0.6 at half-radius)
 EARTH_KM = 6371.0
+# Layer C3: VARIABLE (adaptive) catchment - the feasible analog to drive-time isochrones.
+# Each ZCTA's Gaussian bandwidth = distance to the K-th nearest centroid (local settlement
+# density), clipped to [MIN, MAX] km: ~MIN in dense cities, up to MAX in sparse rural. This
+# removes the urbanicity artifact of a single fixed radius (McGrail & Humphreys 2009).
+ADAPTIVE_CATCHMENT = True
+ADAPTIVE_K = 30
+ADAPTIVE_SIGMA_MIN_KM = 8.0
+ADAPTIVE_SIGMA_MAX_KM = 60.0
+ADAPTIVE_KNN = 400           # bounded neighbor set per centroid (captures the decay tail)
 HPSA_SHORTAGE_RATIO = 3500   # HRSA primary-care shortage threshold (pop : provider)
 # chronic-disease columns used to build a demand (need) weight for the need-adjusted variant
 NEED_WEIGHT_COLS = ["diabetes_pct", "bphigh_pct", "chd_pct", "copd_pct", "obesity_pct"]

@@ -13,7 +13,7 @@ const POINTS: Array<[string, string]> = [
   ],
     [
     'Provider supply: spatial access, not capacity',
-    'Supply uses E2SFCA (Luo & Qi 2009) - a floating catchment with Gaussian distance decay, so a clinic 2 km away counts far more than one at the 16 km edge. This fixes the ZIP-containment artifact. It is still a relative spatial-access measure over NPPES registrations (which over-count active capacity and ignore Medicaid/new-patient acceptance). A need-adjusted variant is computed but not scored (it would double-count health need). The HRSA 3,500:1 flag is the one benchmark-referenced gap.',
+    'Supply uses E2SFCA (Luo & Qi 2009) with a VARIABLE catchment (McGrail & Humphreys 2009): each ZIP\'s bandwidth scales with local settlement density - small in cities, wide in sparse rural areas. This removes the urbanicity artifact of a single fixed radius and roughly doubled supply\'s correlation with independent mortality (e.g. it now tracks life expectancy, which it did not under a fixed 16 km radius). It is still a relative measure over NPPES registrations (which over-count active capacity and ignore Medicaid acceptance); we tested capacity-weighting by Medicare claims volume and it did not help, so it is not used. The HRSA 3,500:1 shortage flag is computed from a fixed 16 km service area (the interpretable benchmark).',
   ],
   [
     'Collinear, weighted dimensions',
@@ -37,7 +37,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Outcomes layer (independent of the score, used only to validate it)',
-    'Four independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) are used to validate - never to build - the composite: preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. They are shown as separate layers, never in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). Note the honest split: spatial provider supply tracks infant mortality but is ~uncorrelated with all-cause life expectancy, because life expectancy is a need outcome. That is why we validate against access-sensitive outcomes, not all-cause mortality.',
+    'Four independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) are used to validate - never to build - the composite: preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. They are shown as separate layers, never in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks all four - infant mortality, premature death, preventable hospitalization, and life expectancy - all correctly signed (it was ~uncorrelated with life expectancy under the old fixed catchment).',
   ],
   [
     'Different vintages & universes',
