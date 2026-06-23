@@ -16,7 +16,7 @@ import argparse
 import time
 
 from . import (build_acs, build_fqhc, build_gazetteer, build_geometry,
-               build_geonames, build_lifeexp, build_outcomes, build_places,
+               build_geonames, build_hpsa, build_lifeexp, build_outcomes, build_places,
                build_providers, build_supply, join_and_score, validate)
 from .common import load_env, log
 from .preflight import check as preflight_check
@@ -25,7 +25,7 @@ from .preflight import check as preflight_check
 # acs + gazetteer; lifeexp + outcomes are independent outcomes; join merges everything;
 # validate (multi-anchor outcome validation) reads the joined metrics last.
 STAGES = ["geometry", "places", "providers", "acs", "geonames",
-          "gazetteer", "supply", "fqhc", "lifeexp", "outcomes", "join", "validate"]
+          "gazetteer", "supply", "fqhc", "hpsa", "lifeexp", "outcomes", "join", "validate"]
 BUILDERS = {
     "geometry": build_geometry.build,
     "places": build_places.build,
@@ -35,6 +35,7 @@ BUILDERS = {
     "gazetteer": build_gazetteer.build,
     "supply": build_supply.build,
     "fqhc": build_fqhc.build,
+    "hpsa": build_hpsa.build,
     "lifeexp": build_lifeexp.build,
     "outcomes": build_outcomes.build,
     "join": join_and_score.build,

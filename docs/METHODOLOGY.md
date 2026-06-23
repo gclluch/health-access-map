@@ -151,8 +151,10 @@ never in the composite.
 - `python -m pipeline.verify_bands` - the rank-uncertainty band gates.
 
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
-coverage holds). Current state: FULL mean-r **0.486**; `drop_care_access` 0.469 (**below** FULL,
-so care access *adds* signal); split-half **0.956**; provider_supply mean|r| **0.273**.
+coverage holds). Current state: FULL mean-r **0.492**; `drop_care_access` 0.469 (**below** FULL,
+so care access *adds* signal - margin now +0.023); composite agreement **0.495**; split-half
+**0.943**; provider_supply mean|r| **0.273**, plus the new **shortage_designation** (HPSA)
+sub-score (clean signed-r +0.20). (Pre-HPSA: FULL 0.486 / agreement 0.488 / split-half 0.956.)
 
 ### The cardinal anti-circularity rule
 Flu vaccination and mammography are **healthcare-engagement** measures *and* validation
@@ -185,6 +187,16 @@ The access dimension was the project's weakest link: originally **dropping care 
 gated after every step. This is the reasoning trail.
 
 ### Kept (passed the gate)
+- **HRSA primary-care HPSA as its own `shortage_designation` sub-score (Layer C5)** - an
+  official shortage designation that is **near-orthogonal to our E2SFCA density (corr ~0.05)**
+  yet tracks independent mortality on its own (clean signed-r **+0.20**: premature_death +0.28,
+  life_exp +0.17, infant_mort +0.22, preventable_hosp +0.13). It encodes need + travel +
+  safety-net distance a raw provider count cannot see. **Kept as a separate sub-score, not
+  folded into provider_supply** - at corr 0.05 the averaging-then-rerank inside provider_supply
+  partially washes out its distinct signal (folded: FULL 0.488; separate: FULL **0.492**,
+  agreement **0.495**). County-level (max HPSA score per county → ZCTA), free daily CSV from
+  data.hrsa.gov (`build_hpsa.py`). *Lesson: an official designation can out-signal a modeled
+  density precisely because it is built from different evidence.*
 - **Hierarchical percentile model** (SVI method) - skew-robust, interpretable. §2.
 - **E2SFCA with adaptive catchment (C3)** - the win: provider_supply mean|r| 0.173 -> 0.273,
   clean-outcome r +0.13 -> +0.265. §4. *Lesson: the supply weakness was the spatial confound
@@ -199,6 +211,19 @@ gated after every step. This is the reasoning trail.
 - **Measurement-noise rank bands (Layer B)** - low-confidence ZCTAs now get visibly wider bands.
 
 ### Rejected (failed the gate - kept as documented negatives so nobody re-runs them)
+- **Condition-specific quality-of-care / "realized access conditional on need" (C1-redux)** -
+  the lever §10 *predicted* would be strongest. Tested **Dartmouth Atlas** county-level diabetic
+  process measures (HbA1c testing + eye exam *among diabetics*, 2019). **Clean-outcome signed-r
+  +0.036** (vs provider_supply +0.265) - life expectancy even faintly wrong-signed. *Weaker than
+  the raw-visit-rate C1 it was meant to replace.* Root cause: HbA1c testing is ~85-90% saturated
+  among diabetics (little geographic variance), county-level (diluted across ZCTAs), 2019 vintage.
+  The "conditional on need" denominator did **not** rescue it. Probed before any build (the right
+  move). Blood-lipid testing was retired from HEDIS in 2015 so only 2 measures survive to 2019.
+- **Mental-health / dental HPSA, and the MUA/IMU index** - tested alongside PC-HPSA. MH-HPSA
+  (+0.09) and DH-HPSA (+0.12) are highly correlated with PC-HPSA (0.59 / 0.75) and add **~0
+  beyond it** (partial-r ≈ −0.05). The MUA Index of Medical Underservice is **wrong-signed at
+  ZCTA level** (−0.04) - its elderly-% term makes retirement areas read "served." Only PC-HPSA
+  ships.
 - **Realized utilization (C1)** - CMS Medicare visit-rates (% with an E&M visit, etc.) as a
   "low realized use = barrier" sub-score. *Looked* like a win across all 6 outcomes, **but it
   was circular**: its only strong correlations were with flu (+0.66) and mammography (+0.54),
@@ -251,7 +276,19 @@ input data - the lever was spatial.**
 6. **Pipeline is the source of truth, the backend just serves it.** `data/` and the big payloads
    are gitignored and reproducible via the staged build (`python -m pipeline.run`).
 
-The strongest remaining lever is **C1-redux**: condition-specific quality-of-care rates (e.g.
-HbA1c testing *among diabetics*, from Dartmouth Atlas / CMS MMD) - realized access *conditional
-on need*, which dodges the saturation and endogeneity that sank raw utilization. Gate it the
-same way.
+**C1-redux (condition-specific quality-of-care) has now been tested and REJECTED** - Dartmouth
+diabetic process measures carry no clean signal (+0.04; see the decision log above). The lever
+that worked instead was **HPSA shortage designation (C5)** - an *official* shortage signal, not
+a modeled rate.
+
+The strongest remaining levers are now structural/data, in rough ROI order:
+1. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
+   isochrones. A *build* (run routing over provider coords), not a download. Most likely to sharpen
+   provider_supply further, especially rural. (See ROADMAP C3's straight-line analog.)
+2. **ZIP/sub-county HPSA resolution** - the current HPSA score is county-max; the file also carries
+   population-group and address-level designations. A finer geographic assignment could lift the
+   +0.20 shortage signal.
+3. **PLACES measurement-noise bands (Layer B3)** - health_need carries no measurement-noise term;
+   folding PLACES CIs in would complete the uncertainty model (honesty, not point-signal).
+4. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
+   file exists (only the CMS NDF Medicare-assignment flag, near-saturated); a real slog. Lowest ROI.

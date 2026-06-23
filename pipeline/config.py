@@ -136,6 +136,18 @@ TIGER_YEAR_FALLBACKS = [2020]  # only the 2020 vintage publishes ZCTA cartograph
 ZCTA_COUNTY_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/"
                    "zcta520/tab20_zcta520_county20_natl.txt")
 
+# HRSA primary-care HPSA (Health Professional Shortage Area) designations -> an official
+# shortage signal that is NEAR-ORTHOGONAL to our NPPES E2SFCA density (corr ~0.05) yet tracks
+# independent mortality on its own (clean signed-r +0.20: premature_death +0.28, life_exp +0.17,
+# infant_mort +0.22, preventable_hosp +0.13). HPSA encodes need + travel + safety-net distance a
+# raw provider count cannot see. County-level "HPSA Score" (0-26, higher = worse shortage), max
+# per county, folded into provider_supply. Mental-health/dental HPSA and the MUA/IMU index were
+# gate-tested and add nothing beyond PC-HPSA (subsumed / wrong-signed). See docs/METHODOLOGY.md.
+HPSA_PC_URL = "https://data.hrsa.gov/DataDownload/DD_Files/BCD_HPSA_FCT_DET_PC.csv"
+HPSA_COL_SCORE = "HPSA Score"
+HPSA_COL_FIPS = "Common State County FIPS Code"
+HPSA_COL_STATUS = "HPSA Status"
+
 # HRSA Health Center (FQHC) service-delivery sites -> the safety-net access layer.
 # ~16,200 sites that serve everyone on a sliding fee scale (the access point for the
 # uninsured/Medicaid). Geocoded; operating hours used as an effective-capacity weight.

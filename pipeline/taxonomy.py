@@ -121,7 +121,8 @@ DIMENSIONS: dict = {
     },
     "care_access": {
         "label": "Barriers to care",
-        "blurb": "Low provider supply (spatial), lack of insurance, unmet preventive care.",
+        "blurb": "Low provider supply (spatial), official shortage (HPSA), unmet safety-net "
+                 "need, lack of insurance, unmet preventive care.",
         "subscores": {
             "provider_supply": {
                 "label": "Low provider supply (spatial)",
@@ -131,6 +132,22 @@ DIMENSIONS: dict = {
                     M("mental_2sfca", -1, "Mental-health access (2SFCA)"),
                     M("dental_2sfca", -1, "Dental access (2SFCA)"),
                     M("ob_2sfca", -1, "Maternity / OB-GYN access (2SFCA)"),
+                ],
+            },
+            # HRSA primary-care HPSA designation (build_hpsa). Kept as its OWN sub-score rather
+            # than folded into provider_supply because it is NEAR-ORTHOGONAL to the E2SFCA
+            # density (corr ~0.05) - averaging it into provider_supply partially washes out its
+            # distinct signal. As a separate sub-score it adds the most: clean signed-r +0.20 on
+            # its own (premature_death +0.28, life_exp +0.17), lifting FULL 0.486->0.492 and
+            # composite agreement 0.488->0.495. HPSA encodes need + travel + safety-net distance
+            # a raw provider count cannot see. Mental-health/dental HPSA and the MUA/IMU index
+            # were gate-tested and add ~nothing beyond PC-HPSA (subsumed / wrong-signed). See
+            # docs/METHODOLOGY.md decision log + ROADMAP-ACCESS-SIGNAL.md C5.
+            "shortage_designation": {
+                "label": "Official provider shortage (HPSA)",
+                "source": "hpsa",
+                "members": [
+                    M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)"),
                 ],
             },
             "safetynet_access": {

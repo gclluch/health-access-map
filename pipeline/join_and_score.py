@@ -29,7 +29,7 @@ OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
 # merged if present (safety-net + independent outcomes for display/validation). The
 # multi-anchor weight derivation lives in pipeline/validate.py (runs after join).
-OPTIONAL_STAGES = ("fqhc", "lifeexp", "outcomes")
+OPTIONAL_STAGES = ("fqhc", "hpsa", "lifeexp", "outcomes")
 
 
 def _pct(s: pd.Series) -> pd.Series:
@@ -51,11 +51,13 @@ _RANK_CV_SIGMA_SCALE = 36.0
 _RANK_CV_FLOOR_Q = 0.50
 _RANK_CV_EXCESS_CAP = 1.5
 # Per-dimension ACS-input share = how much ACS measurement noise propagates into each
-# dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.6 × social_
+# dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.47 × social_
 # vulnerability SD - care access is ACS only via insurance + the poverty term in safetynet,
 # vs social vulnerability's two fully-ACS sub-scores). health_need is PLACES (0; its noise is
-# Layer B3). Not a guess: the 0.60 is the empirical inter-dimension propagation ratio.
-_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.60}
+# Layer B3). Not a guess: 0.47 is the empirical inter-dimension propagation ratio, re-measured
+# by verify_bands gate 3 after the HPSA shortage_designation sub-score (no ACS noise) diluted
+# care_access's ACS share - it was 0.60 with 4 care sub-scores, 0.47 with 5.
+_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.47}
 
 
 def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],

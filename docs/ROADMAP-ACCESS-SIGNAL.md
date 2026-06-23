@@ -1,9 +1,10 @@
 # Roadmap: strengthen the access signal (gated, verify-after-each-layer)
 
-> **STATUS (2026-06-21):** **Layers A, B DONE; Layer C: C1 + C2 gate-failed (not scored), C3
-> SHIPPED (the win).** C3's variable/adaptive catchment doubled provider_supply's clean-outcome
-> signal (+0.13 → +0.265) and lifted FULL 0.479 → 0.486 - supply now tracks all-cause mortality.
-> Earlier baseline note below is pre-C3.
+> **STATUS (2026-06-23):** **Layers A, B DONE; Layer C: C1/C2/C1-redux gate-failed (not scored),
+> C3 + C5 SHIPPED (the two wins).** C3's variable/adaptive catchment doubled provider_supply's
+> clean-outcome signal (+0.13 → +0.265, FULL 0.479 → 0.486). **C5 added HRSA HPSA as its own
+> `shortage_designation` sub-score (FULL 0.486 → 0.492, agreement → 0.495).** C4 (Medicaid
+> acceptance) researched - no free national file. Earlier baseline notes below are pre-C3/C5.
 >
 > **Original status:** Branch `feat/composite-validation-uncertainty`. **Layers A and B
 > are DONE.** Layer A (`aa21461`) flipped the north star: `drop_care_access` is now *below* FULL
@@ -224,6 +225,32 @@ artifact is gone). Plus standard harness.
 ### C4. Medicaid / new-patient acceptance (stretch / research)
 **Data:** state Medicaid provider directories or a national acceptance proxy - the Acceptability
 axis NPPES omits entirely. Research feasibility first; likely partial coverage. **Verify:** as C2.
+
+> **RESEARCHED (2026-06-23): no free national file exists.** Medicaid-accepting / accepting-new-
+> patients data lives only in fragmented per-state directories and restricted T-MSIS (DUA required).
+> The closest free proxy is the CMS Doctors & Clinicians NDF `ind_assgn`/`grp_assgn`
+> (accepts-Medicare-assignment) flag - but that is near-saturated nationally (~96%), so low variance
+> = low expected signal. Deprioritized; not built.
+
+### C5. HRSA HPSA shortage designation ✅ SHIPPED (2026-06-23) - the second Layer-C win
+
+> **RESULT: SHIPPED as its own `shortage_designation` sub-score under care_access.** Primary-care
+> HPSA "HPSA Score" (0-26, higher = worse), max per county, county→ZCTA via geonames, 0 for
+> non-designated (`build_hpsa.py`, free daily CSV from data.hrsa.gov). **Near-orthogonal to our
+> E2SFCA density (corr 0.05)** yet clean signed-r **+0.20** on its own (premature_death +0.28,
+> life_exp +0.17, infant_mort +0.22, preventable_hosp +0.13) and **+0.19 partial controlling for
+> existing supply** - genuinely additive, not a duplicate count. **FULL 0.486 → 0.492, composite
+> agreement 0.488 → 0.495**; drop_care_access holds at 0.469 so care-access margin widens to
+> +0.023; split-half 0.943 (≥0.93 gate; dipped from 0.956 as expected for a coarse orthogonal
+> input, low-pop rose to 0.944); scoreable unchanged; band gates re-pass after retuning
+> `_ACS_SHARE[care_access]` 0.60 → 0.47 (the new no-ACS-noise sub-score diluted care_access's ACS
+> share). **Kept SEPARATE, not folded into provider_supply** - at corr 0.05 the averaging-then-
+> rerank inside provider_supply washes out its distinct signal (folded gave only FULL 0.488).
+>
+> **Negatives gate-tested at the same time (don't re-run):** mental-health HPSA (+0.09) and dental
+> HPSA (+0.12) are subsumed by PC-HPSA (corr 0.59/0.75, partial-r ≈ −0.05 beyond it); the MUA/IMU
+> index is wrong-signed at ZCTA (−0.04, its elderly term makes retirement areas read "served").
+> Dartmouth diabetic process measures (the predicted C1-redux) carry +0.04 clean - rejected.
 
 **Layer C exit gate (the whole point of the project):** with C1-C3 in, the north-star flips -
 `drop_care_access` mean-r is **below** FULL, i.e. the access dimension finally *adds* outcome

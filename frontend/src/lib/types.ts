@@ -30,6 +30,7 @@ export interface SlimMetric {
   housing_transport_pctile: number | null;
   social_needs_pctile: number | null;
   provider_supply_pctile: number | null;
+  shortage_designation_pctile: number | null;
   safetynet_access_pctile: number | null;
   insurance_pctile: number | null;
   preventive_use_pctile: number | null;
@@ -136,9 +137,10 @@ export const MODEL: DimSpec[] = [
   {
     key: 'care_access',
     label: 'Barriers to care',
-    blurb: 'Low provider supply, unmet safety-net need (FQHC desert), lack of insurance, unmet preventive care. Higher = more barriers.',
+    blurb: 'Low provider supply, official provider shortage (HPSA), unmet safety-net need (FQHC desert), lack of insurance, unmet preventive care. Higher = more barriers.',
     subs: [
       { key: 'provider_supply', label: 'Low provider supply (spatial)' },
+      { key: 'shortage_designation', label: 'Official provider shortage (HPSA)' },
       { key: 'safetynet_access', label: 'Unmet safety-net need (FQHC desert)' },
       { key: 'insurance', label: 'Lack of insurance' },
       { key: 'preventive_use', label: 'Low preventive-care use' },
