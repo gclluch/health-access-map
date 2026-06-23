@@ -283,7 +283,7 @@ areas - the same confound that forced the FQHC `desert × poverty` reframe).
 | Item | Data access | Pre-screen | Next action |
 |---|---|---|---|
 | ~~HCAHPS / ED-timeliness / hospital quality~~ | free CMS CSV (IDs `dgck-syfz`, `yv7e-xc69`, `xubh-q36u`) | **REJECTED (2026-06-23)** - the "rate" pre-screen was wrong; see below | documented negative - do not re-run |
-| **SAMHSA behavioral facilities** | free (OTP CSV, FindTreatment.gov JSON API) | probe as **distance-to-nearest desert**, NOT count | **probe FIRST next window** |
+| ~~SAMHSA / SUD behavioral desert~~ | free (NPPES Entity-2 SUD taxonomies, on disk) | **REJECTED (2026-06-23)** - distance-to-nearest collapses to −0.01 partial (corr +0.42 w/ supply); see below | documented negative - do not re-run |
 | Hospital/ER/OB beds (CMS POS / HIFLD) | flaky (JS pages, NASA mirror frozen Aug 2025) | raw count predicted wrong-signed | only via `desert × need` reframe; low yield |
 | Pharmacy (NPPES Entity 2) | on disk | **REJECTED −0.17** wrong-signed | documented negative - do not re-run |
 | AHRF county FTE | free zip | county-level → predicted dilution | skip unless desperate |
@@ -319,6 +319,45 @@ deprivation gradient, not a new access axis.** Rejected on the probe (no build),
 *New pre-screen rule:* "it's a rate, not a count" does NOT clear the clustering confound. ED
 throughput and facility utilization rates carry urbanicity confounds of their own; only the
 orthogonality + partial-r test (vs the FULL scored gradient) is decisive.
+
+### REJECTED 2026-06-23: SUD / behavioral-health treatment desert (SAMHSA / NPPES Entity-2)
+Extracted 146k SUD/addiction NPIs from NPPES on disk (27,958 Entity-2 treatment facilities -
+SUD-rehab clinics `261QR0405X`, residential `324500000X`/`3245S0500X`, hospital units `276400000X` -
+plus 118k addiction-medicine / MAT prescriber individuals), in 12,438 distinct ZCTAs. Built the
+roadmap's prescribed framing - **distance-to-nearest SUD facility as a desert measure** (higher km =
+worse, median 8.7 km), explicitly NOT a raw count. Result: raw clean-r **+0.111** (premD +0.22,
+infM +0.24, but LE −0.03, prevH +0.01) → **partial-r −0.010** controlling for the scored gradient.
+It is **corr +0.42 with provider_supply** - the SUD desert IS the rural/supply gradient our adaptive
+catchment already scores (residential SUD facilities are sparse in exactly the rural areas already
+flagged short). Even the desert framing did not escape the collinearity. Rejected on the probe.
+*This was the last genuinely-new spatial access dimension in the queue; its failure confirms the
+ceiling - see "Conclusion" below.*
+
+### REJECTED 2026-06-23: sub-county HPSA resolution (sharpening, not new data)
+The shipped HPSA sub-score uses county-max. Tested whether finer geography sharpens it: 11,632
+designations carry an 11-digit Census-Tract FIPS in `HPSA Geography Identification Number` (81%
+matched the 2010 ZCTA-tract crosswalk on disk), so tract-level designations could be confined to
+their actual tracts instead of bleeding county-wide. Built the sharpened version (tract designations
+→ overlapping ZCTAs via crosswalk; non-tract single-county/subdivision/facility designations → county
+fallback; ZCTA = max). Result: meanClean **+0.206 → +0.209** (a +0.003 nudge) and the sharpened
+column is **0.991 correlated** with county-max. Reason: HPSA designations are so dense that ~30,123
+of 33,176 scoreable ZCTAs already inherit a nonzero county score, and the dominant *population* HPSAs
+(low-income population within a county) are sub-*population*, not sub-*geography* - there is nothing
+to sharpen. Not worth the build. County-max stays.
+
+### Conclusion (2026-06-23): the spatial-signal ceiling is reached
+Across this session, three more probes (hospital quality, SUD desert, sub-county HPSA) failed the
+same way the earlier ones did (cardiology, Dartmouth, broadband, pharmacy): **every cheap spatial /
+facility lever is collinear with the poverty/rural/supply gradient already scored, so its raw signal
+collapses in partial-r.** The only two wins this project ever had were (1) *structural* - the adaptive
+catchment, which removed a confound rather than adding data; and (2) *genuinely orthogonal* - the HPSA
+official designation, built from different administrative evidence (corr 0.05). No remaining free
+spatial dataset is orthogonal to the gradient. **Geographic coverage is also already complete**: the
+615 non-scoreable ZCTAs hold 220 residents total (PO-box / industrial / water ZIPs), correctly
+excluded. The productive frontier is no longer signal - it is **completeness/honesty** (Layer B3:
+PLACES measurement-noise bands, the one dimension whose noise the uncertainty model still omits) and
+**structural** (drive-time E2SFCA, if feasible). Both sharpen/complete; neither expands signal, which
+is capped.
 
 ### Real data gaps (NO free national data) → minimal-scrape heuristic plan
 Method discipline: **scrape to CALIBRATE a national model, never to fill coverage** (partial scrape =

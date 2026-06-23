@@ -270,6 +270,16 @@ gated after every step. This is the reasoning trail.
   count" does NOT clear the clustering confound** - throughput/utilization rates carry their own
   urbanicity confound; only orthogonality + partial-r vs the FULL gradient is decisive. Rejected on
   the probe (no build), like Dartmouth C1-redux.
+- **SUD / behavioral-health treatment desert (SAMHSA / NPPES Entity-2)** - 146k addiction/SUD NPIs
+  (28k treatment facilities + 118k MAT prescribers), framed as *distance-to-nearest desert* (not a
+  count, to dodge the clustering confound). Raw clean-r +0.111 → **partial −0.010**; corr **+0.42**
+  with provider_supply. The SUD desert simply *is* the rural/supply gradient we already score - even
+  the desert framing did not make it orthogonal. The last genuinely-new spatial access dimension in
+  the audit queue; its failure marks the spatial-signal ceiling.
+- **Sub-county HPSA resolution** - sharpening the shipped county-max HPSA to tract level (11k
+  designations carry tract FIPS) was a **wash**: meanClean +0.206 → +0.209, 0.991 correlated. HPSA
+  designations are dense enough that nearly every ZCTA already inherits a county score, and the
+  dominant *population* HPSAs are sub-population not sub-geography. County-max stays.
 - **Demand-matched specialist supply (e.g. CHD ↔ cardiology mismatch)** - the intuitive
   "heart disease prevalent but no cardiologists" idea. Tested empirically (2026-06-23): scanned
   NPPES for 30k cardiologists, E2SFCA'd them on the adaptive catchment, defined mismatch =
@@ -325,14 +335,19 @@ diabetic process measures carry no clean signal (+0.04; see the decision log abo
 that worked instead was **HPSA shortage designation (C5)** - an *official* shortage signal, not
 a modeled rate.
 
-The strongest remaining levers are now structural/data, in rough ROI order:
-1. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
-   isochrones. A *build* (run routing over provider coords), not a download. Most likely to sharpen
-   provider_supply further, especially rural. (See ROADMAP C3's straight-line analog.)
-2. **ZIP/sub-county HPSA resolution** - the current HPSA score is county-max; the file also carries
-   population-group and address-level designations. A finer geographic assignment could lift the
-   +0.20 shortage signal.
-3. **PLACES measurement-noise bands (Layer B3)** - health_need carries no measurement-noise term;
-   folding PLACES CIs in would complete the uncertainty model (honesty, not point-signal).
-4. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
-   file exists (only the CMS NDF Medicare-assignment flag, near-saturated); a real slog. Lowest ROI.
+**The spatial-signal ceiling is reached (2026-06-23).** Three further probes - hospital quality
+(Care Compare), SUD/behavioral desert (SAMHSA/NPPES), and sub-county HPSA - all failed the same way
+every earlier one did: collinear with the poverty/rural/supply gradient already scored, so raw signal
+collapses in partial-r. No remaining free spatial dataset is orthogonal to that gradient. The
+remaining levers are therefore **completeness/structural, not signal** (in rough ROI order):
+1. **PLACES measurement-noise bands (Layer B3)** - health_need carries no measurement-noise term;
+   folding PLACES CIs in completes the uncertainty model. The one true remaining *gap*: honesty, not
+   point-signal. Gated by `verify_bands`, not the north-star (point scores unchanged by design).
+2. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
+   isochrones. A *build* (routing over provider coords), not a download; deemed infeasible at C3,
+   revisit only with a precomputed travel-time matrix (e.g. Urban Institute national tract OSRM).
+   Sharpens provider_supply; does not expand signal.
+3. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
+   file exists (only the CMS NDF Medicare-assignment flag, near-saturated); needs the scrape-to-
+   calibrate heuristic in ROADMAP-ACCESS-SIGNAL.md. A real slog. Lowest ROI.
+~~ZIP/sub-county HPSA resolution~~ - tested 2026-06-23, a wash (0.991 correlated with county-max).
