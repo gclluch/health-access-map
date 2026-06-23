@@ -249,6 +249,13 @@ gated after every step. This is the reasoning trail.
   so weighting zeroed them). Confirmed the weakness was *not* dormant registrations.
 - **Need-adjusted supply** - demand weighted by disease burden. Computed historically but never
   scored: it double-counts health need, which is already its own dimension.
+- **Raw facility-count access (pharmacies; predicts hospital beds, urgent care)** - pharmacy
+  E2SFCA from NPPES Entity-Type-2 NPIs (68.5k pharmacies). Clean signed-r **−0.17** - wrong-
+  signed, and *more* wrong-signed after controlling for supply (−0.21). Cause: retail facilities
+  cluster in dense high-need urban areas, so "low facility access" reads as *better* outcomes -
+  the identical confound that forced the FQHC reframe (§4) to `desert × poverty`. **General rule:
+  any raw facility-COUNT access measure is wrong-signed; it must be reframed as desert × need to
+  be correctly signed, at which point it largely duplicates the existing safety-net sub-score.**
 - **Demand-matched specialist supply (e.g. CHD ↔ cardiology mismatch)** - the intuitive
   "heart disease prevalent but no cardiologists" idea. Tested empirically (2026-06-23): scanned
   NPPES for 30k cardiologists, E2SFCA'd them on the adaptive catchment, defined mismatch =

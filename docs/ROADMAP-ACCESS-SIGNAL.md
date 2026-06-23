@@ -256,6 +256,62 @@ axis NPPES omits entirely. Research feasibility first; likely partial coverage. 
 `drop_care_access` mean-r is **below** FULL, i.e. the access dimension finally *adds* outcome
 signal instead of subtracting it. That is the definition of done for "make this an access tool."
 
+### C6. Digital / telehealth access ✅ SHIPPED (2026-06-23)
+
+> **RESULT: SHIPPED as `digital_access` sub-score under social_vulnerability** (ACS B28002
+> no-internet rate, `build_broadband.py`). The telehealth analog of the no-vehicle transport
+> barrier. Solo clean signed-r **+0.25** (premature_death +0.35, infant_mort +0.31, life_exp
+> +0.23), non-circular. **A reliability/completeness add, NOT a signal win:** in care_access it
+> *regressed* the composite (collinear with provider supply, corr 0.33); in social_vulnerability
+> it holds agreement at 0.495 and lifts split-half **0.943 → 0.955**. Placement lesson: put a
+> non-circular-but-collinear measure where it completes a dimension without diluting a distinct
+> sub-score. Band `_ACS_SHARE` re-verified (social_vuln inj/emp 1.11, still PASS).
+
+---
+
+## What's been mapped but NOT yet built - the access-dimension audit (2026-06-23)
+
+A full literature + dataset sweep (4 research streams: spatial methods, existing indices, untapped
+datasets) mapped every access dimension vs what we have. The empirically-derived **pre-screen rule**
+from this session's probes: *a candidate is a SIGNAL win only if ZCTA-native AND non-circular AND
+orthogonal to what's already scored.* County-level → dilutes to ~0 (Dartmouth +0.04). Collinear →
+reliability-only (broadband). Redundant with need+supply → fails (cardiology −0.06). **Raw
+facility-COUNT access → wrong-signed** (pharmacy −0.17: facilities cluster in dense high-need urban
+areas - the same confound that forced the FQHC `desert × poverty` reframe).
+
+### Queue, ranked by data accessibility (resume here)
+| Item | Data access | Pre-screen | Next action |
+|---|---|---|---|
+| **HCAHPS / ED-timeliness quality** | free CMS CSV (IDs `dgck-syfz`, `yv7e-xc69`) | **passes** - a *rate*, immune to the clustering confound | probe FIRST next window |
+| **SAMHSA behavioral facilities** | free (OTP CSV, FindTreatment.gov JSON API) | probe as **distance-to-nearest desert**, NOT count | probe second |
+| Hospital/ER/OB beds (CMS POS / HIFLD) | flaky (JS pages, NASA mirror frozen Aug 2025) | raw count predicted wrong-signed | only via `desert × need` reframe; low yield |
+| Pharmacy (NPPES Entity 2) | on disk | **REJECTED −0.17** wrong-signed | documented negative - do not re-run |
+| AHRF county FTE | free zip | county-level → predicted dilution | skip unless desperate |
+| SACData transit | tract-level Dataverse | *spatial* → predicted collinear w/ supply | skip unless desperate |
+
+### Real data gaps (NO free national data) → minimal-scrape heuristic plan
+Method discipline: **scrape to CALIBRATE a national model, never to fill coverage** (partial scrape =
+urban bias = the artifact that kills a national composite). Sample stratified → regress on features we
+already hold → predict nationally → validate on held-out scraped ZCTAs → gate the *predicted* column.
+
+- **Accommodation (hours / after-hours).** Free footholds first: (1) FQHC file already carries
+  operating hours - we ignore them; build hours-weighted safety-net availability. (2) urgent-care NPIs
+  (NPPES Entity 2, taxonomy `261QU0200X`) already on disk, as a desert measure. Minimal scrape: Google
+  Places free tier (~6-11k Place Details/mo with `opening_hours`), ~500 ZCTAs stratified by urbanicity
+  × need → "extended-hours rate" → regress on density/type-mix/urbanicity → predict → gate.
+- **Acceptability (Medicaid acceptance).** Free footholds: FQHC/RHC density + county dual-eligible rate
+  + CMS NDF active-billing flag. Minimal scrape: 4-5 large diverse states publish downloadable
+  Medicaid-enrolled-provider files (NY/CA/TX/OH/FL) → ZCTA "% NPIs Medicaid-enrolled" → regress on FQHC
+  density + poverty + provider-mix + dual rate → predict other 45 states → validate on held-out state →
+  gate. Skip language concordance (ACS limited-English is known wrong-signed here, Layer A1).
+
+### Methods worth gate-testing (no new data)
+BFCA (removes E2SFCA's 3-8× supply/demand inflation, conservation property, unit-testable);
+gravity model (drops the catchment-cutoff artifact; E2SFCA is its binary special case); free
+drive-time matrix (Urban Institute national tract OSRM, replaces haversine). NOT worth it: KD2SFCA
+(redundant - we already use Gaussian decay), national GTFS (urban-biased), SDA-2SFCA (need-weights
+demand → reproduces the double-count we gated out), ML/kriging/GNN (not used as access indices).
+
 ---
 
 ## One-glance sequence
