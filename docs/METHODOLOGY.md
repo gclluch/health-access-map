@@ -237,6 +237,17 @@ gated after every step. This is the reasoning trail.
   so weighting zeroed them). Confirmed the weakness was *not* dormant registrations.
 - **Need-adjusted supply** - demand weighted by disease burden. Computed historically but never
   scored: it double-counts health need, which is already its own dimension.
+- **Demand-matched specialist supply (e.g. CHD ↔ cardiology mismatch)** - the intuitive
+  "heart disease prevalent but no cardiologists" idea. Tested empirically (2026-06-23): scanned
+  NPPES for 30k cardiologists, E2SFCA'd them on the adaptive catchment, defined mismatch =
+  CHD-need-percentile − cardiology-supply-percentile. The mismatch is **real in the world**
+  (cardiologists are scarcer where CHD is high, r = −0.30) and its raw clean-outcome r is a
+  strong **+0.273** - but it **collapses to −0.06 once you control for CHD prevalence and
+  primary supply**, both already scored (CHD in health_need, supply in care_access). The
+  mismatch is just `need − supply`, a linear combination the additive composite already sums;
+  cardiology supply is 0.80 collinear with primary supply, so the specialty breakout adds
+  ~nothing. *This is the specialist-specific proof of the double-counting trap above: the
+  weighted sum already rewards "high need AND low supply." Don't add explicit mismatch terms.*
 - **Empirical (pure-regression) weights** - NNLS regression of dimensions on an outcome floors
   care access at ~5%. Offered only as a labeled diagnostic preset, never the default, because it
   optimizes "predict this outcome" rather than "measure the access gap" (§5).
