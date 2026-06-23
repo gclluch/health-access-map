@@ -25,11 +25,13 @@ import pandas as pd
 
 from . import config
 from .join_and_score import (_RANK_CV_EXCESS_CAP, _RANK_CV_FLOOR_Q,
-                             _RANK_CV_SIGMA_SCALE, _ACS_SHARE, _pct)
+                             _RANK_CV_SIGMA_SCALE, _RANK_PLACES_SIGMA_SCALE,
+                             _ACS_SHARE, _PLACES_SHARE, _pct)
 from .taxonomy import DIMENSIONS, subscore_specs
 
 METRICS = config.PROCESSED / "metrics.parquet"
 SE_DEBUG = config.PROCESSED / "acs_se_debug.parquet"
+PLACES_SE_DEBUG = config.PROCESSED / "places_se_debug.parquet"
 
 
 def _band_width(d: pd.DataFrame) -> pd.Series:
@@ -60,11 +62,23 @@ def gate2_shrinkage(d_on: pd.DataFrame, d_off: pd.DataFrame) -> bool:
 
 
 def _injected_sigma(d: pd.DataFrame, dim: str) -> np.ndarray:
-    """The sigma (percentile points) Layer B injects into `dim` for each scoreable ZCTA."""
-    cv = d["acs_input_cv"].to_numpy(float)
-    floor = np.nanquantile(cv, _RANK_CV_FLOOR_Q)
-    excess = np.clip(np.where(np.isnan(cv), floor, cv) - floor, 0.0, _RANK_CV_EXCESS_CAP)
-    return _ACS_SHARE.get(f"{dim}_pctile", 0.0) * _RANK_CV_SIGMA_SCALE * excess
+    """The sigma (percentile points) Layer B/B3 injects into `dim` for each scoreable ZCTA:
+    ACS (excess-over-floor) and PLACES (no-floor, irreducible) terms combined in quadrature -
+    matching join_and_score._noise_sigma."""
+    n = len(d)
+    acs = np.zeros(n)
+    if "acs_input_cv" in d.columns and _ACS_SHARE.get(f"{dim}_pctile", 0.0):
+        cv = d["acs_input_cv"].to_numpy(float)
+        floor = np.nanquantile(cv, _RANK_CV_FLOOR_Q)
+        excess = np.clip(np.where(np.isnan(cv), floor, cv) - floor, 0.0, _RANK_CV_EXCESS_CAP)
+        acs = _ACS_SHARE[f"{dim}_pctile"] * _RANK_CV_SIGMA_SCALE * excess
+    plc = np.zeros(n)
+    if "places_input_cv" in d.columns and _PLACES_SHARE.get(f"{dim}_pctile", 0.0):
+        pcv = d["places_input_cv"].to_numpy(float)
+        med = np.nanmedian(pcv)
+        pcv = np.where(np.isnan(pcv), med, pcv)
+        plc = _PLACES_SHARE[f"{dim}_pctile"] * _RANK_PLACES_SIGMA_SCALE * pcv
+    return np.sqrt(acs ** 2 + plc ** 2)
 
 
 def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
@@ -79,6 +93,11 @@ def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
               "rebuild acs with HAM_SE_DEBUG=1)")
         return True
     dbg = pd.read_parquet(SE_DEBUG).set_index("zcta5")
+    # Layer B3: fold in the PLACES per-measure SEs (same HAM_SE_DEBUG dump) so PLACES members
+    # resample too and health_need (pure PLACES) gets a real empirical SD to calibrate against.
+    if PLACES_SE_DEBUG.exists():
+        plc = pd.read_parquet(PLACES_SE_DEBUG).set_index("zcta5")
+        dbg = dbg.join(plc[[c for c in plc.columns if c not in dbg.columns]], how="outer")
     members_with_se = {c[:-3] for c in dbg.columns if c.endswith("_se")}
 
     specs = {s["key"]: s for s in subscore_specs()}
@@ -100,7 +119,7 @@ def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
 
     results = {}
     for dkey, dim in DIMENSIONS.items():
-        if not _ACS_SHARE.get(f"{dkey}_pctile", 0.0):
+        if not (_ACS_SHARE.get(f"{dkey}_pctile", 0.0) or _PLACES_SHARE.get(f"{dkey}_pctile", 0.0)):
             continue
         subs = list(dim["subscores"].keys())
         sorted_dimraw = np.sort(pd.Series(np.nanmean(
@@ -115,13 +134,13 @@ def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
             sub_pcts = []  # each (draws,) or scalar broadcast
             for sk in subs:
                 mcols = [m["col"] for m in dim["subscores"][sk]["members"] if m["col"] in base_mpct]
-                acs = [mc for mc in mcols if mc in members_with_se]
-                if not acs:  # PLACES / non-resampled sub-score: fixed baseline
+                resampled = [mc for mc in mcols if mc in members_with_se]
+                if not resampled:  # no input-noise data for this sub-score: fixed baseline
                     sub_pcts.append(np.full(draws, d.at[ridx, f"{sk}_pctile"]))
                     continue
                 member_pcts = []
                 for mc in mcols:
-                    if mc in acs:
+                    if mc in resampled:
                         rate = pd.to_numeric(d.at[ridx, mc], errors="coerce")
                         se = dbg.at[z, f"{mc}_se"]
                         if np.isnan(rate) or np.isnan(se):
@@ -141,7 +160,7 @@ def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
         results[dkey] = (float(np.nanmedian(emp_sd[m])) if m.sum() else float("nan"),
                          float(np.nanmedian(inj[m])) if m.sum() else float("nan"), ratio, int(m.sum()))
 
-    print("=== GATE 3. Calibration (injected sigma vs member-resample, per ACS dim) ===")
+    print("=== GATE 3. Calibration (injected sigma vs member-resample, per dim: ACS + PLACES) ===")
     ok = True
     for dkey, (emp, inj, ratio, n) in results.items():
         good = 0.8 <= ratio <= 1.2 if not np.isnan(ratio) else False

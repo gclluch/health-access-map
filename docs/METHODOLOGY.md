@@ -173,8 +173,10 @@ ones.** This rule is what caught Layer C1 (§8).
   toward its county mean in proportion to its own noise. Noisiest ZCTAs are flagged
   low-confidence and kept out of headline rankings.
 - **Rank bands:** each scoreable ZCTA carries a 5-95 national-rank band (Saisana/OECD
-  sensitivity) from (a) plausible re-weighting and (b) ACS measurement noise. A ZCTA's rank moves
-  ~+/-6 pts under reweighting and ~+/-4 from noise.
+  sensitivity) from (a) plausible re-weighting, (b) ACS measurement noise (excess over the
+  well-measured baseline - widens low-pop ZCTAs), and (c) PLACES measurement noise (Layer B3 - a
+  near-uniform irreducible modeling-uncertainty floor on the disease/health_need estimates),
+  combined in quadrature. A ZCTA's rank moves ~+/-6 pts under reweighting and ~+/-4 from noise.
 - **Honest resolution:** internally reliable (split-half 0.95), but two ZIPs differ reliably
   only by ~10-15 percentile points - about **7-10 tiers, not 33,000 ranks**. The UI shows
   deciles + a reliable range, not a false integer leaderboard (`COMPOSITE-EVALUATION.md`).
@@ -221,6 +223,13 @@ gated after every step. This is the reasoning trail.
   (retirement areas read "vulnerable" but have good access); limited-English is wrong-signed vs
   infant mortality (the immigrant-health paradox). All three demoted to context, never scored.
 - **Measurement-noise rank bands (Layer B)** - low-confidence ZCTAs now get visibly wider bands.
+- **PLACES measurement-noise bands (Layer B3)** - the completeness fix: health_need's noise,
+  previously absent from the bands (σ=0), is now parsed from PLACES 95% CIs and injected in
+  quadrature with the ACS term, calibrated to a member-input resample (gate-3 inj/emp 0.97). Unlike
+  the ACS term it is *not* floor-subtracted - PLACES is model-based, so its uncertainty is a small
+  (~0.06 CV), near-population-flat *irreducible* floor, not a low-pop effect. Point scores unchanged
+  (bands only). *Lesson: model-based small-area estimates carry a uniform uncertainty floor, not a
+  population-scaled one; represent it as such.*
 
 ### Rejected (failed the gate - kept as documented negatives so nobody re-runs them)
 - **Condition-specific quality-of-care / "realized access conditional on need" (C1-redux)** -
@@ -340,9 +349,11 @@ a modeled rate.
 every earlier one did: collinear with the poverty/rural/supply gradient already scored, so raw signal
 collapses in partial-r. No remaining free spatial dataset is orthogonal to that gradient. The
 remaining levers are therefore **completeness/structural, not signal** (in rough ROI order):
-1. **PLACES measurement-noise bands (Layer B3)** - health_need carries no measurement-noise term;
-   folding PLACES CIs in completes the uncertainty model. The one true remaining *gap*: honesty, not
-   point-signal. Gated by `verify_bands`, not the north-star (point scores unchanged by design).
+1. ~~**PLACES measurement-noise bands (Layer B3)**~~ ✅ **SHIPPED 2026-06-23** - health_need's
+   measurement noise (previously σ=0 in the bands) is now parsed from PLACES 95% CIs into a
+   `places_input_cv`, injected in quadrature with the ACS term and calibrated to a member-input
+   resample (gate 3 health_need inj/emp 0.97). Point scores unchanged; the uncertainty model is now
+   complete across all three dimensions. See ROADMAP-ACCESS-SIGNAL.md Layer B3.
 2. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
    isochrones. A *build* (routing over provider coords), not a download; deemed infeasible at C3,
    revisit only with a precomputed travel-time matrix (e.g. Urban Institute national tract OSRM).

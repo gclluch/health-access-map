@@ -59,6 +59,21 @@ _RANK_CV_EXCESS_CAP = 1.5
 # care_access's ACS share - it was 0.60 with 4 care sub-scores, 0.47 with 5.
 _ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.47}
 
+# Layer B3: PLACES measurement-noise term. PLACES is model-based (smoothed), so its input CV is
+# small (~0.06) and nearly population-FLAT - it is an irreducible MODELING-uncertainty floor, not
+# a low-pop noise effect. So (unlike the ACS term) it is NOT floor-subtracted: σ_places =
+# SCALE_p * share * places_cv applies to every ZCTA, and is combined with the ACS term IN
+# QUADRATURE (independent noise sources). _PLACES_SHARE = per-dimension propagation ratio
+# MEASURED by a member-input resample (perturb each PLACES rate by its CI-derived SE, propagate
+# member→sub-score→dimension): health_need is pure PLACES (1.0); care_access carries it via
+# preventive_use + access2 (0.78); social_vulnerability barely, via social_needs (0.14). SCALE_p
+# is calibrated so health_need's injected σ matches that resample (median ≈4.4 pctile pts);
+# re-verified by verify_bands gate 3. health_need previously had ZERO band noise term - B3 is the
+# completeness fix that closes that gap. See docs/ROADMAP-ACCESS-SIGNAL.md B3.
+_RANK_PLACES_SIGMA_SCALE = 71.0
+_PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.78,
+                 "social_vulnerability_pctile": 0.14}
+
 
 def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
                       n: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
@@ -98,23 +113,39 @@ def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
 
 
 def _noise_sigma(df: pd.DataFrame, dim_cols: list[str], idx: np.ndarray) -> np.ndarray:
-    """(len(idx), len(dim_cols)) array of measurement-noise σ in percentile points. Scaled to
-    each ZCTA's acs_input_cv in excess of the national median, weighted per dimension by its
-    ACS-input share (_ACS_SHARE). Zeros if the CV column is absent (pre-Layer-B builds)."""
-    sigma = np.zeros((len(idx), len(dim_cols)))
-    if "acs_input_cv" not in df.columns:
-        return sigma
-    cv = df["acs_input_cv"].to_numpy(float)[idx]
-    floor = np.nanquantile(cv, _RANK_CV_FLOOR_Q)
-    if not np.isfinite(floor):
-        return sigma
-    excess = np.clip(np.where(np.isnan(cv), floor, cv) - floor, 0.0, _RANK_CV_EXCESS_CAP)
-    col_sigma = _RANK_CV_SIGMA_SCALE * excess  # per-ZCTA scalar; 0 for well-measured ZCTAs
-    for k, c in enumerate(dim_cols):
-        share = _ACS_SHARE.get(c, 0.0)
-        if share:
-            sigma[:, k] = share * col_sigma
-    return sigma
+    """(len(idx), len(dim_cols)) array of measurement-noise σ in percentile points, combining
+    two independent input-noise sources IN QUADRATURE:
+      - ACS (Layer B): scaled to each ZCTA's acs_input_cv in EXCESS of the national median
+        (well-measured ZCTAs get 0), weighted per dimension by _ACS_SHARE.
+      - PLACES (Layer B3): scaled to places_input_cv with NO floor (irreducible, near-uniform
+        modeling uncertainty), weighted per dimension by _PLACES_SHARE.
+    Zeros if neither CV column is present (pre-Layer-B builds)."""
+    n = len(idx)
+    acs_sig = np.zeros((n, len(dim_cols)))
+    plc_sig = np.zeros((n, len(dim_cols)))
+
+    if "acs_input_cv" in df.columns:
+        cv = df["acs_input_cv"].to_numpy(float)[idx]
+        floor = np.nanquantile(cv, _RANK_CV_FLOOR_Q)
+        if np.isfinite(floor):
+            excess = np.clip(np.where(np.isnan(cv), floor, cv) - floor, 0.0, _RANK_CV_EXCESS_CAP)
+            col_sigma = _RANK_CV_SIGMA_SCALE * excess  # 0 for well-measured ZCTAs
+            for k, c in enumerate(dim_cols):
+                share = _ACS_SHARE.get(c, 0.0)
+                if share:
+                    acs_sig[:, k] = share * col_sigma
+
+    if "places_input_cv" in df.columns:
+        pcv = df["places_input_cv"].to_numpy(float)[idx]
+        med = np.nanmedian(pcv)
+        pcv = np.where(np.isnan(pcv), med, pcv)  # impute missing CV with the median floor
+        col_sigma = _RANK_PLACES_SIGMA_SCALE * pcv  # no floor: applies to every ZCTA
+        for k, c in enumerate(dim_cols):
+            share = _PLACES_SHARE.get(c, 0.0)
+            if share:
+                plc_sig[:, k] = share * col_sigma
+
+    return np.sqrt(acs_sig ** 2 + plc_sig ** 2)
 
 
 def _geometry_universe() -> pd.Series:

@@ -234,6 +234,20 @@ def all_places_keys() -> list[str]:
     return sorted(keys)
 
 
+def scored_places_keys() -> list[str]:
+    """PLACES `<base>_pct` columns that actually enter a scored sub-score (excludes
+    CONTEXT_PLACES). Used by build_places to scope the Layer-B3 places_input_cv to the
+    measures that affect the composite."""
+    keys = set()
+    for dim in DIMENSIONS.values():
+        for sub in dim["subscores"].values():
+            if sub["source"] in ("places", "mixed"):
+                for m in sub["members"]:
+                    if m["col"].endswith("_pct"):
+                        keys.add(m["col"])
+    return sorted(keys)
+
+
 def subscore_specs() -> list[dict]:
     """Flat list of sub-scores with their dimension + members, for scoring."""
     out = []

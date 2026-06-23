@@ -114,9 +114,24 @@ only width). `share_dim` = the per-dimension ACS-noise propagation share (social
 1.0, care_access 0.60 - both *measured* by gate 3, not guessed; health_need is PLACES → 0).
 SCALE=36 is calibrated so the injected σ lands within ±20% of the gate-3 input resample.
 
-### B3 (optional, larger; NOT done). Pull PLACES confidence intervals for the health_need /
-preventive members and fold their noise in the same way (health_need currently carries no
-measurement-noise term).
+### B3 ✅ SHIPPED (2026-06-23). Fold PLACES measurement noise into the bands - the completeness
+fix for the one dimension whose noise the model omitted (health_need was σ=0).
+**`build_places.py`:** parse each scored measure's published 95% CI (`<base>_crude95ci` =
+"( lo, hi)") into an SE, emit a per-ZCTA `places_input_cv` = mean(SE/estimate) (median **0.062**),
+and (under `HAM_SE_DEBUG=1`) dump `places_se_debug.parquet` for the gate-3 resample.
+**`join_and_score.py`:** `_noise_sigma` now combines the ACS term and a new PLACES term **in
+quadrature**. The PLACES term is **NOT floor-subtracted** (unlike ACS): PLACES is model-based, so
+its CV is small (~0.06) and nearly population-flat - an *irreducible modeling-uncertainty floor*,
+not a low-pop effect. `σ_places = SCALE_p · share · places_cv`, with `_PLACES_SHARE` MEASURED by
+the member-input resample (health_need **1.0**, care_access **0.78** via preventive_use+access2,
+social_vulnerability **0.14** via social_needs) and `SCALE_p = 71` calibrated so health_need's
+injected σ matches that resample.
+**Result (gated):** point scores UNCHANGED (FULL 0.492, drop_care_access 0.467, reliability
+0.955/0.951, scoreable 33176 - B3 only touches bands). Gate 3 now reports **health_need inj/emp
+0.97** (was an uncalibrated σ=0), social_vulnerability 1.11, care_access 1.00 - all PASS. Gate 1
+differentiation 2.85× → **2.36×** (uniform PLACES floor lifted high-conf bands 8.5→10.8; still
+well above the 1.6 target). Composite median band 13.2, within COMPOSITE-EVALUATION's 10-15pt
+threshold. 18/18 acceptance tests pass.
 
 **Verify (`pipeline/verify_bands.py`, dedicated - not the standard harness):**
 - **Gate 1 - Differentiation:** ✅ low-conf median band ≥1.6× high-conf. Result **2.66×** (27.0 vs 10.1).
@@ -354,10 +369,11 @@ catchment, which removed a confound rather than adding data; and (2) *genuinely 
 official designation, built from different administrative evidence (corr 0.05). No remaining free
 spatial dataset is orthogonal to the gradient. **Geographic coverage is also already complete**: the
 615 non-scoreable ZCTAs hold 220 residents total (PO-box / industrial / water ZIPs), correctly
-excluded. The productive frontier is no longer signal - it is **completeness/honesty** (Layer B3:
-PLACES measurement-noise bands, the one dimension whose noise the uncertainty model still omits) and
-**structural** (drive-time E2SFCA, if feasible). Both sharpen/complete; neither expands signal, which
-is capped.
+excluded. The productive frontier is no longer signal - it is **completeness/honesty** and
+**structural**. **Layer B3 (PLACES measurement-noise bands) is now SHIPPED** (see Layer B above) -
+health_need's measurement noise, previously omitted (σ=0), is now represented and calibrated, closing
+the last uncertainty-model gap. The only remaining lever is **structural** (drive-time E2SFCA, if a
+precomputed matrix is feasible); it would sharpen provider_supply but not expand signal, which is capped.
 
 ### Real data gaps (NO free national data) → minimal-scrape heuristic plan
 Method discipline: **scrape to CALIBRATE a national model, never to fill coverage** (partial scrape =
