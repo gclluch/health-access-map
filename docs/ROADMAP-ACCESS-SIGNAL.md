@@ -282,12 +282,43 @@ areas - the same confound that forced the FQHC `desert × poverty` reframe).
 ### Queue, ranked by data accessibility (resume here)
 | Item | Data access | Pre-screen | Next action |
 |---|---|---|---|
-| **HCAHPS / ED-timeliness quality** | free CMS CSV (IDs `dgck-syfz`, `yv7e-xc69`) | **passes** - a *rate*, immune to the clustering confound | probe FIRST next window |
-| **SAMHSA behavioral facilities** | free (OTP CSV, FindTreatment.gov JSON API) | probe as **distance-to-nearest desert**, NOT count | probe second |
+| ~~HCAHPS / ED-timeliness / hospital quality~~ | free CMS CSV (IDs `dgck-syfz`, `yv7e-xc69`, `xubh-q36u`) | **REJECTED (2026-06-23)** - the "rate" pre-screen was wrong; see below | documented negative - do not re-run |
+| **SAMHSA behavioral facilities** | free (OTP CSV, FindTreatment.gov JSON API) | probe as **distance-to-nearest desert**, NOT count | **probe FIRST next window** |
 | Hospital/ER/OB beds (CMS POS / HIFLD) | flaky (JS pages, NASA mirror frozen Aug 2025) | raw count predicted wrong-signed | only via `desert × need` reframe; low yield |
 | Pharmacy (NPPES Entity 2) | on disk | **REJECTED −0.17** wrong-signed | documented negative - do not re-run |
 | AHRF county FTE | free zip | county-level → predicted dilution | skip unless desperate |
 | SACData transit | tract-level Dataverse | *spatial* → predicted collinear w/ supply | skip unless desperate |
+
+### REJECTED 2026-06-23: hospital quality / ED-timeliness / HCAHPS (CMS Care Compare)
+Probed all of CMS Care Compare's hospital measures (`xubh-q36u` general info, `yv7e-xc69` timely
+& effective care, `dgck-syfz` HCAHPS), mapped hospital→ZCTA by Gaussian catchment (bw 40 km, max
+120 km) over gazetteer centroids - full coverage (~33k ZCTAs). Tested against the clean
+death-records/ACSC outcomes (candidate oriented higher = worse):
+
+| Candidate (hospital-level) | mean clean-r | Note |
+|---|---|---|
+| `OP_18b` median ED wait | **−0.148** | **wrong-signed** - the ED-crowding urban confound (long waits in dense cities w/ better outcomes; corr −0.45 w/ supply). The roadmap's "a rate is immune to the clustering confound" pre-screen was **wrong**: a *throughput* rate carries its own urbanicity confound. |
+| `OP_22` left-without-being-seen | +0.034 | dead |
+| `OP_18c` admitted ED time | −0.018 | dead |
+| `H_STAR_RATING` HCAHPS patient experience | −0.024 | dead / wrong-signed on infant mort (rural critical-access hospitals score *higher* on experience) |
+| **Hospital overall star (1-5)** | **+0.228** | strong raw signal - but see below |
+
+The overall star looked like a win (raw +0.228, comparable to provider_supply 0.273) but **collapsed
+to +0.075 partial-r** controlling for the already-scored gradient (supply + shortage + care_access +
+health_need + social_vuln). It is NOT orthogonal (corr 0.28 w/ health_need, 0.23 w/ supply - poor
+areas have worse hospitals AND worse outcomes; we already score the poverty). Worse, the surviving
+partial signal **concentrates on the two circularity-adjacent outcomes** (premature_death +0.14,
+preventable_hosp +0.12 - which mechanically overlap the star's 30-day-mortality / readmission
+components) while the two cleanest of-area outcomes collapse (life_exp −0.00, infant_mort +0.04 -
+infant mortality is **not even in** the star rating). Since the star's *access-process* components
+(ED timeliness, patient experience) all probe dead on their own, the +0.075 IS the mortality
+component - i.e. outcome-adjacent, which the methodology keeps out of the composite. **Same shape as
+the cardiology-mismatch negative (raw +0.273 → partial −0.06): a measure collinear with the
+deprivation gradient, not a new access axis.** Rejected on the probe (no build), like Dartmouth C1-redux.
+
+*New pre-screen rule:* "it's a rate, not a count" does NOT clear the clustering confound. ED
+throughput and facility utilization rates carry urbanicity confounds of their own; only the
+orthogonality + partial-r test (vs the FULL scored gradient) is decisive.
 
 ### Real data gaps (NO free national data) → minimal-scrape heuristic plan
 Method discipline: **scrape to CALIBRATE a national model, never to fill coverage** (partial scrape =

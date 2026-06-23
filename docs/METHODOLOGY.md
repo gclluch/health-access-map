@@ -256,6 +256,20 @@ gated after every step. This is the reasoning trail.
   the identical confound that forced the FQHC reframe (§4) to `desert × poverty`. **General rule:
   any raw facility-COUNT access measure is wrong-signed; it must be reframed as desert × need to
   be correctly signed, at which point it largely duplicates the existing safety-net sub-score.**
+- **Hospital quality / ED-timeliness / HCAHPS (CMS Care Compare)** - probed every Care Compare
+  hospital measure, mapped hospital→ZCTA by Gaussian catchment. The *access-process* measures are
+  dead or wrong-signed: median ED wait (OP_18b) is **−0.148** (the ED-crowding urban confound -
+  long waits in dense cities with better outcomes), left-without-being-seen +0.03, HCAHPS patient
+  experience −0.02 (rural critical-access hospitals score higher). The overall hospital star looked
+  strong (raw clean-r **+0.228**) but **collapsed to +0.075 partial** controlling for the scored
+  gradient (corr 0.28 w/ health_need, 0.23 w/ supply - not orthogonal), and the surviving signal
+  concentrates on premature_death / preventable_hosp (which mechanically overlap the star's 30-day
+  mortality + readmission components) while life-exp and infant-mortality (the latter absent from
+  the star) go to ~0. The star's signal IS its mortality component - outcome-adjacent, which we keep
+  out of the composite. *Same shape as the cardiology negative below.* **Lesson: "it's a rate, not a
+  count" does NOT clear the clustering confound** - throughput/utilization rates carry their own
+  urbanicity confound; only orthogonality + partial-r vs the FULL gradient is decisive. Rejected on
+  the probe (no build), like Dartmouth C1-redux.
 - **Demand-matched specialist supply (e.g. CHD ↔ cardiology mismatch)** - the intuitive
   "heart disease prevalent but no cardiologists" idea. Tested empirically (2026-06-23): scanned
   NPPES for 30k cardiologists, E2SFCA'd them on the adaptive catchment, defined mismatch =
