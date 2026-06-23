@@ -29,6 +29,7 @@ export interface SlimMetric {
   socioeconomic_pctile: number | null;
   housing_transport_pctile: number | null;
   social_needs_pctile: number | null;
+  digital_access_pctile: number | null;
   provider_supply_pctile: number | null;
   shortage_designation_pctile: number | null;
   safetynet_access_pctile: number | null;
@@ -127,11 +128,12 @@ export const MODEL: DimSpec[] = [
   {
     key: 'social_vulnerability',
     label: 'Social vulnerability',
-    blurb: 'Socioeconomic deprivation, housing/transport barriers, and unmet social needs.',
+    blurb: 'Socioeconomic deprivation, housing/transport barriers, unmet social needs, and digital/telehealth access.',
     subs: [
       { key: 'socioeconomic', label: 'Socioeconomic deprivation' },
       { key: 'housing_transport', label: 'Housing & transport barriers' },
       { key: 'social_needs', label: 'Unmet social needs' },
+      { key: 'digital_access', label: 'Digital / telehealth access' },
     ],
   },
   {

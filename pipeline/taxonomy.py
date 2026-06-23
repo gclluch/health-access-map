@@ -78,7 +78,7 @@ DIMENSIONS: dict = {
     },
     "social_vulnerability": {
         "label": "Social vulnerability",
-        "blurb": "Socioeconomic, household, housing/transport, and unmet social needs.",
+        "blurb": "Socioeconomic, housing/transport, unmet social needs, and digital/telehealth access.",
         "subscores": {
             "socioeconomic": {
                 "label": "Socioeconomic deprivation",
@@ -115,6 +115,22 @@ DIMENSIONS: dict = {
                     M("lacktrpt_pct", 1, "Lack of transportation"),
                     M("shututility_pct", 1, "Utility shut-off threat"),
                     M("foodstamp_pct", 1, "Receives food stamps/SNAP"),
+                ],
+            },
+            # Digital / telehealth access (build_broadband, ACS B28002). The telehealth analog of
+            # the no-vehicle transport barrier: an enabling barrier to *reaching* care remotely,
+            # which is why it lives in social_vulnerability (the enabling-barriers dimension), not
+            # care_access. Solo clean signed-r +0.25 (premature_death +0.35, infant_mort +0.31).
+            # GATE NOTE: kept as a reliability + completeness addition, NOT a signal win. In
+            # care_access it slightly REGRESSED the composite (collinear with supply); in
+            # social_vulnerability it holds outcome agreement at 0.495 and raises split-half
+            # 0.943->0.955, filling the telehealth axis the index otherwise lacks. It does not
+            # lift outcome agreement - broadband overlaps the deprivation gradient already scored.
+            "digital_access": {
+                "label": "Digital / telehealth access",
+                "source": "broadband",
+                "members": [
+                    M("no_internet_rate", 1, "No household internet (ACS)"),
                 ],
             },
         },

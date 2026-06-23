@@ -67,6 +67,9 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'shututility_pct', label: 'Utility shut-off threat', unit: 'pct', desc: `Adults 18+ facing a utility shut-off threat in the past 12 months. ${PLACES}` },
     { col: 'foodstamp_pct', label: 'Receives SNAP/food stamps', unit: 'pct', desc: `Adults 18+ in households that received SNAP/food stamps in the past 12 months. ${PLACES}` },
   ],
+  digital_access: [
+    { col: 'no_internet_rate', label: 'No household internet', unit: 'rate', desc: 'Households with no Internet access of any kind - cut off from the telehealth/remote-care channel. The digital analog of the no-vehicle transport barrier. Source: Census ACS 5-year (B28002).' },
+  ],
   provider_supply: [
     { col: 'primary_2sfca', label: 'Primary-care access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Primary-care providers per 1,000 people reachable within ~16 km, distance-decay weighted (E2SFCA). Higher = better access. Source: CMS NPPES.' },
     { col: 'mental_2sfca', label: 'Mental-health access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Mental-health providers per 1,000 people reachable within ~16 km (E2SFCA). Higher = better. Source: CMS NPPES.' },

@@ -152,9 +152,10 @@ never in the composite.
 
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
 coverage holds). Current state: FULL mean-r **0.492**; `drop_care_access` 0.469 (**below** FULL,
-so care access *adds* signal - margin now +0.023); composite agreement **0.495**; split-half
-**0.943**; provider_supply mean|r| **0.273**, plus the new **shortage_designation** (HPSA)
-sub-score (clean signed-r +0.20). (Pre-HPSA: FULL 0.486 / agreement 0.488 / split-half 0.956.)
+so care access *adds* signal - margin now +0.025); composite agreement **0.495**; split-half
+**0.955**; provider_supply mean|r| **0.273**, plus the **shortage_designation** (HPSA) sub-score
+(clean signed-r +0.20) and the **digital_access** (broadband) sub-score (clean +0.25, a
+reliability/completeness add - see §8). (Pre-HPSA: FULL 0.486 / agreement 0.488.)
 
 ### The cardinal anti-circularity rule
 Flu vaccination and mammography are **healthcare-engagement** measures *and* validation
@@ -187,6 +188,17 @@ The access dimension was the project's weakest link: originally **dropping care 
 gated after every step. This is the reasoning trail.
 
 ### Kept (passed the gate)
+- **Digital / telehealth access (`digital_access` sub-score, ACS B28002 no-internet rate)** -
+  the telehealth analog of the no-vehicle transport barrier, placed in **social_vulnerability**
+  (the enabling-barriers dimension). Solo clean signed-r **+0.25** (premature_death +0.35,
+  infant_mort +0.31, life_exp +0.23), non-circular (infrastructure, not healthcare use).
+  **Kept as a reliability + completeness add, NOT a signal win:** in care_access it slightly
+  *regressed* the composite (broadband is collinear with provider supply); in
+  social_vulnerability it holds outcome agreement at 0.495 and **raises split-half 0.943 ->
+  0.955**, filling the telehealth axis the index otherwise lacked. *Lesson: a non-circular
+  measure that is collinear with the existing deprivation gradient improves coherence and
+  completeness without moving outcome agreement - ship it for the dimension it adds, not for a
+  signal lift, and place it where it does not dilute a distinct sub-score.* Free, one ACS call.
 - **HRSA primary-care HPSA as its own `shortage_designation` sub-score (Layer C5)** - an
   official shortage designation that is **near-orthogonal to our E2SFCA density (corr ~0.05)**
   yet tracks independent mortality on its own (clean signed-r **+0.20**: premature_death +0.28,
