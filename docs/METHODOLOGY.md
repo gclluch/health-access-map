@@ -285,6 +285,15 @@ gated after every step. This is the reasoning trail.
   with provider_supply. The SUD desert simply *is* the rural/supply gradient we already score - even
   the desert framing did not make it orthogonal. The last genuinely-new spatial access dimension in
   the audit queue; its failure marks the spatial-signal ceiling.
+- **FQHC operating-hours (the Accommodation axis)** - the free foothold we already download but
+  ignore (`Operating Hours per Week` in the HRSA FQHC file). *Total* accessible hours collapses
+  (partial −0.03; corr +0.47 supply - it's FQHC density). *Average hours per reachable site* is
+  density-normalized and genuinely **orthogonal** (corr +0.03 supply, partial +0.085, all outcomes
+  correctly signed) - the first orthogonal candidate since HPSA - but **too weak to survive
+  dimensional dilution**: spliced as a 6th care_access sub-score it moved the north-star by 0.000.
+  *Lesson: orthogonality is necessary but not sufficient; a signal must also be strong enough to
+  survive being 1-of-N in a fractionally-weighted dimension. HPSA cleared both bars (+0.19); FQHC
+  hours clears only orthogonality.* Conceptually fills Accommodation; statistically a no-op. Not built.
 - **Sub-county HPSA resolution** - sharpening the shipped county-max HPSA to tract level (11k
   designations carry tract FIPS) was a **wash**: meanClean +0.206 → +0.209, 0.991 correlated. HPSA
   designations are dense enough that nearly every ZCTA already inherits a county score, and the
@@ -319,6 +328,25 @@ input data - the lever was spatial.**
   (FQHC presence is our best available proxy for acceptability).
 - **Different vintages/universes** - NPPES (this month), ACS 5-yr (centered ~2-3 yrs back),
   PLACES (a BRFSS year, adults 18+). See `provenance.json`.
+
+### 9a. Coverage against the 5 A's of access (the construct lens - what we measure vs miss)
+A full crawl (2026-06-23) mapped every component to Penchansky & Thomas's 5 A's. This is the
+honest "what are we still missing," separate from the signal question:
+
+| Axis (5 A's) | Covered by | Status |
+|---|---|---|
+| **Availability** (enough providers) | provider_supply (E2SFCA × 4 types), shortage_designation (HPSA) | **Strong** - the most-engineered piece |
+| **Accessibility** (can physically reach) | adaptive catchment, no_vehicle (ACS), digital_access (telehealth) | **Good** - missing only true drive-time (infeasible; circuity's capturable part is a per-stratum rescale percentiles absorb) |
+| **Affordability** (can pay) | insurance (uninsured), socioeconomic (income/poverty), safetynet (FQHC desert × poverty) | **Good** on cost; **missing Medicaid/new-patient acceptance** (no free national file) |
+| **Accommodation** (hours, how care is organized) | — | **GAP**. FQHC operating-hours tested: orthogonal but too weak (§8). ED-timeliness wrong-signed. No usable free signal. |
+| **Acceptability** (cultural/linguistic fit, trust) | — | **GAP**. limited-English is wrong-signed (immigrant-health paradox); no free provider language/race-concordance data. FQHC presence is the only proxy. |
+
+**Bottom line:** 3 of 5 A's are well-covered; **Accommodation and Acceptability are genuine
+construct gaps**, and both are *unfillable from free national data* - every free candidate is
+either collinear with the captured deprivation gradient (collapses in partial-r) or, where
+orthogonal, too weak to survive dimensional dilution. Closing them needs the **scrape-to-calibrate**
+heuristic (sample → regress on held features → predict nationally → gate the predicted column;
+specced in ROADMAP-ACCESS-SIGNAL.md), the only remaining lever that could add genuinely new signal.
 
 ---
 

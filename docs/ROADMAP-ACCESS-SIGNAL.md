@@ -348,6 +348,23 @@ flagged short). Even the desert framing did not escape the collinearity. Rejecte
 *This was the last genuinely-new spatial access dimension in the queue; its failure confirms the
 ceiling - see "Conclusion" below.*
 
+### REJECTED 2026-06-23: FQHC operating-hours (the Accommodation axis foothold)
+The free foothold the audit flagged: the HRSA FQHC file we already download carries `Operating Hours
+per Week`, which we ignore. Tested it as the **Accommodation** axis (the 5-A's gap), two framings,
+Gaussian-catchment over 18,065 active geocoded sites:
+- **Total accessible FQHC-hours** (catchment-weighted sum): raw +0.071 → **partial −0.028**, corr
+  **+0.47** supply / **+0.61** safetynet. Collapses - total hours ∝ site count = FQHC density again.
+- **Average hours per reachable site** (density-normalized): raw +0.049 → **partial +0.085**, and
+  genuinely **orthogonal** (corr +0.03 supply, +0.02 safetynet) - the first orthogonal candidate
+  since HPSA, all four clean outcomes correctly signed. BUT **too weak**: in-memory gate sim (splice
+  as a 6th care_access sub-score, recompute the north-star) moved FULL/dropCare/agreement by
+  **0.000** (new care_access 0.948 corr with old) - at +0.085, diluted 1-of-6 inside a 0.35-weighted
+  dimension, it vanishes at the composite. Conceptually fills Accommodation; statistically a no-op.
+  Could ship as a completeness sub-score (like digital_access) but the signal is too weak to even
+  help reliability. **Not built.** *Lesson: orthogonality is necessary but not sufficient - a signal
+  must also be strong enough to survive dimensional dilution. HPSA cleared both (+0.19); this clears
+  only the first.*
+
 ### REJECTED 2026-06-23: sub-county HPSA resolution (sharpening, not new data)
 The shipped HPSA sub-score uses county-max. Tested whether finer geography sharpens it: 11,632
 designations carry an 11-digit Census-Tract FIPS in `HPSA Geography Identification Number` (81%
