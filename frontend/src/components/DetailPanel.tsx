@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { accessGap, dimensionContributions } from '../lib/scoring';
 import { synthesize } from '../lib/synthesis';
-import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
+import { DEFAULT_WEIGHTS, MODEL, type DimSpec, type SlimMetric } from '../lib/types';
 import { SUBSCORE_MEASURES, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal } from '../lib/format';
@@ -294,14 +294,27 @@ export default function DetailPanel() {
                     </div>
                   </div>
                 ))}
-                <div className="text-[10px] text-graphite mt-1 leading-snug">
-                  Each = that dimension's national percentile × its weight (default{' '}
-                  <span className="num">Need 35 · Vuln 30 · Access 35</span>); bars are out of 100
-                  and the three sum to the score (<span className="num">{fmtScore(score)}</span>).
-                  The weights are a value judgment - need and access sit slightly above
-                  vulnerability, kept near-equal - and you can re-tune them under "Customize the
-                  score."
-                </div>
+                {(() => {
+                  const isDefault =
+                    weights.health_need === DEFAULT_WEIGHTS.health_need &&
+                    weights.social_vulnerability === DEFAULT_WEIGHTS.social_vulnerability &&
+                    weights.care_access === DEFAULT_WEIGHTS.care_access;
+                  const pctOf = (w: number) => Math.round((w / wsum) * 100);
+                  return (
+                    <div className="text-[10px] text-graphite mt-1 leading-snug">
+                      Each bar = that dimension's national percentile × its weight, and the three
+                      sum to the score (<span className="num">{fmtScore(score)}</span>).{' '}
+                      <span className="text-ink">This score isn't fixed</span> - it reflects{' '}
+                      {isDefault ? 'the default weighting' : 'your weighting'} (
+                      <span className="num">
+                        Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)}{' '}
+                        · Access {pctOf(weights.care_access)}
+                      </span>
+                      ), which is a value judgment, not a fact. Re-tune it under "Customize the
+                      score" and the map, rankings, and this number all update.
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}
