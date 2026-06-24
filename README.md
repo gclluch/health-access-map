@@ -21,7 +21,11 @@ The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimens
 The map is the product: pan/zoom a cividis choropleth, click a ZIP for a decomposed
 detail panel, switch the coloring metric, search a ZIP, read a ranked list of
 worst-access areas, and **re-weight the score live with sliders** (recomputed
-client-side - no backend round-trip).
+client-side - no backend round-trip). The sliders are an honest **sensitivity probe, not a
+control that rewrites the map**: because the three dimensions are strongly collinear,
+re-weighting moves ranks by only Spearman ~0.999 / ~±6 pts (see Scoring methodology below) -
+that near-inertness is the finding, deliberately surfaced rather than hidden behind a knob that
+looks more powerful than it is.
 
 ![screenshot](docs/screenshot.png)
 
@@ -173,7 +177,9 @@ rather than silently producing a wrong column.
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
   over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. When
   a CDC WONDER treatable-mortality export is present it also runs the **amenable-mortality focus**
-  (care-access partial r vs the access-sensitive outcome). Finish that anchor in one step with
+  (care-access partial r vs the access-sensitive outcome). **This export has not been pulled, so the
+  amenable-mortality validation has never run** - all current care-access numbers come from the
+  all-cause/county outcomes (see `docs/VALIDATION.md` §4). Finish that anchor in one step with
   `make amenable` after the manual pull (recipe in `pipeline/build_amenable.py`).
 - **Observability**: `lib/observability.ts` - env-gated, dependency-free error + usage hooks
   (`VITE_SENTRY_DSN`, `VITE_ANALYTICS_URL`); no-ops when unset.

@@ -203,8 +203,16 @@ DIMENSIONS: dict = {
             # signed-r +0.48, partial +0.27 vs need+vulnerability+care_access (corr ~0.4 w/
             # poverty but NOT subsumed). Adding it lifted composite clean-r 0.519->0.549 and
             # care_access 0.393->0.480, widening care-access's marginal value to +0.038. An
-            # upstream barrier (cause of care avoidance), not a mediator. County-level (no
-            # sub-county resolution, like HPSA). See docs/DECISIONS.md + VALIDATION.md.
+            # upstream barrier (cause of care avoidance), not a mediator.
+            # RESOLUTION CAVEAT (scored on CONSTRUCT grounds, not sub-county signal): this is a
+            # COUNTY-level input broadcast county->ZCTA, so its within-county r is 0.000 (NY ACSC
+            # and national USALEEP; validate_subcounty auto-flags it "0 sub-county resolution") -
+            # IDENTICAL to shortage_designation (HPSA). Its entire +0.27 partial-r is a
+            # COUNTY-resolution signal; it adds nothing at the tool's native ZCTA resolution. It is
+            # kept scored for the same reason HPSA is (a real, official, county-level affordability
+            # barrier), NOT because it resolves sub-county variance. Unlike safetynet (which was
+            # *wrong*-signed within-county and so unscored), county-flat is signal-less, not
+            # mis-signed, so it is harmless to keep. See docs/VALIDATION.md §3 + DECISIONS.md.
             "medical_debt": {
                 "label": "Medical debt burden",
                 "source": "medicaldebt",

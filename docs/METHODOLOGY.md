@@ -156,10 +156,14 @@ never in the composite.
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
 coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.510**; `drop_care_access`
 0.467 (**below** FULL, so care access *adds* signal, margin **+0.043**); composite agreement
-**0.514**; clean (non-circular) composite-r **0.547**; split-half **0.954**; bands ALL PASS;
+**0.514** (ZCTA-broadcast; the matched-resolution **county-collapsed** point is **0.546**, since 5
+of 6 outcomes are county-level - see VALIDATION.md §1a; gate margins use the cluster bootstrap, not
+this point); clean (non-circular) composite-r **0.547**; split-half **0.954**; bands ALL PASS;
 composite within-county (national) **0.599**. Care sub-scores: **medical_debt** mean|r| **0.40**
-(the strongest - affordability barrier, survives partial-r +0.27), insurance 0.34,
-provider_supply 0.273, **shortage_designation** (HPSA) 0.20. Two care items are computed +
+(the strongest - affordability barrier, survives partial-r +0.27, **but county-level: within-county
+r = 0.000, scored on construct grounds not sub-county signal - VALIDATION.md §3**), insurance 0.34,
+provider_supply 0.273, **shortage_designation** (HPSA) 0.20. These thin margins are **not
+multiple-comparisons corrected** (VALIDATION.md §1c). Two care items are computed +
 displayed but **unscored**: `safetynet_access` (wrong-signed within counties) and `preventive_use`
 (realized utilization - a mediator/outcome, not a barrier). The arc this session: dropped the
 `preventive_use` mediator (clean-r 0.501→0.516) and added the `medical_debt` barrier (→0.547),
@@ -185,6 +189,16 @@ ones.** This rule is what caught Layer C1 (§8).
   well-measured baseline - widens low-pop ZCTAs), and (c) PLACES measurement noise (Layer B3 - a
   near-uniform irreducible modeling-uncertainty floor on the disease/health_need estimates),
   combined in quadrature. A ZCTA's rank moves ~+/-6 pts under reweighting and ~+/-4 from noise.
+  - **What is calibrated vs chosen (read before trusting the widths to the point):** the band
+    *magnitude* is not free-tuned to a target - the noise-injection scale is calibrated so the
+    injected σ matches an **independent member-input resample** (perturb each rate by its published
+    SE, propagate to the dimension percentile), and `pipeline.verify_bands` gate 3 fails unless
+    injected/empirical ∈ [0.8, 1.2] per ACS dimension. What *is* a judgment call - researcher
+    degrees of freedom the gate does not pin down - is the band's *shape*: the median-CV floor
+    (which ZCTAs get zero added noise), the excess cap, the decision to floor-subtract ACS but not
+    PLACES, and the per-dimension propagation shares. These move *which* ZCTAs widen and by how
+    much relative to each other, even though the overall level is anchored. So trust the bands as
+    a calibrated order-of-magnitude ("~10-15 pts, low-pop wider"), not as exact per-ZCTA intervals.
 - **Honest resolution:** internally reliable (split-half 0.95), but two ZIPs differ reliably
   only by ~10-15 percentile points - about **7-10 tiers, not 33,000 ranks**. The UI shows
   deciles + a reliable range, not a false integer leaderboard (`VALIDATION.md`).
