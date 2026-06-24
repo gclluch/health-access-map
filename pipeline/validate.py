@@ -132,8 +132,11 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         die("validate", f"missing {METRICS.name}; run join_and_score first")
     df = pd.read_parquet(METRICS)
     df = df[df["scoreable"] == True].copy()  # noqa: E712
+    # composite-level _pctile columns are not sub-scores: exclude the additive rank, the
+    # multiplicative-lens rank, and the life-expectancy outcome rank.
+    _not_subscores = ("access_gap_pctile", "access_gap_mult_pctile", "life_expectancy_pctile")
     sub_cols = [c for c in df.columns if c.endswith("_pctile")
-                and c not in DIM_COLS and c not in ("access_gap_pctile", "life_expectancy_pctile")]
+                and c not in DIM_COLS and c not in _not_subscores]
 
     # county-level outcomes usually ride in via join (OPTIONAL_STAGES). Merge any that
     # are missing (e.g. validate re-run against an older metrics.parquet), avoiding the

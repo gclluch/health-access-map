@@ -248,6 +248,26 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
     df["access_gap_pctile"] = _pct(df["access_gap_score"])  # true rank of the composite
 
+    # ---- alternative LENS: multiplicative (geometric) gap ----
+    # Weighted GEOMETRIC mean of the same dimension percentiles + weights, renormalized over
+    # present dims. Unlike the additive default it is NON-compensatory (OECD/JRC geometric
+    # aggregation): a surplus in one dimension cannot fully offset a deficit in another, so it
+    # concentrates on areas where need AND barriers COINCIDE - the targeting construct
+    # (Penchansky-Thomas access-as-fit; COMPOSITE-ENHANCEMENT rec 6). Shipped as a SELECTABLE
+    # LENS, not the default: it tracks outcomes ~identically (clean mean-r 0.500 vs additive
+    # 0.502, rank corr 0.994, identical coverage) but down-weights one-dimensional highs
+    # (need-only / barrier-only) by ~4-5 pctile pts vs the additive. Frac clipped to [0.01,1]
+    # so a 0-rank dimension cannot zero the product. wsum (renormalizer) reused from above.
+    lognum = pd.Series(0.0, index=df.index)
+    for dkey in DIMENSIONS:
+        col = f"{dkey}_pctile"
+        mask = df[col].notna()
+        frac = np.clip(df[col].fillna(100.0).to_numpy() / 100.0, 0.01, 1.0)
+        lognum = lognum.add(np.where(mask, DIMENSION_WEIGHTS[dkey] * np.log(frac), 0.0))
+    df["access_gap_mult"] = (100.0 * np.exp(lognum / wsum)).where(wsum > 0)
+    df.loc[~df["scoreable"], "access_gap_mult"] = np.nan
+    df["access_gap_mult_pctile"] = _pct(df["access_gap_mult"])  # rank of the multiplicative lens
+
     # Rank uncertainty (Saisana sensitivity): how much would this ZCTA's national rank
     # move under any defensible weighting? The honest answer to "can we compare two ZIPs":
     # only when their bands don't overlap. No production index (ADI/SVI/CHR) ships this.
@@ -276,6 +296,10 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         "low_confidence": int(df["low_confidence"].sum()),
         "dimension_correlations": corr,
         "outcome_anchor": anchor, "scope": dev_state or "national",
+        "multiplicative_lens": "access_gap_mult_pctile = weighted GEOMETRIC mean of the 3 "
+            "dimension percentiles (OECD non-compensatory aggregation); a selectable lens that "
+            "targets need-AND-barrier coincidence. Tracks outcomes ~identically to the additive "
+            "default (clean mean-r 0.500 vs 0.502); down-weights one-dimensional highs ~4-5 pts.",
     }})
     log("join", f"outcome anchor (vs fair/poor health): {anchor}")
     log("join", f"wrote {OUT_PARQUET.name} ({len(df)} rows, {df.shape[1]} cols) + {OUT_JSON.name}")
@@ -299,7 +323,7 @@ def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     # slim payload: geography + composite + dimensions + sub-scores + flags.
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
             "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
-            "access_gap_rank_hi", "tier", "low_confidence", "scoreable",
+            "access_gap_rank_hi", "access_gap_mult_pctile", "tier", "low_confidence", "scoreable",
             "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
