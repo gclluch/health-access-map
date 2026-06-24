@@ -36,6 +36,7 @@ export default function WeightSliders() {
   const resetWeights = useStore((s) => s.resetWeights);
   const applyPreset = useStore((s) => s.applyPreset);
   const setMetric = useStore((s) => s.setMetric);
+  const toggleWeights = useStore((s) => s.toggleWeights);
   const anchors = useStore((s) => s.anchors);
 
   // Local mirror keeps the thumb + readout instant; commits to the store (which
@@ -58,7 +59,15 @@ export default function WeightSliders() {
   return (
     <div className="px-3 py-2.5 border-t border-hairline">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-medium text-ink">Customize the score</span>
+        <button
+          onClick={toggleWeights}
+          aria-expanded={true}
+          aria-label="Collapse customize the score"
+          className="flex items-center gap-1 text-[12px] font-medium text-ink hover:text-accent"
+        >
+          <span className="text-graphite text-[11px]" aria-hidden>▾</span>
+          Customize the score
+        </button>
         <button
           className="text-[11px] text-accent hover:underline disabled:text-graphite disabled:no-underline"
           onClick={resetWeights}
