@@ -120,6 +120,10 @@ def run() -> dict:
 
     print("\n--- gate reminder: care-access fix passes iff drop_care_access FALLS and "
           "composite_mean_r does not regress ---")
+    print("--- these are POINT estimates. Run `python -m pipeline.bootstrap_gate` for 95% CIs "
+          "on every margin (cluster bootstrap over county, paired); ship only if the margin CI "
+          "excludes 0. Current: care_access margin +0.042 CI[0.038,0.048], adds signal in 100% "
+          "of resamples; social_vulnerability margin -0.008 CI[-0.011,-0.004] (mildly redundant). ---")
     return report
 
 
