@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
+import { downloadCsv } from '../lib/csv';
 import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
 
 // access_gap spreads 0-100; the raw-percentile metrics cluster near 100/0 at the
@@ -35,6 +36,41 @@ export default function RankingsList() {
   }, [metrics, metric, weights, stateFilter, rankOrder]);
 
   const end = rankOrder === 'desc' ? 'Highest' : 'Lowest';
+
+  const exportCsv = () => {
+    const rows = [];
+    for (const r of metricsRows()) rows.push(r);
+    downloadCsv(`access-gap-${metric}${stateFilter ? '-' + stateFilter : ''}.csv`, rows);
+  };
+  // full export rows (not capped at 100): the ranked, filtered set with its dimension breakdown
+  function* metricsRows() {
+    let rank = 0;
+    const all: Array<{ m: ReturnType<typeof metrics.get>; v: number }> = [];
+    for (const m of metrics.values()) {
+      if (!m.scoreable || m.low_confidence) continue;
+      if (stateFilter && m.state !== stateFilter) continue;
+      const v = metricValue(m, metric, weights);
+      if (v != null && !Number.isNaN(v)) all.push({ m, v });
+    }
+    all.sort((a, b) => (rankOrder === 'desc' ? b.v - a.v : a.v - b.v));
+    for (const { m, v } of all) {
+      rank += 1;
+      yield {
+        rank,
+        zip: m!.zcta5,
+        place: m!.city ?? m!.county_name ?? '',
+        state: m!.state ?? '',
+        metric,
+        value: Number(v.toFixed(1)),
+        tier: m!.tier ?? '',
+        n_dims_scored: m!.n_dims_scored ?? '',
+        health_need_pctile: m!.health_need_pctile ?? '',
+        social_vulnerability_pctile: m!.social_vulnerability_pctile ?? '',
+        care_access_pctile: m!.care_access_pctile ?? '',
+        population: m!.population ?? '',
+      };
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -84,9 +120,18 @@ export default function RankingsList() {
             </button>
           </div>
         </div>
-        <div className="text-[10px] text-graphite">
-          {end} {metricLabel(metric).toLowerCase()} · top {rows.length}
-          {stateFilter ? ` · ${stateFilter}` : ''} · relative national rank
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] text-graphite min-w-0 truncate">
+            {end} {metricLabel(metric).toLowerCase()} · top {rows.length}
+            {stateFilter ? ` · ${stateFilter}` : ''} · relative national rank
+          </div>
+          <button
+            onClick={exportCsv}
+            className="text-[10px] text-accent hover:underline shrink-0"
+            title="Download the full ranked, filtered list as CSV"
+          >
+            ⬇ CSV
+          </button>
         </div>
       </div>
       <div className="overflow-y-auto flex-1">
@@ -95,6 +140,7 @@ export default function RankingsList() {
           return (
             <button
               key={r.z}
+              data-testid="ranking-row"
               onMouseEnter={() => hover(r.z)}
               onMouseLeave={() => hover(null)}
               onClick={() => select(r.z, { fly: true })}

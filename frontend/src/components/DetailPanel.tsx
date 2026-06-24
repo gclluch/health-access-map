@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { accessGap, dimensionContributions } from '../lib/scoring';
+import { accessGap, buildScoreIndex, percentileOf } from '../lib/scoring';
 import { synthesize } from '../lib/synthesis';
-import { DEFAULT_WEIGHTS, MODEL, type DimSpec, type SlimMetric } from '../lib/types';
+import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
+import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal } from '../lib/format';
@@ -159,6 +160,10 @@ function Dimension({
 export default function DetailPanel() {
   const { metrics, weights, selectedZcta } = useStore();
   const select = useStore((s) => s.select);
+  const compareZctas = useStore((s) => s.compareZctas);
+  const addCompare = useStore((s) => s.addCompare);
+  const removeCompare = useStore((s) => s.removeCompare);
+  const inCompare = selectedZcta != null && compareZctas.includes(selectedZcta);
   const m = selectedZcta ? metrics.get(selectedZcta) : undefined;
   const [rec, setRec] = useState<Record<string, unknown> | null>(null);
 
@@ -216,29 +221,11 @@ export default function DetailPanel() {
     };
   }, [selectedZcta]);
 
-  const sortedScores = useMemo(() => {
-    const arr: number[] = [];
-    for (const mm of metrics.values()) {
-      const s = accessGap(mm, weights);
-      if (s != null) arr.push(s);
-    }
-    return arr.sort((a, b) => a - b);
-  }, [metrics, weights]);
+  const sortedScores = useMemo(() => buildScoreIndex(metrics.values(), weights), [metrics, weights]);
 
   if (!m) return null;
   const score = accessGap(m, weights);
-  const scorePercentile = (() => {
-    if (score == null || !sortedScores.length) return null;
-    let lo = 0;
-    let hi = sortedScores.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (sortedScores[mid] < score) lo = mid + 1;
-      else hi = mid;
-    }
-    return (lo / sortedScores.length) * 100;
-  })();
-  const contrib = dimensionContributions(m, weights);
+  const scorePercentile = percentileOf(sortedScores, score);
 
   return (
     <div className="relative w-full sm:w-auto" style={isDesktop ? { width } : undefined}>
@@ -269,13 +256,27 @@ export default function DetailPanel() {
               {m.state_name ? ` · ${m.state_name}` : m.state ? ` · ${m.state}` : ''}
             </div>
           </div>
-          <button
-            onClick={() => select(null)}
-            aria-label="Close panel"
-            className="text-graphite hover:text-ink text-[16px] leading-none px-1"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => (inCompare ? removeCompare(m.zcta5) : addCompare(m.zcta5))}
+              aria-pressed={inCompare}
+              className={`text-[11px] rounded border px-1.5 py-0.5 whitespace-nowrap ${
+                inCompare
+                  ? 'border-accent text-accent bg-accent/8'
+                  : 'border-hairline text-graphite hover:border-accent hover:text-accent'
+              }`}
+              title="Compare this ZIP side-by-side with others"
+            >
+              {inCompare ? '✓ Comparing' : '＋ Compare'}
+            </button>
+            <button
+              onClick={() => select(null)}
+              aria-label="Close panel"
+              className="text-graphite hover:text-ink text-[16px] leading-none px-1"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       </div>
 
@@ -285,15 +286,21 @@ export default function DetailPanel() {
             Low-confidence area - small population ({fmtInt(m.population as number)}), wide margins.
           </div>
         )}
+        {m.n_dims_scored != null && m.n_dims_scored < 3 && (
+          <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
+            Partial score - built from {m.n_dims_scored} of 3 dimensions (one had no usable data
+            here), so it is a weaker estimate than a full 3-dimension score. Compare with care.
+          </div>
+        )}
 
         <div className="flex items-baseline gap-2">
-          <span className="num text-[34px] font-semibold text-ink leading-none">{fmtScore(score)}</span>
-          <span className="text-[11px] text-graphite">/ 100 access gap</span>
+          <span className="num text-[34px] font-semibold text-ink leading-none">{fmtScore(scorePercentile)}</span>
+          <span className="text-[11px] text-graphite">/ 100 · national access-gap rank</span>
         </div>
         <div className="text-[11px] text-graphite mt-0.5">
           {score == null
             ? 'Insufficient reliable data to score this area.'
-            : `Worse access than ${fmtScore(scorePercentile)}% of U.S. ZIPs (relative rank)`}
+            : `Worse access than ${fmtScore(scorePercentile)}% of U.S. ZIPs. Built from a weighted index of ${fmtScore(score)} (see "What drives the gap"), then ranked against every ZIP.`}
         </div>
         {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
           <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
@@ -312,66 +319,7 @@ export default function DetailPanel() {
           </p>
         )}
 
-        {/* dimension contributions: each = percentile × normalized weight; they
-            sum to the score. Bars are out of 100 so the scale is unambiguous. */}
-        {contrib &&
-          (() => {
-            const wsum =
-              weights.health_need + weights.social_vulnerability + weights.care_access || 1;
-            const rows = [
-              ['Health need', 'health_need', m.health_need_pctile, weights.health_need, contrib.health_need],
-              ['Social vulnerability', 'social_vulnerability', m.social_vulnerability_pctile, weights.social_vulnerability, contrib.social_vulnerability],
-              ['Barriers to care', 'care_access', m.care_access_pctile, weights.care_access, contrib.care_access],
-            ] as Array<[string, string, number | null, number, number]>;
-            return (
-              <div className="mt-3 pt-2.5 border-t border-hairline">
-                <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
-                  What drives the gap
-                </div>
-                {rows.map(([label, key, pct, w, c]) => (
-                  <div key={key} className="mb-1.5">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[11px] text-ink flex-1">{label}</span>
-                      <span className="num text-[10px] text-graphite">
-                        {ordinal(pct)} pct × {Math.round((w / wsum) * 100)}%
-                      </span>
-                      <span className="num text-[12px] text-ink font-medium w-7 text-right">
-                        {c.toFixed(0)}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-hairline rounded-full overflow-hidden mt-0.5">
-                      <span
-                        className="block h-full bg-accent rounded-full"
-                        style={{ width: `${Math.min(100, c)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {(() => {
-                  const isDefault =
-                    weights.health_need === DEFAULT_WEIGHTS.health_need &&
-                    weights.social_vulnerability === DEFAULT_WEIGHTS.social_vulnerability &&
-                    weights.care_access === DEFAULT_WEIGHTS.care_access;
-                  const pctOf = (w: number) => Math.round((w / wsum) * 100);
-                  return (
-                    <div className="text-[10px] text-graphite mt-1 leading-snug">
-                      Each bar = that dimension's national percentile × its weight, and the three
-                      sum to the score (<span className="num">{fmtScore(score)}</span>).{' '}
-                      <span className="text-ink">This score isn't fixed</span> - it reflects{' '}
-                      {isDefault ? 'the default weighting' : 'your weighting'} (
-                      <span className="num">
-                        Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)}{' '}
-                        · Access {pctOf(weights.care_access)}
-                      </span>
-                      ), which is a value judgment, not a fact. Re-tune it under{' '}
-                      <span className="text-ink">"Adjust weighting"</span> and the map, rankings,
-                      and this number all update.
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          })()}
+        <DriversSection m={m} weights={weights} score={score} scorePercentile={scorePercentile} />
 
         {/* drill-down: dimensions -> sub-scores -> measures */}
         <div className="mt-3 pt-2.5 border-t border-hairline">
@@ -458,8 +406,8 @@ export default function DetailPanel() {
 
         <div className="mt-3 text-[10px] text-graphite leading-snug">
           Disease/behavior values are modeled CDC PLACES estimates (BRFSS), not counts. Provider
-          access is a 2SFCA catchment metric over registered providers. Every score is a relative
-          national rank; higher = worse.
+          access is a 2SFCA catchment metric over registered providers. The headline score is a
+          relative national rank (percentile); higher = worse.
         </div>
       </div>
       </div>

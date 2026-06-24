@@ -159,6 +159,13 @@ export default function WeightSliders() {
         {weights.care_access}
         <span className="ml-1 text-graphite">(normalized)</span>
       </div>
+
+      <p className="text-[10px] text-graphite mt-2 leading-snug border-t border-hairline pt-2">
+        <span className="text-ink font-medium">A sensitivity probe, not a rewrite.</span> The three
+        dimensions are strongly correlated (~1.6 effective dimensions), so even large weight
+        changes move a ZIP's national rank only ~±6 points (Spearman ~0.999). Use this to see what
+        the score is sensitive to - not to hunt for a "true" weighting that doesn't exist.
+      </p>
     </div>
   );
 }

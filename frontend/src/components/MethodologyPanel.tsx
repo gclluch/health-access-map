@@ -17,7 +17,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are correlated (~0.5), so the weighted sum double-counts shared variance. The tunable weights make that subjectivity explicit rather than hidden.',
+    'Health need, social vulnerability, and care access are strongly correlated (0.58-0.74; PC1 explains 77% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
@@ -128,6 +128,34 @@ function ValidationTable() {
   );
 }
 
+// Citation + reuse block: researchers/grant-writers need something to cite and a clear reuse
+// statement (the inputs are public-domain federal data; the index is a derived work).
+function CiteBlock() {
+  const year = new Date().getFullYear();
+  const citation =
+    `Health Access Map (${year}). A national ZIP-level (ZCTA) relative index of health-care-access ` +
+    `disadvantage. Derived from CDC PLACES, Census ACS 5-year, CMS NPPES, HRSA, and Urban Institute ` +
+    `open data. Retrieved ${new Date().toISOString().slice(0, 10)} from ${location.origin}.`;
+  return (
+    <div className="border-t border-hairline pt-3 mt-3">
+      <div className="text-[11px] uppercase tracking-wide text-graphite mb-1">Cite / reuse</div>
+      <p className="text-[11px] text-graphite leading-snug mb-1.5">
+        Underlying data are public-domain U.S. federal sources; this composite is a derived,
+        relative index (use it as a screening lens, not a verdict). Suggested citation:
+      </p>
+      <div className="text-[11px] text-ink bg-paper/60 border border-hairline rounded px-2 py-1.5 leading-snug">
+        {citation}
+      </div>
+      <button
+        onClick={() => navigator.clipboard?.writeText(citation)}
+        className="mt-1.5 text-[11px] text-accent hover:underline"
+      >
+        Copy citation
+      </button>
+    </div>
+  );
+}
+
 export default function MethodologyPanel() {
   const show = useStore((s) => s.showMethodology);
   const toggle = useStore((s) => s.toggleMethodology);
@@ -216,8 +244,10 @@ export default function MethodologyPanel() {
               </li>
             </ul>
             <p className="text-[11px] text-graphite mt-2">
-              Dimensions are correlated (~0.5), so the weighted sum partly double-counts shared
-              variance - the sliders exist precisely so that judgment is yours, not hidden.
+              Dimensions are strongly correlated (0.58-0.74; ~1.6 effective dimensions), so the
+              weighted sum partly double-counts shared variance. The sliders exist so that
+              value judgment is yours - but because the axes move together, re-weighting shifts
+              ranks only ~±6 points (Spearman ~0.999): a sensitivity probe, not a rewrite.
             </p>
           </div>
           {/* Explicit 5 A's coverage - the access framework, and where we have signal vs gaps. */}
@@ -276,6 +306,7 @@ export default function MethodologyPanel() {
               should be read with that skew in mind.
             </p>
           </div>
+          <CiteBlock />
           <p className="text-[11px] text-graphite border-t border-hairline pt-3 mt-3">
             Area patterns are not individual-level facts (ecological fallacy). Crude prevalence
             reflects age mix. This is an exploratory instrument, not a clinical or policy verdict.

@@ -10,23 +10,23 @@
       "scope": "county",
       "caveat": "Medicare 65+ FFS; the textbook ambulatory-access outcome",
       "weights": {
-        "health_need": 41.1,
-        "social_vulnerability": 34.6,
-        "care_access": 24.4
+        "health_need": 38.2,
+        "social_vulnerability": 32.2,
+        "care_access": 29.6
       },
       "regression_weights": {
-        "health_need": 83.6,
-        "social_vulnerability": 11.4,
-        "care_access": 5.0
+        "health_need": 76.1,
+        "social_vulnerability": 5.0,
+        "care_access": 18.9
       },
       "fit": {
-        "r2": 0.181,
+        "r2": 0.183,
         "n": 3051
       },
       "dimension_corr": {
         "health_need": 0.424,
         "social_vulnerability": 0.348,
-        "care_access": 0.228
+        "care_access": 0.315
       }
     },
     "premature_death": {
@@ -34,23 +34,23 @@
       "scope": "county",
       "caveat": "broad mortality burden; partly need-driven",
       "weights": {
-        "health_need": 36.7,
-        "social_vulnerability": 34.4,
-        "care_access": 28.9
+        "health_need": 35.3,
+        "social_vulnerability": 33.2,
+        "care_access": 31.5
       },
       "regression_weights": {
-        "health_need": 54.5,
-        "social_vulnerability": 22.3,
-        "care_access": 23.2
+        "health_need": 50.9,
+        "social_vulnerability": 19.9,
+        "care_access": 29.3
       },
       "fit": {
-        "r2": 0.512,
+        "r2": 0.519,
         "n": 3069
       },
       "dimension_corr": {
         "health_need": 0.685,
         "social_vulnerability": 0.637,
-        "care_access": 0.517
+        "care_access": 0.6
       }
     },
     "infant_mortality": {
@@ -58,23 +58,23 @@
       "scope": "county",
       "caveat": "natural validator for maternity (OB-GYN) supply; sparse at county",
       "weights": {
-        "health_need": 38.0,
-        "social_vulnerability": 35.2,
-        "care_access": 26.8
+        "health_need": 35.5,
+        "social_vulnerability": 33.0,
+        "care_access": 31.5
       },
       "regression_weights": {
-        "health_need": 60.7,
-        "social_vulnerability": 28.0,
-        "care_access": 11.4
+        "health_need": 53.3,
+        "social_vulnerability": 17.4,
+        "care_access": 29.4
       },
       "fit": {
-        "r2": 0.424,
+        "r2": 0.444,
         "n": 1177
       },
       "dimension_corr": {
         "health_need": 0.634,
         "social_vulnerability": 0.58,
-        "care_access": 0.419
+        "care_access": 0.55
       }
     },
     "flu_vaccination": {
@@ -82,23 +82,23 @@
       "scope": "county",
       "caveat": "proximal: did people actually receive care? Closer to access than mortality",
       "weights": {
-        "health_need": 29.1,
-        "social_vulnerability": 30.5,
-        "care_access": 40.4
+        "health_need": 31.0,
+        "social_vulnerability": 32.5,
+        "care_access": 36.5
       },
       "regression_weights": {
-        "health_need": 21.5,
-        "social_vulnerability": 5.5,
-        "care_access": 72.9
+        "health_need": 19.9,
+        "social_vulnerability": 20.7,
+        "care_access": 59.4
       },
       "fit": {
-        "r2": 0.242,
+        "r2": 0.171,
         "n": 3107
       },
       "dimension_corr": {
         "health_need": 0.329,
         "social_vulnerability": 0.348,
-        "care_access": 0.483
+        "care_access": 0.398
       }
     },
     "mammography": {
@@ -106,23 +106,23 @@
       "scope": "county",
       "caveat": "proximal access/utilization; claims-based, independent of the PLACES model",
       "weights": {
-        "health_need": 27.4,
-        "social_vulnerability": 32.5,
-        "care_access": 40.1
+        "health_need": 28.9,
+        "social_vulnerability": 34.3,
+        "care_access": 36.9
       },
       "regression_weights": {
         "health_need": 5.0,
-        "social_vulnerability": 25.6,
-        "care_access": 69.4
+        "social_vulnerability": 37.4,
+        "care_access": 57.6
       },
       "fit": {
-        "r2": 0.339,
+        "r2": 0.257,
         "n": 3103
       },
       "dimension_corr": {
         "health_need": 0.363,
         "social_vulnerability": 0.445,
-        "care_access": 0.57
+        "care_access": 0.484
       }
     },
     "life_expectancy": {
@@ -130,23 +130,23 @@
       "scope": "zcta",
       "caveat": "all-cause -> a NEED outcome; starves care-access by construction. Validity check only, not a recommended weighting.",
       "weights": {
-        "health_need": 38.9,
-        "social_vulnerability": 33.5,
-        "care_access": 27.6
+        "health_need": 37.9,
+        "social_vulnerability": 32.7,
+        "care_access": 29.4
       },
       "regression_weights": {
-        "health_need": 68.4,
-        "social_vulnerability": 18.5,
-        "care_access": 13.1
+        "health_need": 63.5,
+        "social_vulnerability": 15.2,
+        "care_access": 21.3
       },
       "fit": {
-        "r2": 0.379,
+        "r2": 0.386,
         "n": 31467
       },
       "dimension_corr": {
         "health_need": 0.606,
         "social_vulnerability": 0.511,
-        "care_access": 0.404
+        "care_access": 0.451
       }
     }
   },
@@ -164,6 +164,7 @@
       "shortage_designation": 0.187,
       "safetynet_access": 0.014,
       "insurance": 0.169,
+      "medical_debt": 0.347,
       "preventive_use": 0.129
     },
     "premature_death": {
@@ -179,6 +180,7 @@
       "shortage_designation": 0.379,
       "safetynet_access": 0.18,
       "insurance": 0.432,
+      "medical_debt": 0.506,
       "preventive_use": 0.295
     },
     "infant_mortality": {
@@ -194,6 +196,7 @@
       "shortage_designation": 0.236,
       "safetynet_access": 0.339,
       "insurance": 0.393,
+      "medical_debt": 0.483,
       "preventive_use": 0.111
     },
     "flu_vaccination": {
@@ -209,6 +212,7 @@
       "shortage_designation": 0.12,
       "safetynet_access": 0.422,
       "insurance": 0.377,
+      "medical_debt": 0.147,
       "preventive_use": 0.358
     },
     "mammography": {
@@ -224,6 +228,7 @@
       "shortage_designation": 0.231,
       "safetynet_access": 0.222,
       "insurance": 0.482,
+      "medical_debt": 0.323,
       "preventive_use": 0.585
     },
     "life_expectancy": {
@@ -239,6 +244,7 @@
       "shortage_designation": 0.183,
       "safetynet_access": 0.09,
       "insurance": 0.384,
+      "medical_debt": 0.443,
       "preventive_use": 0.329
     }
   },

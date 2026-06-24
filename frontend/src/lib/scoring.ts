@@ -54,6 +54,31 @@ export function metricValue(m: SlimMetric, metric: string, w: Weights): number |
   return typeof v === 'number' ? v : null;
 }
 
+// Sorted (ascending) array of every scoreable area's live access-gap value, for converting a
+// single area's value into its national percentile under the CURRENT weights (the additive
+// composite is re-ranked at the dimension level server-side, but re-weighting needs a live rank).
+export function buildScoreIndex(metrics: Iterable<SlimMetric>, w: Weights): number[] {
+  const arr: number[] = [];
+  for (const m of metrics) {
+    const s = accessGap(m, w);
+    if (s != null) arr.push(s);
+  }
+  return arr.sort((a, b) => a - b);
+}
+
+// National percentile of `score` within a sorted index from buildScoreIndex (binary search).
+export function percentileOf(sorted: number[], score: number | null): number | null {
+  if (score == null || !sorted.length) return null;
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] < score) lo = mid + 1;
+    else hi = mid;
+  }
+  return (lo / sorted.length) * 100;
+}
+
 // Contribution of each dimension to the composite (weight-normalized; sums to score).
 export function dimensionContributions(
   m: SlimMetric,

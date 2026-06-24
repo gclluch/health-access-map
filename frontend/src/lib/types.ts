@@ -17,6 +17,7 @@ export interface SlimMetric {
   tier: number | null;                // decile 1-10 (the resolution the data supports)
   low_confidence: boolean;
   scoreable: boolean;
+  n_dims_scored: number | null;       // 2 or 3 dimensions backed the composite (2 = weaker estimate)
   // dimensions
   health_need_pctile: number | null;
   social_vulnerability_pctile: number | null;
@@ -51,6 +52,15 @@ export const STATE_NAMES: Record<string, string> = {
   SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont',
   VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 };
+
+// Build metadata (pipeline -> frontend/public/meta.json): drives the "data as of" freshness badge.
+export interface BuildMeta {
+  generated: string;
+  vintages: { places?: string; acs_year?: number; tiger_year?: number; nppes?: string | null };
+  n_scored?: number;
+  low_confidence?: number;
+  effective_dimensions?: { pc1_share?: number; participation_ratio?: number };
+}
 
 export type DimKey = 'health_need' | 'social_vulnerability' | 'care_access';
 

@@ -8,6 +8,7 @@ import DetailPanel from './components/DetailPanel';
 import WeightSliders from './components/WeightSliders';
 import MethodologyPanel from './components/MethodologyPanel';
 import TopControls from './components/TopControls';
+import CompareTray from './components/CompareTray';
 
 function Loading() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
   const { status, error } = useStore();
   const load = useStore((s) => s.load);
   const selectedZcta = useStore((s) => s.selectedZcta);
+  const compareCount = useStore((s) => s.compareZctas.length);
   const showWeights = useStore((s) => s.showWeights);
   const toggleMethodology = useStore((s) => s.toggleMethodology);
   const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 640);
@@ -63,6 +65,7 @@ export default function App() {
           <span className="font-serif text-[16px] text-ink bg-surface/85 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline">
             Health Access Map
           </span>
+          <FreshnessBadge />
         </div>
         <div className="flex-1 min-w-[8px]" />
         <div className="pointer-events-auto flex items-center gap-1.5 flex-wrap justify-end">
@@ -120,9 +123,38 @@ export default function App() {
         </div>
       )}
 
+      {/* comparison tray (when 1+ ZIPs are pinned): top-center, above the map */}
+      {status === 'ready' && compareCount > 0 && (
+        <div className="absolute z-30 left-2 right-2 top-[52px] sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[540px] max-w-[96vw]">
+          <CompareTray />
+        </div>
+      )}
+
       <Toast />
       <MethodologyPanel />
     </div>
+  );
+}
+
+// "Data as of" freshness badge: makes the build date + source vintages visible at a glance
+// (a federal-index omission the audit flagged). Hidden until meta.json loads.
+function FreshnessBadge() {
+  const meta = useStore((s) => s.meta);
+  if (!meta?.generated) return null;
+  const v = meta.vintages ?? {};
+  const nppes = v.nppes?.replace(/^NPPES_Data_Dissemination_|\.zip$/g, '').replace(/_/g, ' ');
+  const tip =
+    `Built ${meta.generated} from: CDC PLACES (${v.places ?? '?'}), ` +
+    `Census ACS 5-yr ${v.acs_year ?? '?'}, TIGER ${v.tiger_year ?? '?'}` +
+    (nppes ? `, NPPES ${nppes}` : '') +
+    `. ${meta.n_scored?.toLocaleString() ?? '?'} ZIPs scored.`;
+  return (
+    <span
+      title={tip}
+      className="hidden sm:inline-block num text-[10px] text-graphite bg-surface/85 border border-hairline rounded px-1.5 py-1 cursor-help"
+    >
+      data as of {meta.generated}
+    </span>
   );
 }
 

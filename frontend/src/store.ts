@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { loadData, type FeatureCollection } from './lib/data';
+import { track } from './lib/observability';
 import {
   COMPOSITE_METRIC,
   DEFAULT_WEIGHTS,
   parseAnchors,
   PRESETS,
   type AnchorPreset,
+  type BuildMeta,
   type SlimMetric,
   type SubscoreCorrelations,
   type Weights,
@@ -33,9 +35,11 @@ interface AppState {
   metric: string;
   weights: Weights;
   anchors: AnchorPreset[];
+  meta: BuildMeta | null;
   subscoreCorrelations: SubscoreCorrelations;
   selectedZcta: string | null;
   hoveredZcta: string | null;
+  compareZctas: string[];
   stateFilter: string | null;
   rankOrder: 'desc' | 'asc';
   flyTarget: FlyTarget | null;
@@ -53,6 +57,9 @@ interface AppState {
   applyPreset: (name: string) => void;
   select: (z: string | null, opts?: { fly?: boolean }) => void;
   hover: (z: string | null) => void;
+  addCompare: (z: string) => void;
+  removeCompare: (z: string) => void;
+  clearCompare: () => void;
   jumpToState: (s: string | null) => void;
   setRankOrder: (o: 'desc' | 'asc') => void;
   toggleWeights: () => void;
@@ -104,9 +111,11 @@ export const useStore = create<AppState>((set, get) => ({
   metric: COMPOSITE_METRIC,
   weights: { ...DEFAULT_WEIGHTS },
   anchors: [],
+  meta: null,
   subscoreCorrelations: {},
   selectedZcta: null,
   hoveredZcta: null,
+  compareZctas: [],
   stateFilter: null,
   rankOrder: 'desc',
   flyTarget: null,
@@ -127,6 +136,13 @@ export const useStore = create<AppState>((set, get) => ({
         .then((w) => {
           if (w?.anchors)
             set({ anchors: parseAnchors(w), subscoreCorrelations: w.subscore_correlations ?? {} });
+        })
+        .catch(() => {});
+      // build metadata for the "data as of" freshness badge (optional)
+      fetch('/meta.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((mt) => {
+          if (mt?.generated) set({ meta: mt });
         })
         .catch(() => {});
       // Fit to the continental US by default: AK/HI/PR centroids otherwise stretch
@@ -192,6 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setMetric: (m) => {
     set({ metric: m });
+    track('metric_changed', { metric: m });
     syncUrl(get());
   },
   setWeights: (w) => {
@@ -211,10 +228,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
   select: (z, opts) => {
     set({ selectedZcta: z });
+    if (z) track('zcta_selected', { zcta: z });
     if (z && opts?.fly) get().flyTo(z);
     syncUrl(get());
   },
   hover: (z) => set({ hoveredZcta: z }),
+  addCompare: (z) =>
+    set((s) => (s.compareZctas.includes(z) || s.compareZctas.length >= 5
+      ? s
+      : { compareZctas: [...s.compareZctas, z] })),
+  removeCompare: (z) => set((s) => ({ compareZctas: s.compareZctas.filter((x) => x !== z) })),
+  clearCompare: () => set({ compareZctas: [] }),
   setRankOrder: (o) => set({ rankOrder: o }),
   jumpToState: (s) => {
     set({ stateFilter: s });
