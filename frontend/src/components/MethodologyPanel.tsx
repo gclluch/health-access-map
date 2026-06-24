@@ -25,7 +25,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Can you compare two ZIPs? Only coarsely',
-    'Internally the score is reliable (split-half reliability 0.94) and it tracks independent outcomes - but a ZIP\'s national rank moves ~±6 points under any reasonable re-weighting and ~±4 more from measurement noise. So two ZIPs are reliably different only if they differ by ~10-15 percentile points - about 7-10 distinct tiers, not 33,000 ranks. Each ZIP shows a "reliable range"; if two ranges overlap, treat the ZIPs as indistinguishable. No federal index (ADI, SVI, County Health Rankings) publishes this - they show point ranks the data cannot support.',
+    'Internally the score is reliable (split-half reliability 0.95) and it tracks independent outcomes - but a ZIP\'s national rank moves ~±6 points under any reasonable re-weighting and ~±4 more from measurement noise. So two ZIPs are reliably different only if they differ by ~10-15 percentile points - about 7-10 distinct tiers, not 33,000 ranks. Each ZIP shows a "reliable range"; if two ranges overlap, treat the ZIPs as indistinguishable. No federal index (ADI, SVI, County Health Rankings) publishes this - they show point ranks the data cannot support.',
   ],
   [
     'Why social vulnerability is access, not a descriptor',
@@ -37,7 +37,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Outcomes layer (independent of the score, used only to validate it)',
-    'Four independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) are used to validate - never to build - the composite: preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. They are shown as separate layers, never in the access-gap composite (outcomes are the result, not a driver - the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks all four - infant mortality, premature death, preventable hospitalization, and life expectancy - all correctly signed (it was ~uncorrelated with life expectancy under the old fixed catchment).',
+    'Independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) validate - never build - the composite: the four we trust are preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. Flu vaccination and mammography are also tracked, but treated cautiously - they double as healthcare-engagement measures, so judging access inputs against them would be circular. We also run a sub-county gate (NY ZIP-level ACSC + national life expectancy, county fixed-effects) because ~25% of the index varies within counties, invisible to county-level outcomes. Outcomes are shown as separate layers, never in the composite (the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks the mortality outcomes, correctly signed (it was ~uncorrelated with life expectancy under the old fixed radius).',
   ],
   [
     'Different vintages & universes',
@@ -198,8 +198,10 @@ export default function MethodologyPanel() {
                 ranking is robust to skew and outliers.
               </li>
               <li>
-                <b>Sub-scores</b> (11) = the average of their member percentiles, re-ranked. E.g.
-                "unmet social needs" averages food, housing, transport &amp; utility insecurity.
+                <b>Sub-scores</b> (11, of which 10 are scored) = the average of their member
+                percentiles, re-ranked. E.g. "unmet social needs" averages food, housing, transport
+                &amp; utility insecurity. (The FQHC safety-net sub-score is shown but unscored - it is
+                wrong-signed within counties.)
               </li>
               <li>
                 <b>Dimensions</b> (3) = the average of their sub-scores, re-ranked:{' '}
