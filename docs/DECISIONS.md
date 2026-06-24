@@ -19,7 +19,8 @@ composite **0.495** / split-half **0.955** / scoreable **33176**.
 |---|---|---|
 | Hierarchical percentile model (SVI method) | the backbone | skew-robust, interpretable, re-ranked per level |
 | **E2SFCA + adaptive catchment (C3)** | provider_supply mean\|r\| 0.173→**0.273**; clean-r +0.13→+0.265 | the project's main win - removed the fixed-radius urbanicity confound (structural, not new data) |
-| FQHC reframe → desert×poverty (A1/A2) | sub-score 0.118→0.233 | raw FQHC access is wrong-signed (clinics cluster in high-need areas); need-relative form is correctly signed |
+| FQHC reframe → desert×poverty (A1/A2) | sub-score 0.118→0.233 (county) | raw FQHC access is wrong-signed (clinics cluster in high-need areas); need-relative form is correctly signed **between** counties... |
+| **safetynet_access → unscored** (kept displayed) | composite within-county +0.583→**+0.601**; clean county-r flat 0.502→0.501 | ...but **wrong-signed WITHIN** counties in 85% of states (resolution-dependent). Removed from the composite for a ZCTA-native tool; kept as a displayed sub-score. `scored=False` in taxonomy |
 | Drop `household` sub-score (A1) | removed wrong-signed members | age structure is context; limited-English wrong-signed vs infant mortality (immigrant-health paradox) |
 | Provider-type breadth (dental, OB/GYN) | surfaces real deserts | distinct care axes, distinct deserts |
 | **HPSA as own `shortage_designation` (C5)** | FULL 0.486→**0.492**, agreement →0.495 | official designation **orthogonal** to E2SFCA density (corr 0.05); clean +0.20 on its own |
@@ -49,7 +50,7 @@ composite **0.495** / split-half **0.955** / scoreable **33176**.
 
 ## What's next (open)
 
-1. **Decide `safetynet_access`** - now confirmed wrong-signed *within*-county nationally (85% of states, NY ACSC + national USALEEP). It's resolution-dependent: helps between counties, hurts within. Removing it lifts the composite at sub-county resolution (+0.583→+0.601) at a tiny county cost - a maintainer judgment call ([VALIDATION](VALIDATION.md) §3). The national check (`validate_subcounty --national`) replaced the need for a 2nd ACSC state (MD county-only, CA restricted).
+1. ~~**Decide `safetynet_access`**~~ ✅ DONE - removed from the composite (`scored=False`), kept displayed. Confirmed wrong-signed *within*-county nationally (85% of states, NY ACSC + national USALEEP); resolution-dependent. Lifted composite within-county +0.583→+0.601, clean county-r flat, north star held. The national check (`validate_subcounty --national`) replaced the need for a 2nd ACSC state (MD county-only, CA restricted).
 2. **Amenable mortality** - `build_amenable.py` is wired; needs the one manual CDC WONDER county pull (API is national-only). Unlocks the frontier-gap construct.
 3. **Frontend lens toggle** - `access_gap_mult_pctile` is already in the payload; only the UI control is left.
 4. **PM2.5 → `build_environment.py`** only if adopting it for health_need completeness (not an access win).

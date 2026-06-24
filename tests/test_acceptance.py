@@ -97,14 +97,17 @@ def _client_access_gap(row, w=(35, 30, 35)):
 
 
 def test_dimensions_reproducible_from_subscores(df):
-    """Each dimension percentile must reproduce by re-ranking the mean of its
-    sub-scores - guards the hierarchical aggregation + nullable-rank determinism."""
+    """Each dimension percentile must reproduce by re-ranking the mean of its SCORED
+    sub-scores - guards the hierarchical aggregation + nullable-rank determinism.
+    scored=False sub-scores (e.g. safetynet_access) are computed + displayed but excluded
+    from their dimension, so the recomputation uses only scored members."""
     from pipeline.join_and_score import _pct
     from pipeline.taxonomy import DIMENSIONS, subscore_specs
 
     by_dim = {d: [] for d in DIMENSIONS}
     for s in subscore_specs():
-        by_dim[s["dim"]].append(f"{s['key']}_pctile")
+        if s.get("scored", True):
+            by_dim[s["dim"]].append(f"{s['key']}_pctile")
     for dkey, subs in by_dim.items():
         recomputed = _pct(df[subs].mean(axis=1))
         assert (recomputed - df[f"{dkey}_pctile"]).abs().max() < 1e-6, dkey

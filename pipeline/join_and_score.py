@@ -221,7 +221,10 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         if mps:
             raw = pd.concat(mps, axis=1).mean(axis=1)  # skipna mean of member percentiles
             df[col] = _pct(raw)
-            sub_by_dim[spec["dim"]].append(col)
+            # scored=False sub-scores are COMPUTED + DISPLAYED but excluded from the dimension
+            # (e.g. safetynet_access - wrong-signed within-county; see taxonomy + VALIDATION.md).
+            if spec.get("scored", True):
+                sub_by_dim[spec["dim"]].append(col)
         else:
             df[col] = np.nan
 

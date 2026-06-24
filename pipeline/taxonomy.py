@@ -166,13 +166,20 @@ DIMENSIONS: dict = {
                     M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)"),
                 ],
             },
+            # COMPUTED + DISPLAYED but NOT SCORED (scored=False). need-relative: a raw FQHC-access
+            # (E2SFCA) score is wrong-signed because clinics cluster in high-need areas, so A2
+            # reframed it to safetynet_barrier = FQHC-distance percentile x poverty. That form is
+            # correctly signed BETWEEN counties (+0.126) but RESOLUTION-DEPENDENT: it is wrong-
+            # signed WITHIN counties in 85% of states (NY ACSC + national USALEEP; FQHC-distance
+            # tracks suburban-ness, not need, at sub-county scale). Because the tool is ZCTA-native,
+            # dropping it from the composite lifts sub-county accuracy (composite within-county
+            # +0.583->+0.601) at a negligible county cost (mean-r 0.504->0.503). Kept displayed
+            # (the between-county signal is real) but unscored - the same call as `household` (A1).
+            # See docs/VALIDATION.md + DECISIONS.md.
             "safetynet_access": {
                 "label": "Unmet safety-net need (FQHC desert x poverty)",
                 "source": "fqhc",
-                # need-relative: a raw FQHC-access (E2SFCA) score is wrong-signed because
-                # clinics cluster in high-need areas. safetynet_barrier = FQHC-distance
-                # percentile x poverty (computed in join_and_score) is the correctly-signed
-                # "unmet need" form. See docs/METHODOLOGY.md + DECISIONS.md A2.
+                "scored": False,
                 "members": [
                     M("safetynet_barrier", 1, "FQHC desert x poverty (unmet need)"),
                 ],
@@ -254,5 +261,6 @@ def subscore_specs() -> list[dict]:
     for dkey, dim in DIMENSIONS.items():
         for skey, sub in dim["subscores"].items():
             out.append({"dim": dkey, "key": skey, "label": sub["label"],
-                        "source": sub["source"], "members": sub["members"]})
+                        "source": sub["source"], "members": sub["members"],
+                        "scored": sub.get("scored", True)})
     return out
