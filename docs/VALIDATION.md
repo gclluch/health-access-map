@@ -93,6 +93,39 @@ the historical county gate, so it is a **judgment call left to the maintainer**,
 Do *not* re-tune the desert×poverty form against the within-county metric (overfitting); the
 honest options are keep (county-helpful) or remove (sub-county-helpful).
 
+### Is supply too spatial? The 5 A's coverage + signal audit
+
+Decomposing `care_access` by Penchansky-Thomas access dimension, with county mean|r| vs
+sub-county (within-county, national USALEEP) signal:
+
+| care sub-score | 5-A dimension | county mean\|r\| | **within-county r** |
+|---|---|---|---|
+| provider_supply (2SFCA, spatial) | Availability | 0.263 | **0.076** |
+| shortage_designation (HPSA) | Availability | 0.206 | **0.000** |
+| insurance | Affordability | 0.313 | **0.474** |
+| preventive_use (checkups/screens) | realized access (net of all A's) | 0.200 | **0.464** |
+| safetynet (FQHC, **unscored**) | Acceptability proxy | 0.201 | −0.072 |
+
+**Finding: the two *spatial* Availability sub-scores carry ~zero sub-county signal
+(provider_supply 0.076, HPSA 0.000), while the *non-spatial* ones carry nearly all of it
+(insurance 0.474, preventive_use 0.464).** The most-engineered piece (spatial supply) is the
+least productive at the resolution the tool runs. (Enabling A's in social_vulnerability behave
+the same: socioeconomic/Affordability within-county +0.524, digital/telehealth +0.356.)
+
+**5 A's coverage:** Availability over-built + weak (spatial); Affordability strong (insurance +
+socioeconomic); Accessibility decent on the *demand* side (no-vehicle, telehealth) but weak on the
+*supply* side (the spatial catchment); **Accommodation absent** (no hours / wait / walk-in /
+appointment measure); **Acceptability absent** (FQHC proxy now unscored; language removed as
+wrong-signed, A1). The two missing A's are practice-behavior axes, so they are the most likely to
+be *orthogonal* to the poverty/rural gradient (like HPSA was) - but they have no free national
+ZCTA data: Medicaid/new-patient acceptance needs the scrape-to-calibrate build (DECISIONS C4),
+FQHC-hours/urgent-care inherit the FQHC clustering confound. **`preventive_use` is the highest-ROI
+care signal** because it is *realized* access - the net signature of all 5 A's ("did people
+actually get care") - so leaning toward non-circular realized-access measures beats chasing each
+thin upstream A separately (which collapse in partial-r). *Implication: stop over-investing
+engineering in spatial supply; the productive frontier for care_access is Acceptability
+(Medicaid-acceptance) and realized access, not more geography.*
+
 ## 4. Amenable mortality - the gold-standard anchor (wired, not yet pulled)
 
 `build_amenable.py` encodes the 80-code OECD/Eurostat treatable ICD-10 list and converts a CDC
