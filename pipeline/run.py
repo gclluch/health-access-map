@@ -15,17 +15,20 @@ from __future__ import annotations
 import argparse
 import time
 
-from . import (build_acs, build_broadband, build_fqhc, build_gazetteer, build_geometry,
-               build_geonames, build_hpsa, build_lifeexp, build_outcomes, build_places,
-               build_providers, build_supply, join_and_score, validate)
+from . import (build_acs, build_amenable, build_broadband, build_fqhc, build_gazetteer,
+               build_geometry, build_geonames, build_hpsa, build_lifeexp, build_outcomes,
+               build_places, build_providers, build_supply, join_and_score, validate)
 from .common import load_env, log
 from .preflight import check as preflight_check
 
 # ordered stages; geometry first (defines the ZCTA universe); supply + fqhc need
 # acs + gazetteer; lifeexp + outcomes are independent outcomes; join merges everything;
 # validate (multi-anchor outcome validation) reads the joined metrics last.
+# amenable: no-ops unless a manual CDC WONDER treatable-mortality export is present
+# (county data is not headlessly fetchable); runs before outcomes, which merges its CSV.
 STAGES = ["geometry", "places", "providers", "acs", "geonames",
-          "gazetteer", "supply", "fqhc", "hpsa", "broadband", "lifeexp", "outcomes", "join", "validate"]
+          "gazetteer", "supply", "fqhc", "hpsa", "broadband", "lifeexp", "amenable",
+          "outcomes", "join", "validate"]
 BUILDERS = {
     "geometry": build_geometry.build,
     "places": build_places.build,
@@ -38,6 +41,7 @@ BUILDERS = {
     "hpsa": build_hpsa.build,
     "broadband": build_broadband.build,
     "lifeexp": build_lifeexp.build,
+    "amenable": build_amenable.build,
     "outcomes": build_outcomes.build,
     "join": join_and_score.build,
     "validate": validate.build,
