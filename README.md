@@ -75,7 +75,7 @@ dataset ids and vintages each run resolved.
 
 | Layer | Source | Notes |
 |---|---|---|
-| Disease burden | CDC PLACES, ZCTA GIS-Friendly (2025 release, `kee5-23sr`) | Crude prevalence of diabetes, COPD, CHD, asthma, depression. Dataset id resolved + asserted at runtime. |
+| Disease & health need | CDC PLACES, ZCTA GIS-Friendly (2025 release, `kee5-23sr`) | Crude prevalence across ~30 measures - chronic disease (diabetes, CHD, COPD, …), behavioral risk, mental/social distress, disability, plus SDOH + preventive-care use. Dataset id resolved + asserted at runtime. |
 | Provider supply | CMS NPPES monthly full file | Individuals only (Entity Type 1); taxonomy classified via the NUCC crosswalk. |
 | Economic / insurance | Census ACS 5-year (2023) | Variable codes resolved by label from `variables.json`; uninsured summed from the `B27001` group in one call. |
 | Geometry | Census TIGER `cb_2020_us_zcta520_500k` | The only vintage that publishes ZCTA cartographic boundaries; field `ZCTA5CE20`. |
