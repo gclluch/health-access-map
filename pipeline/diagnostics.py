@@ -53,6 +53,24 @@ def _mean_r(series: np.ndarray, ys: dict) -> float:
     return float(np.nanmean([_corr(series, y) for y in ys.values()]))
 
 
+def _county_collapsed_mean_r(d: pd.DataFrame, ys: dict) -> tuple[float, int] | None:
+    """Matched-resolution point estimate: collapse the composite to its county mean and correlate
+    county-to-county against the (county-level) outcomes. The row-level mean-r treats each county's
+    ~11 ZCTAs as independent looks at one outcome value (effective N = county count, not 33k rows);
+    this reports the same agreement at the resolution the outcomes actually have."""
+    if "county_name" not in d.columns or "state" not in d.columns:
+        return None
+    # build a frame of the ALREADY-ORIENTED outcomes (ys) + composite, keyed by county, and take
+    # county means. ys[o] is higher = worse (flipped in _oriented), so correlation signs are correct.
+    frame = pd.DataFrame({"_ckey": (d["state"].astype(str) + "|" + d["county_name"].astype(str)).to_numpy(),
+                          "comp": d["access_gap_score"].to_numpy()})
+    for o, y in ys.items():
+        frame[o] = y
+    agg = frame.groupby("_ckey").mean(numeric_only=True).reset_index()
+    r = float(np.nanmean([_corr(agg["comp"].to_numpy(), agg[o].to_numpy()) for o in ys]))
+    return r, int(agg["_ckey"].nunique())
+
+
 def run() -> dict:
     df = pd.read_parquet(METRICS)
     d = df[df["scoreable"] == True].reset_index(drop=True)  # noqa: E712
@@ -91,8 +109,22 @@ def run() -> dict:
     # 3. composite outcome agreement
     print("\n=== 3. COMPOSITE outcome agreement ===")
     comp_r = _mean_r(d["access_gap_score"].to_numpy(), ys)
-    print(f"  access_gap_score mean r vs outcomes: {comp_r:.3f}")
+    print(f"  access_gap_score mean r vs outcomes (ZCTA-broadcast): {comp_r:.3f}")
     report["composite_mean_r"] = round(comp_r, 3)
+
+    # 3b. SAME number at honest resolution. Five of six outcomes are county-level (CHR), so the
+    # row-level r above correlates 33k ZCTAs against county values broadcast to every ZCTA - the
+    # effective N is the COUNTY count (~3,225), not the row count. Collapsing the composite to its
+    # county mean and correlating county-to-county is the matched-resolution point estimate. It is
+    # NOT smaller here (within-county composite variance has no outcome to track, mildly attenuating
+    # the row-level r), but it is the number whose N is real; the row-level r's *precision* is what's
+    # overstated, which is why margins are gated on pipeline.bootstrap_gate's CLUSTER bootstrap, not
+    # this point. See docs/VALIDATION.md §1.
+    cc = _county_collapsed_mean_r(d, ys)
+    if cc is not None:
+        print(f"  access_gap_score mean r vs outcomes (county-collapsed, N={cc[1]}): {cc[0]:.3f}")
+        report["composite_mean_r_county_collapsed"] = round(cc[0], 3)
+        report["n_counties"] = cc[1]
 
     # 4. internal reliability (split-half)
     print("\n=== 4. INTERNAL reliability (split-half Spearman-Brown) ===")
