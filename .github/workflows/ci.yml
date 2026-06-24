@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: pipeline + backend (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # NOTE: the data stages need API keys + multi-GB downloads, so CI has no
+      # data/processed/metrics.parquet. Tests that require it `skip` (see pytest.mark.skipif),
+      # so this run guards imports, contracts, and the harnesses' code paths. Data-level
+      # acceptance is gated locally/pre-deploy via `make acceptance` on a real build.
+      - run: python -m pytest tests -q
+
+  frontend:
+    name: frontend (typecheck + unit + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # The build needs the gitignored data payloads; stub empties so `vite build` succeeds
+      # and we still catch TS/bundler regressions. (Real payloads ship via `make data`.)
+      - run: |
+          [ -f public/metrics.json ] || echo "[]" > public/metrics.json
+          [ -f public/zcta.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta.geojson
+      - run: npm run build
+
+  e2e:
+    name: frontend (playwright smoke)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Seed a tiny deterministic fixture so the app renders without a full build pipeline.
+      - run: node e2e/make-fixture.mjs
+      - run: npm run test:e2e
