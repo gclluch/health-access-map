@@ -6,6 +6,7 @@ lookups: one ZIP, rankings, compare. CORS is opened to the Vite dev origin.
 """
 from __future__ import annotations
 
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -15,6 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import data
 
 ZCTA_RE = re.compile(r"^\d{5}$")
+
+# CORS origins are environment-driven so production deploys work without a code change.
+# ALLOWED_ORIGINS = comma-separated list (e.g. "https://healthaccessmap.org"). Default is the
+# Vite dev origin. "*" allows any origin (use only if the API is genuinely public + read-only).
+_DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
 
 
 @asynccontextmanager
@@ -26,7 +33,8 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Health Access Map API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=os.environ.get("ALLOWED_ORIGIN_REGEX") or None,  # e.g. preview deploys
     allow_methods=["GET"],
     allow_headers=["*"],
 )
