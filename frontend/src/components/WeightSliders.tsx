@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
-import { DEFAULT_WEIGHTS, PRESETS, type Weights } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, PRESETS, type Weights } from '../lib/types';
+
+// Weights only change the composite metrics (additive + the geometric lens, both weight-driven).
+// If the user is viewing a sub-score/outcome, snap to the additive composite so the weight change
+// is visible; if they're already on either composite, leave them there (don't kick lens users off).
+const ensureCompositeVisible = (metric: string, setMetric: (m: string) => void) => {
+  if (metric !== COMPOSITE_METRIC && metric !== COMPOSITE_MULT_METRIC) setMetric(COMPOSITE_METRIC);
+};
 
 const ROWS: Array<{ key: keyof Weights; label: string }> = [
   { key: 'health_need', label: 'Health need' },
@@ -67,7 +74,7 @@ export default function WeightSliders() {
             key={name}
             onClick={() => {
               applyPreset(name);
-              if (metric !== 'access_gap_score') setMetric('access_gap_score');
+              ensureCompositeVisible(metric, setMetric);
             }}
             className="text-[11px] px-2 py-1 rounded border border-hairline text-graphite hover:border-accent hover:text-accent transition-colors"
           >
@@ -88,7 +95,7 @@ export default function WeightSliders() {
                 onClick={() => {
                   setLocal(a.weights);
                   setWeights(a.weights);
-                  if (metric !== 'access_gap_score') setMetric('access_gap_score');
+                  ensureCompositeVisible(metric, setMetric);
                 }}
                 title={
                   `${a.label} - weights ∝ each dimension's correlation with this outcome` +
@@ -130,7 +137,7 @@ export default function WeightSliders() {
               const next = { ...local, [key]: Number(e.target.value) };
               setLocal(next); // instant thumb + readout
               commit(next); // throttled recompute
-              if (metric !== 'access_gap_score') setMetric('access_gap_score');
+              ensureCompositeVisible(metric, setMetric);
             }}
             className="w-full accent-accent h-1 cursor-pointer"
             aria-label={`${label} weight`}

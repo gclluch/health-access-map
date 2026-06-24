@@ -236,12 +236,15 @@ export default function MethodologyPanel() {
                 ] as Array<[string, string, string]>).map(([a, status, via]) => (
                   <tr key={a} className="border-t border-hairline/60 align-top">
                     <td className="py-0.5 pr-2 font-medium whitespace-nowrap">{a}</td>
-                    <td className="py-0.5 pr-2">
+                    <td className="py-0.5 pr-2 whitespace-nowrap">
+                      {/* glyph + text, not hue alone (colorblind-safe, on-palette) */}
                       <span className={
                         'text-[10px] uppercase tracking-wide ' +
-                        (status === 'scored' ? 'text-emerald-600'
-                          : status === 'context' ? 'text-amber-600' : 'text-rose-500')
-                      }>{status}</span>
+                        (status === 'scored' ? 'text-accent font-medium' : 'text-graphite')
+                      }>
+                        {status === 'scored' ? '● scored'
+                          : status === 'context' ? '◐ context' : '○ gap'}
+                      </span>
                     </td>
                     <td className="py-0.5 text-graphite leading-snug">{via}</td>
                   </tr>
