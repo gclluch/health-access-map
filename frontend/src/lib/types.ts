@@ -154,6 +154,11 @@ export const MODEL: DimSpec[] = [
 // or an outcome (life expectancy, which is NOT in the composite — outcomes are the
 // result, not a driver; kept separate à la County Health Rankings).
 export const COMPOSITE_METRIC = 'access_gap_score';
+// The multiplicative "coincidence" lens: weighted GEOMETRIC mean of the 3 dimensions
+// (OECD non-compensatory aggregation). Lights up only where need AND barriers coincide,
+// vs the additive default which is fully compensatory. Recomputed client-side from the
+// dimension percentiles (respects the weight sliders), same 0-100 scale as the composite.
+export const COMPOSITE_MULT_METRIC = 'access_gap_mult';
 
 export const OUTCOME_METRICS: SubSpec[] = [
   { key: 'life_expectancy', label: 'Low life expectancy' }, // colors by life_expectancy_pctile
@@ -161,6 +166,7 @@ export const OUTCOME_METRICS: SubSpec[] = [
 
 export function metricLabel(metric: string): string {
   if (metric === COMPOSITE_METRIC) return 'Access gap';
+  if (metric === COMPOSITE_MULT_METRIC) return 'Access gap (coincidence lens)';
   const base = metric.replace(/_pctile$/, '');
   for (const d of MODEL) {
     if (d.key === base) return d.label;

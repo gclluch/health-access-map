@@ -1,4 +1,4 @@
-import { COMPOSITE_METRIC, type SlimMetric, type Weights } from './types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, type SlimMetric, type Weights } from './types';
 
 // Client-side Access Gap = weighted mean of the 3 dimension percentiles
 // (health need, social vulnerability, care access), renormalized over whichever
@@ -20,9 +20,36 @@ export function accessGap(m: SlimMetric, w: Weights): number | null {
   return parts.reduce((a, [pw, v]) => a + pw * v, 0) / wsum;
 }
 
+// Multiplicative "coincidence" lens: weighted GEOMETRIC mean of the 3 dimension
+// percentiles (mirrors pipeline access_gap_mult / OECD non-compensatory aggregation).
+// A deficit in one dimension can't be offset by surplus in another, so it only lights
+// up where need AND barriers coincide. Frac clipped to [0.01,1] so a 0-rank dim can't
+// zero the product; renormalized over present dims. Same 0-100 scale as accessGap.
+export function accessGapMult(m: SlimMetric, w: Weights): number | null {
+  if (!m.scoreable) return null;
+  const eff =
+    w.health_need + w.social_vulnerability + w.care_access <= 0
+      ? { health_need: 1, social_vulnerability: 1, care_access: 1 }
+      : w;
+  const parts: Array<[number, number]> = [];
+  if (m.health_need_pctile != null) parts.push([eff.health_need, m.health_need_pctile]);
+  if (m.social_vulnerability_pctile != null)
+    parts.push([eff.social_vulnerability, m.social_vulnerability_pctile]);
+  if (m.care_access_pctile != null) parts.push([eff.care_access, m.care_access_pctile]);
+  if (parts.length < 2) return null;
+  const wsum = parts.reduce((a, [pw]) => a + pw, 0);
+  if (wsum <= 0) return null;
+  const lognum = parts.reduce(
+    (a, [pw, v]) => a + pw * Math.log(Math.min(1, Math.max(0.01, v / 100))),
+    0,
+  );
+  return Math.exp(lognum / wsum) * 100;
+}
+
 // Value used to color the map / drive rankings for the active metric column.
 export function metricValue(m: SlimMetric, metric: string, w: Weights): number | null {
   if (metric === COMPOSITE_METRIC) return accessGap(m, w);
+  if (metric === COMPOSITE_MULT_METRIC) return accessGapMult(m, w);
   const v = m[metric];
   return typeof v === 'number' ? v : null;
 }

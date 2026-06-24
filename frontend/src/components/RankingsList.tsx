@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { COMPOSITE_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
 
 // access_gap spreads 0-100; the raw-percentile metrics cluster near 100/0 at the
 // ends, so show one decimal there to keep the ordering legible.
 const fmtRank = (v: number, metric: string) =>
-  metric === COMPOSITE_METRIC ? v.toFixed(0) : v.toFixed(1);
+  metric === COMPOSITE_METRIC || metric === COMPOSITE_MULT_METRIC ? v.toFixed(0) : v.toFixed(1);
 
 // Self-contained ranking: pick the metric AND the end of the range (highest /
 // lowest) right here. Recomputed from the same client-side scoring so it honors
@@ -48,6 +48,7 @@ export default function RankingsList() {
             className="flex-1 min-w-0 text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded"
           >
             <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
+            <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
             {MODEL.map((d) => (
               <optgroup key={d.key} label={d.label}>
                 <option value={`${d.key}_pctile`}>{d.label} (overall)</option>

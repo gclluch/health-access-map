@@ -123,6 +123,30 @@ def test_server_client_score_parity(df):
         )
 
 
+def _client_access_gap_mult(row, w=(35, 30, 35)):
+    """Re-implement the TS accessGapMult (lib/scoring.ts): weighted GEOMETRIC mean of the
+    3 dimension percentiles, frac clipped to [0.01,1], renormalized over present dims."""
+    import math
+    parts = [(weight, row[col]) for weight, col in zip(w, DIM_COLS) if pd.notna(row[col])]
+    if len(parts) < 2:
+        return None
+    wsum = sum(p[0] for p in parts)
+    lognum = sum(pw * math.log(min(1.0, max(0.01, v / 100.0))) for pw, v in parts)
+    return math.exp(lognum / wsum) * 100 if wsum > 0 else None
+
+
+def test_server_client_mult_lens_parity(df):
+    """The multiplicative-lens client recompute (geometric mean) must match the server's
+    raw access_gap_mult at default weights - guards the coincidence-lens scoring path."""
+    sub = df[df["scoreable"]].head(2000)
+    for _, row in sub.iterrows():
+        client = _client_access_gap_mult(row)
+        server = row["access_gap_mult"]
+        assert client is not None and abs(client - server) < 1e-6, (
+            f"{row['zcta5']}: mult client {client} != server {server}"
+        )
+
+
 # ---- Sanity / face validity ----
 def test_affluent_vs_underserved_direction(df):
     d = df.set_index("zcta5")
