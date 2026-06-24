@@ -219,6 +219,18 @@ def test_validate_idempotent():
     assert WEIGHTS.read_text() == first
 
 
+def test_composite_quality_flag(df):
+    """Every scoreable ZCTA records how many of the 3 dimensions backed its composite (2 or 3).
+    A 2-of-3 score is a weaker estimate (audit S5) and must be distinguishable, not silent."""
+    s = df[df["scoreable"]]
+    n = s["n_dims_scored"].dropna()
+    assert len(n) == len(s), "every scoreable row needs n_dims_scored"
+    assert set(n.unique()) <= {2, 3}, f"unexpected dim counts: {sorted(n.unique())}"
+    assert (n == 2).any(), "expect some partial (2-of-3) composites to flag"
+    # non-scoreable rows must not carry a spurious count
+    assert df.loc[~df["scoreable"], "n_dims_scored"].isna().all()
+
+
 def test_rank_uncertainty_band(df):
     """Each scoreable ZCTA carries a 5-95 rank band (Saisana sensitivity) that contains
     its point percentile, plus a coarse tier - the comparability machinery."""

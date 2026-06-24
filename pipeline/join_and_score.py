@@ -12,6 +12,7 @@ composite + flags, enough for the map and the client-side weight recompute).
 """
 from __future__ import annotations
 
+import datetime
 import json
 
 import numpy as np
@@ -249,6 +250,10 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
     n_dims = df[dim_cols].notna().sum(axis=1)
     df["scoreable"] = pop.notna() & (pop > 0) & (n_dims >= 2)
+    # How many of the 3 dimensions actually backed this composite. A 2-of-3 score is built from
+    # dimensions that are themselves collinear (need<->vulnerability 0.74), so it is a weaker
+    # estimate than a 3-of-3 score and must not be presented with equal authority (audit S5).
+    df["n_dims_scored"] = n_dims.where(df["scoreable"]).astype("Int64")
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
     df["access_gap_pctile"] = _pct(df["access_gap_score"])  # true rank of the composite
 
@@ -290,15 +295,18 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
     _validate(df, dim_cols, dev_state)
     corr = _dimension_correlations(df, dim_cols)
+    eff_dims = _effective_dimensions(df, dim_cols)
     anchor = _outcome_anchor(df)
     df.to_parquet(OUT_PARQUET, index=False)
     _write_slim_json(df, dim_cols)
+    _write_public_meta(df, corr, eff_dims)
     write_provenance({"score": {
         "method": "hierarchical percentile (SVI-style), re-ranked per level",
         "dimension_weights": DIMENSION_WEIGHTS,
         "rows": len(df), "with_score": int(df["access_gap_score"].notna().sum()),
         "low_confidence": int(df["low_confidence"].sum()),
         "dimension_correlations": corr,
+        "effective_dimensions": eff_dims,
         "outcome_anchor": anchor, "scope": dev_state or "national",
         "multiplicative_lens": "access_gap_mult_pctile = weighted GEOMETRIC mean of the 3 "
             "dimension percentiles (OECD non-compensatory aggregation); a selectable lens that "
@@ -328,7 +336,7 @@ def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
             "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
             "access_gap_rank_hi", "access_gap_mult_pctile", "tier", "low_confidence", "scoreable",
-            "life_expectancy", "life_expectancy_pctile",
+            "n_dims_scored", "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
     slim = df[cols].copy()
@@ -340,6 +348,28 @@ def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     OUT_JSON.write_text(json.dumps(records, separators=(",", ":")))
     log("join", f"metrics.json: {len(records)} records, {len(cols)} cols "
                 f"({OUT_JSON.stat().st_size/1e6:.1f} MB)")
+
+
+def _write_public_meta(df: pd.DataFrame, corr: dict, eff_dims: dict) -> None:
+    """Slim, frontend-fetchable build metadata (provenance.json itself is not in public/). Drives
+    the in-app 'data as of' freshness badge + the dynamic methodology vintages. The NPPES vintage
+    is read from the providers stage's provenance section if already written."""
+    prov = json.loads(config.PROVENANCE.read_text()) if config.PROVENANCE.exists() else {}
+    meta = {
+        "generated": datetime.date.today().isoformat(),
+        "vintages": {
+            "places": config.PLACES_DATASET_ID,
+            "acs_year": config.ACS_YEAR,
+            "tiger_year": config.TIGER_YEAR,
+            "nppes": prov.get("providers", {}).get("nppes_zip"),
+        },
+        "n_scored": int(df["access_gap_score"].notna().sum()),
+        "low_confidence": int(df["low_confidence"].sum()),
+        "dimension_correlations": corr,
+        "effective_dimensions": eff_dims,
+    }
+    (config.FRONTEND_PUBLIC / "meta.json").write_text(json.dumps(meta))
+    log("join", f"wrote frontend/public/meta.json (generated {meta['generated']})")
 
 
 def _outcome_anchor(df: pd.DataFrame) -> dict:
@@ -373,6 +403,25 @@ def _dimension_correlations(df: pd.DataFrame, dim_cols: list[str]) -> dict:
             a, b = dim_cols[i], dim_cols[j]
             out[f"{a[:-7]}_vs_{b[:-7]}"] = round(float(c.loc[a, b]), 3)
     return out
+
+
+def _effective_dimensions(df: pd.DataFrame, dim_cols: list[str]) -> dict:
+    """How many INDEPENDENT axes do the (collinear) dimensions really carry? Eigen-decompose
+    their correlation matrix: PC1 share + participation ratio (Σλ)²/Σλ². ~1.6 here, i.e. the
+    3-dimension construct is closer to one 'general deprivation' gradient - the statistical
+    basis for framing the weight sliders as a sensitivity probe (re-weighting barely moves
+    ranks). Surfaced in provenance + the methodology panel."""
+    sub = df[dim_cols].dropna()
+    if len(sub) < 10:
+        return {}
+    ev = np.linalg.eigvalsh(sub.corr().to_numpy())[::-1]
+    return {
+        "pc1_share": round(float(ev[0] / ev.sum()), 3),
+        "participation_ratio": round(float(ev.sum() ** 2 / (ev ** 2).sum()), 2),
+        "note": "eigen-decomposition of the dimension correlation matrix; participation_ratio "
+                "= effective number of independent dimensions (3 nominal). Low value => "
+                "re-weighting barely moves ranks; the sliders are a sensitivity probe.",
+    }
 
 
 def _validate(df: pd.DataFrame, dim_cols: list[str], dev_state: str | None) -> None:
