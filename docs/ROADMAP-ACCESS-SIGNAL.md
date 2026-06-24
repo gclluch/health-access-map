@@ -1,10 +1,17 @@
 # Roadmap: strengthen the access signal (gated, verify-after-each-layer)
 
-> **STATUS (2026-06-23):** **Layers A, B DONE; Layer C: C1/C2/C1-redux gate-failed (not scored),
-> C3 + C5 SHIPPED (the two wins).** C3's variable/adaptive catchment doubled provider_supply's
-> clean-outcome signal (+0.13 → +0.265, FULL 0.479 → 0.486). **C5 added HRSA HPSA as its own
-> `shortage_designation` sub-score (FULL 0.486 → 0.492, agreement → 0.495).** C4 (Medicaid
-> acceptance) researched - no free national file. Earlier baseline notes below are pre-C3/C5.
+> **STATUS (2026-06-23):** **Layers A, B, B3 DONE; Layer C: C3 + C5 + C6 SHIPPED; C1/C2/C1-redux
+> gate-failed.** C3 (adaptive catchment) doubled provider_supply's clean-outcome signal (+0.13 →
+> +0.265, FULL 0.479 → 0.486). C5 (HRSA HPSA `shortage_designation`) lifted FULL 0.486 → **0.492**,
+> agreement → **0.495**. C6 (broadband `digital_access`) is a reliability add (split-half → 0.955).
+> **B3 (PLACES measurement-noise bands) SHIPPED** - health_need's noise, previously σ=0, is now
+> calibrated (gate-3 inj/emp 0.97); point scores unchanged, uncertainty model now complete.
+> **The spatial-signal ceiling is reached:** this session's probes (hospital quality, SUD desert,
+> sub-county HPSA, FQHC operating-hours, drive-time) all failed the same way - collinear with the
+> scored gradient (collapse in partial-r) or, where orthogonal, too weak to survive dilution. The 5
+> A's audit (METHODOLOGY §9a): Availability/Accessibility/Affordability covered; **Accommodation +
+> Acceptability are the remaining construct gaps, unfillable from free national data** - only the
+> scrape-to-calibrate heuristic could add new signal. Earlier baseline notes below are pre-C3/C5.
 >
 > **Original status:** Branch `feat/composite-validation-uncertainty`. **Layers A and B
 > are DONE.** Layer A (`aa21461`) flipped the north star: `drop_care_access` is now *below* FULL
