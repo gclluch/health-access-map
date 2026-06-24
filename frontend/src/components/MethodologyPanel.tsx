@@ -220,6 +220,40 @@ export default function MethodologyPanel() {
               variance - the sliders exist precisely so that judgment is yours, not hidden.
             </p>
           </div>
+          {/* Explicit 5 A's coverage - the access framework, and where we have signal vs gaps. */}
+          <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
+            <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
+              The 5 A's of access - what we cover
+            </div>
+            <table className="w-full text-[11px]">
+              <tbody className="text-ink">
+                {([
+                  ['Availability', 'scored', 'provider supply (2SFCA), HRSA shortage (HPSA)'],
+                  ['Accessibility', 'scored', 'no-vehicle, telehealth/broadband, spatial catchment'],
+                  ['Affordability', 'scored', 'uninsured, poverty / income'],
+                  ['Accommodation', 'gap', 'hours / after-hours - no free signal-bearing data (FQHC hours too flat)'],
+                  ['Acceptability', 'context', 'FQHC presence + Medicaid population shown; true provider-acceptance needs a calibrated build'],
+                ] as Array<[string, string, string]>).map(([a, status, via]) => (
+                  <tr key={a} className="border-t border-hairline/60 align-top">
+                    <td className="py-0.5 pr-2 font-medium whitespace-nowrap">{a}</td>
+                    <td className="py-0.5 pr-2">
+                      <span className={
+                        'text-[10px] uppercase tracking-wide ' +
+                        (status === 'scored' ? 'text-emerald-600'
+                          : status === 'context' ? 'text-amber-600' : 'text-rose-500')
+                      }>{status}</span>
+                    </td>
+                    <td className="py-0.5 text-graphite leading-snug">{via}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[10px] text-graphite mt-2 leading-snug">
+              Penchansky &amp; Thomas's 5 A's. The model spans the first three with real signal;
+              Accommodation and Acceptability are practice-behavior axes with no free national data
+              (every facility proxy collapses to the spatial/poverty gradient). Honest gaps, not hidden.
+            </p>
+          </div>
           <ValidationTable />
           {POINTS.map(([title, body]) => (
             <div key={title} className="mb-3">

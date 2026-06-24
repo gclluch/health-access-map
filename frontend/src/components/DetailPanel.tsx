@@ -363,7 +363,17 @@ export default function DetailPanel() {
               {typeof rec.pct_minority === 'number'
                 ? ` · ${Math.round((rec.pct_minority as number) * 100)}% minority`
                 : ''}
+              {typeof rec.medicaid_rate === 'number'
+                ? ` · ${Math.round((rec.medicaid_rate as number) * 100)}% Medicaid`
+                : ''}
             </div>
+            {typeof rec.medicaid_rate === 'number' && (
+              <div className="mt-1 text-graphite/80">
+                Medicaid share is shown as <i>acceptability</i> context - the population that can
+                face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
+                tracks poverty, already counted).
+              </div>
+            )}
           </div>
         )}
 

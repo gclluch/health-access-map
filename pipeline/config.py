@@ -123,6 +123,11 @@ ACS_SVI = {
     # context only (never scored):
     "pct_minority":         ("B03002", None, "001"),                          # 1 - white non-Hispanic
     "pct_under5":           ("B01001", ["003", "027"], "001"),
+    # Medicaid/means-tested coverage rate (C27007 "With Medicaid" cells / total). CONTEXT only -
+    # the population facing provider Medicaid-acceptance barriers (the Acceptability axis). NOT
+    # scored: it collapses to the poverty gradient in partial-r (+0.278 raw -> -0.064), so it is
+    # surfaced for context, not as a barrier. See docs/DECISIONS.md + VALIDATION.md.
+    "medicaid_rate":        ("C27007", ["004", "007", "010", "014", "017", "020"], "001"),
 }
 CENSUS_SENTINELS = (-666666666, -999999999, -888888888, -555555555, -333333333, -222222222)
 
