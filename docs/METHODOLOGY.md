@@ -143,17 +143,25 @@ BRFSS/PLACES): preventable (ACSC) hospitalizations, premature death, infant mort
 vaccination, mammography, and USALEEP life expectancy. They are shown as separate map layers,
 never in the composite.
 
-**Two harnesses gate all composite work** (run BOTH first to re-baseline):
+**Three harnesses gate all composite work** (run first to re-baseline):
 - `python -m pipeline.diagnostics` - the **north star**: composite mean-r vs the 6 outcomes,
   FULL vs drop-each-dimension; per-sub-score mean|r|; split-half reliability; coverage.
 - `python -m pipeline.verify_bands` - the rank-uncertainty band gates.
+- `python -m pipeline.validate_subcounty --national` - the **sub-county gate**: within-county
+  (county fixed-effect) correlation vs NY SPARCS ZIP-ACSC + national USALEEP. ~25% of the
+  composite's variance is *within* county and invisible to the two county-level harnesses above;
+  this is the only check that sees it. It caught the `safetynet_access` resolution-dependent
+  wrong-sign (correct between counties, wrong within) that the county gate passed. See VALIDATION.md.
 
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
-coverage holds). Current state: FULL mean-r **0.492**; `drop_care_access` 0.469 (**below** FULL,
-so care access *adds* signal - margin now +0.025); composite agreement **0.495**; split-half
-**0.955**; provider_supply mean|r| **0.273**, plus the **shortage_designation** (HPSA) sub-score
-(clean signed-r +0.20) and the **digital_access** (broadband) sub-score (clean +0.25, a
-reliability/completeness add - see §8). (Pre-HPSA: FULL 0.486 / agreement 0.488.)
+coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.488**; `drop_care_access`
+0.467 (**below** FULL, so care access *adds* signal); composite agreement **0.491**; clean (non-
+circular) composite-r **0.501**; split-half **0.955**; composite within-county (national) **0.601**;
+provider_supply mean|r| **0.273**, plus **shortage_designation** (HPSA, clean +0.20) and
+**digital_access** (broadband, +0.25). `safetynet_access` is computed + displayed but **unscored**
+(resolution-dependent wrong-sign). (Numbers shifted slightly from the pre-safetynet-removal
+FULL 0.492 / agreement 0.495 - the drop is concentrated in the circular flu/mammo outcomes; the
+clean-outcome composite held and sub-county rose. See VALIDATION.md + DECISIONS.md.)
 
 ### The cardinal anti-circularity rule
 Flu vaccination and mammography are **healthcare-engagement** measures *and* validation
