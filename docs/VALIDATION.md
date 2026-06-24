@@ -19,7 +19,48 @@ realized-utilization negative ([DECISIONS](DECISIONS.md)).
 
 **Gate harness:** `pipeline.diagnostics` (north star: composite mean-r FULL vs drop-each-
 dimension; sub-score mean\|r\|; split-half) + `pipeline.verify_bands` (rank-band gates).
-Current: FULL **0.492**, drop_care_access **0.467**, composite **0.495**, split-half **0.955**.
+Current: FULL **0.510**, drop_care_access **0.467**, composite **0.514**, split-half **0.954**.
+
+### 1a. Error bars on the gate (`pipeline.bootstrap_gate`) - the margins are no longer naked points
+
+`diagnostics` reports POINT estimates of correlation differences and historically shipped or
+killed inputs on margins as small as +0.04 with no uncertainty attached. `pipeline.bootstrap_gate`
+puts a 95% CI on every margin, with two deliberate choices that make the interval honest, not
+flattering:
+
+- **Cluster bootstrap over county** (`state|county_name`), not ZCTA rows. Five of the six
+  outcomes are county-level (CHR), so resampling 33k ZCTAs as if independent treats one county's
+  ~11 ZCTAs as 11 independent looks at a single outcome value and understates uncertainty by
+  ~√(zctas/county). Resampling whole counties (≈3,225 clusters) respects the true effective N.
+- **Paired** FULL-vs-drop differences (same resample each replicate), so the margin CI is the
+  distribution of the *paired* difference - far tighter and stricter than differencing two
+  independent CIs.
+
+Live result (1,000 replicates, `data/processed/gate_ci.json`):
+
+| margin (FULL − drop) | point | 95% CI | reading |
+|---|---|---|---|
+| drop **care_access** | **+0.042** | **[0.038, 0.048]** | adds signal in **100%** of resamples - robustly real |
+| drop health_need | +0.020 | [0.016, 0.025] | adds signal, robust |
+| drop **social_vulnerability** | **−0.008** | **[−0.011, −0.004]** | **mildly redundant** - dropping it *raises* agreement (its variance is largely re-counted by need/access; CI excludes 0) |
+
+So the headline care-access decision survives the stricter ruler (the lever the whole project
+chased is not noise). The new finding the point estimate hid: social vulnerability is slightly
+*net-negative* on the county-outcome gate - consistent with it being the most collinear
+dimension (need↔vulnerability 0.74). It is kept in the composite by construct choice (the 5 A's
+enabling axis; it carries real *within-county* signal, +0.524, §3) - but the gate no longer
+pretends it adds county-level outcome agreement. **Run `python -m pipeline.bootstrap_gate` after
+any scoring change and ship only if the relevant margin CI excludes 0.**
+
+### 1b. The index is ~1.6 effective dimensions
+
+At the dimension level the correlation matrix (need/vulnerability/access) has eigenvalues
+[2.30, 0.44, 0.26]: **PC1 = 77%** of the joint variance, **participation ratio ≈ 1.6 effective
+dimensions**. The three-dimension framing is a *construct* decomposition (the 5 A's), not a claim
+of three statistically independent axes - which is exactly why re-weighting them barely moves
+ranks (Spearman ~0.999, ~±6 pts) and why the sliders are framed in-product as a sensitivity
+probe, not a control that rewrites the map. Reported live in `provenance.json`
+(`score.dimension_correlations`, `score.effective_dimensions`).
 
 ## 2. Why care access reads modest - a category error, not a bug
 

@@ -105,9 +105,16 @@ a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.
 5. A ZCTA is **scoreable** only with population present and ≥ 2 of 3 dimensions; otherwise it
    renders gray. Low-population ZCTAs are flagged `low_confidence` and kept out of headline rankings.
 
-The three dimensions are **collinear** (~0.5; reported in
-`provenance.json` and the methodology panel), so the weighted sum double-counts shared
-variance - which is exactly why the weights are user-tunable rather than presented as truth.
+The three dimensions are **strongly collinear** (need↔vulnerability **0.74**, need↔access
+0.58, vulnerability↔access 0.63; reported in `provenance.json` and the methodology panel).
+At the dimension level PC1 explains **77%** of the joint variance and the participation ratio
+is **~1.6 effective dimensions** - the index is closer to one "general deprivation" gradient
+than to three independent axes. Two consequences, both stated in-product: (a) the weighted sum
+double-counts shared variance, which is why the weights are user-tunable rather than presented
+as truth; and (b) because the dimensions move together, *re-weighting barely moves ranks*
+(Spearman ~0.999, ~±6 pts) - so the sliders are an honest **sensitivity probe**, not a knob that
+rewrites the map. (An earlier draft cited "~0.5" here; the live build is higher - see the
+bootstrap-gate note in `docs/VALIDATION.md`.)
 
 ---
 
@@ -152,3 +159,30 @@ tests/         acceptance suite (definition of done)
 Volatile identifiers (PLACES dataset id, ACS variable codes, NPPES/NUCC/TIGER links)
 are **resolved and asserted at runtime** so drift fails loudly at a validation gate
 rather than silently producing a wrong column.
+
+---
+
+## Production & ops
+
+- **CI** (`.github/workflows/ci.yml`): pytest (pipeline + backend), frontend typecheck + Vitest
+  unit + production build, and a Playwright smoke/compare e2e on a tiny fixture. Data-level
+  acceptance (`make acceptance`) runs against a real build, gated pre-deploy.
+- **Deploy** (`docs/DEPLOY.md`): two Dockerfiles + `docker compose up` (nginx-served SPA with
+  `gzip_static` + cache headers, same-origin `/api` proxy to FastAPI). CORS and the SPA's API
+  base are env-driven (`ALLOWED_ORIGINS`, `VITE_API_BASE`) so prod works without code changes.
+- **Gate with error bars**: `python -m pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
+  over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0.
+- **Observability**: `lib/observability.ts` - env-gated, dependency-free error + usage hooks
+  (`VITE_SENTRY_DSN`, `VITE_ANALYTICS_URL`); no-ops when unset.
+- **Freshness**: the pipeline emits `frontend/public/meta.json`; the UI shows a "data as of" badge.
+
+### Roadmap / honestly not done yet
+
+- **Time dimension.** The app is a single snapshot. A true trend view needs multi-vintage
+  ingestion (historical ACS/PLACES/NPPES re-run and stored per year) - a real pipeline effort,
+  not a UI toggle. Not started; would be the highest-value next feature for decision use.
+- **Vector tiles / PMTiles for geometry.** The ~16.7 MB `zcta.geojson` (~4.5 MB gzip) is the
+  real cold-load weight. Mitigated for now (gzip_static, off-main-thread Web Worker parse, immutable
+  hashed assets) but the structural fix is tippecanoe -> PMTiles, which is not yet wired.
+- **Drive-time E2SFCA** (vs straight-line adaptive catchment) and the **acceptability**
+  (Medicaid/new-patient acceptance) axis remain open - see `docs/METHODOLOGY.md §10`.

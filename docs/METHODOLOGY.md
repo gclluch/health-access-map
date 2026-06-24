@@ -128,7 +128,7 @@ trade-off rather than hiding it.**
 
 `pipeline/validate.py` also derives **outcome-anchored** weight presets: each weights the
 dimensions by how strongly they correlate with an independent outcome. Across every outcome and
-method, **care access lands modest** - it is collinear with need (~0.5), and area outcomes are
+method, **care access lands modest** - it is collinear with need (~0.58), and area outcomes are
 disease-dominated. That is a true finding about outcomes, **not** proof access is irrelevant
 (`VALIDATION.md`: it is a category error to tune a *gap* against an all-cause outcome
 that care access barely moves). Care access is kept meaningful by deliberate choice because it
@@ -207,8 +207,11 @@ input data - the lever was spatial (catchment shape) and structural, not more da
 ## 9. Honest limitations
 - **Relative, not absolute** - a 95 means "worse than 95% of ZIPs," not "objectively bad."
 - **Modeled disease** (PLACES) is partly SES-conditioned, so need/vulnerability share variance.
-- **Collinear dimensions** (~0.5) - the weighted sum double-counts shared variance; the sliders
-  make that explicit.
+- **Strongly collinear dimensions** (need↔vulnerability **0.74**, need↔access 0.58,
+  vulnerability↔access 0.63; PC1 = 77% of dimension variance, **~1.6 effective dimensions**) -
+  the weighted sum double-counts shared variance, and because the axes move together,
+  re-weighting barely moves ranks (Spearman ~0.999). The sliders are therefore a **sensitivity
+  probe**, not a control that meaningfully rewrites the map - stated as such in-product.
 - **NPPES registrations** over-count active capacity and ignore Medicaid/new-patient acceptance
   (FQHC presence is our best available proxy for acceptability).
 - **Different vintages/universes** - NPPES (this month), ACS 5-yr (centered ~2-3 yrs back),
