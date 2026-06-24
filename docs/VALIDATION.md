@@ -62,6 +62,14 @@ ranks (Spearman ~0.999, ~±6 pts) and why the sliders are framed in-product as a
 probe, not a control that rewrites the map. Reported live in `provenance.json`
 (`score.dimension_correlations`, `score.effective_dimensions`).
 
+**The actionable response** is the **access-beyond-deprivation lens** (`care_access_resid_pctile`):
+care_access residualized on need + social_vulnerability and re-ranked, so the map can show the
+*structural* access disadvantage **net of** the deprivation gradient. It is near-orthogonal to its
+predictors (0.05) by construction, yet the residual still tracks low life expectancy at **+0.137**
+(vs +0.47 for raw care_access) - i.e. the part of barriers-to-care *not* explained by poverty is
+still independently outcome-relevant. A selectable lens (Color-by / Rankings), not in the
+composite; recorded in `provenance.json` `score.access_beyond_deprivation`.
+
 ## 2. Why care access reads modest - a category error, not a bug
 
 Tuning a *gap* against an *all-cause* outcome starves care access by construction:

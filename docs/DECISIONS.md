@@ -5,10 +5,12 @@ dead end. Replaces the old per-layer roadmap (completed work doesn't need a full
 narrative logic lives in [METHODOLOGY.md](METHODOLOGY.md); the validation evidence in
 [VALIDATION.md](VALIDATION.md).
 
-**Gate for any change:** re-run `pipeline.diagnostics` + `pipeline.verify_bands` (+
-`pipeline.validate_subcounty` for sub-county claims). Ship only if the north star
-(`drop_care_access` stays below FULL) and reliability (>=0.93) hold, judged against the
-**death-records / ACSC** outcomes, never flu/mammography (the anti-circularity rule).
+**Gate for any change:** re-run `pipeline.diagnostics` + `pipeline.verify_bands` +
+**`pipeline.bootstrap_gate`** (95% CIs on every margin - ship only if the relevant margin CI
+**excludes 0**, not just the point estimate) (+ `pipeline.validate_subcounty` for sub-county
+claims). Ship only if the north star (`drop_care_access` stays below FULL) and reliability
+(>=0.93) hold, judged against the **death-records / ACSC** outcomes, never flu/mammography
+(the anti-circularity rule).
 
 Current baseline: FULL **0.510** / drop_care_access **0.467** (care access adds **+0.043**) /
 composite **0.514** / clean-4 **0.547** / split-half **0.954** / bands ALL PASS / scoreable **33176**.
@@ -32,6 +34,8 @@ composite **0.514** / clean-4 **0.547** / split-half **0.954** / bands ALL PASS 
 | Rank-uncertainty bands (B) + PLACES noise (B3) | honest 5-95 bands | low-conf ZCTAs get visibly wider bands; closes the uncertainty model |
 | Fay-Herriot ACS shrinkage | improved 3/4 outcomes | shrink noisy small-area rates to county mean |
 | **Multiplicative geometric lens** (this session) | targeting construct, default unchanged | OECD non-compensatory aggregation - need∩barrier coincidence. See [RATIONALE](RATIONALE.md) |
+| **Access-beyond-deprivation lens** (`care_access_resid_pctile`) | orthogonal to need/vuln (**0.05**) yet residual still tracks low life expectancy **+0.137** (vs +0.47 raw) | `care_access_pctile` residualized (OLS) on health_need + social_vulnerability, re-ranked. A **selectable diagnostic lens, not in the composite** - isolates *structural* access from the deprivation gradient, the direct answer to the ~1.6-effective-dimensions critique. Proof access is independently outcome-relevant **net of poverty**. Weight-independent (server-computed). |
+| **`social_vulnerability` kept despite county-redundancy** (decision, this session) | bootstrap paired margin `drop_social_vulnerability` **−0.008, CI [−0.011,−0.004]** (excludes 0): dropping it slightly *raises* county-outcome agreement | It is the most collinear dimension (need↔vuln **0.74**), so the county-level gate re-counts its variance. **KEPT** by construct (the 5 A's enabling axis) and because it carries the **strongest within-county signal** (+0.524 - the resolution the tool actually runs at). **NOT down-weighted**: tuning the default against an all-cause *county* outcome is the category error the project forbids ([VALIDATION](VALIDATION.md) §2). Recorded with eyes open, not silently. |
 
 ## Rejected (documented negatives - do NOT re-run)
 
@@ -58,8 +62,9 @@ composite **0.514** / clean-4 **0.547** / split-half **0.954** / bands ALL PASS 
 ## What's next (open)
 
 1. ~~**Decide `safetynet_access`**~~ ✅ DONE - removed from the composite (`scored=False`), kept displayed. Confirmed wrong-signed *within*-county nationally (85% of states, NY ACSC + national USALEEP); resolution-dependent. Lifted composite within-county +0.583→+0.601, clean county-r flat, north star held. The national check (`validate_subcounty --national`) replaced the need for a 2nd ACSC state (MD county-only, CA restricted).
-2. **Amenable mortality** - `build_amenable.py` is wired; needs the one manual CDC WONDER county pull (API is national-only). Unlocks the frontier-gap construct.
-3. **Frontend lens toggle** - `access_gap_mult_pctile` is already in the payload; only the UI control is left.
-4. **PM2.5 → `build_environment.py`** only if adopting it for health_need completeness (not an access win).
+2. ~~**Amenable mortality**~~ ✅ FULLY WIRED - now an optional outcome in `diagnostics` + `bootstrap_gate`, with the frontier analysis `bootstrap_gate.amenable_focus()` (care-access marginal value + **partial r vs treatable mortality | need,vuln**, cluster-bootstrap CIs; proven correct on synthetic data). Needs only the one manual CDC WONDER county pull (API is national-only); then **`make amenable`** runs the whole re-gate. See [VALIDATION](VALIDATION.md) §4.
+3. ~~**Frontend lens toggle**~~ ✅ DONE - both the coincidence lens (`access_gap_mult`) and the new access-beyond-deprivation lens (`care_access_resid_pctile`) are selectable in the Color-by + Rankings menus.
+4. **Orthogonalized composite (full)** - the lens orthogonalizes only care_access for display. A fully Gram-Schmidt-orthogonalized *composite* (sequential residualization of all three dimensions) is the bigger, riskier move - it changes the headline score, so it needs its own gate pass. Not started.
+5. **PM2.5 → `build_environment.py`** only if adopting it for health_need completeness (not an access win).
 
 **Ceiling verdict:** soft, not hard. Sub-county/orthogonal probes each found small (~+0.09) genuinely-additive signal the old county-level, deprivation-collinear gate couldn't see - but the "need-dominated, diminishing-returns" conclusion holds. The productive frontier is completeness + construct + sub-county validation, not new spatial inputs.

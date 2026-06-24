@@ -150,6 +150,24 @@ def _noise_sigma(df: pd.DataFrame, dim_cols: list[str], idx: np.ndarray) -> np.n
     return np.sqrt(acs_sig ** 2 + plc_sig ** 2)
 
 
+def _access_beyond_deprivation(df: pd.DataFrame, dim_cols: list[str]) -> pd.Series:
+    """Re-ranked residual of care_access_pctile after regressing it on health_need + social_
+    vulnerability percentiles (OLS with intercept, fit on rows where all three are present).
+    Higher = barriers to care worse than the area's deprivation gradient predicts. Returns a
+    [0,100] national percentile (NaN where any of the three dims is missing)."""
+    need, vuln, care = "health_need_pctile", "social_vulnerability_pctile", "care_access_pctile"
+    if not all(c in df.columns for c in (need, vuln, care)):
+        return pd.Series(np.nan, index=df.index)
+    X = df[[need, vuln, care]].to_numpy(float)
+    m = ~np.isnan(X).any(axis=1)
+    resid = np.full(len(df), np.nan)
+    if m.sum() > 100:
+        A = np.column_stack([np.ones(m.sum()), X[m, 0], X[m, 1]])
+        beta, *_ = np.linalg.lstsq(A, X[m, 2], rcond=None)
+        resid[m] = X[m, 2] - A @ beta
+    return _pct(pd.Series(resid, index=df.index))
+
+
 def _geometry_universe() -> pd.Series:
     gj = json.loads((config.PROCESSED / "zcta.geojson").read_text())
     z = pd.Series([f["properties"]["zcta5"] for f in gj["features"]], dtype="string")
@@ -248,6 +266,15 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         wsum = wsum.add(np.where(mask, w, 0.0))
     df["access_gap_score"] = (num / wsum).where(wsum > 0)
 
+    # ---- diagnostic lens: care access BEYOND deprivation (orthogonalized) ----
+    # The three dimensions are ~1.6 effective dimensions (need<->vulnerability 0.74), so a high
+    # care_access score is hard to read: genuinely poor access, or just a poor area? This lens
+    # residualizes care_access_pctile on health_need + social_vulnerability and re-ranks the
+    # residual: higher = barriers to care WORSE than this area's deprivation level predicts (the
+    # structural-access part not explained by poverty). Not in the composite - a selectable lens,
+    # like the multiplicative one. Directly answers the collinearity critique.
+    df["care_access_resid_pctile"] = _access_beyond_deprivation(df, dim_cols)
+
     n_dims = df[dim_cols].notna().sum(axis=1)
     df["scoreable"] = pop.notna() & (pop > 0) & (n_dims >= 2)
     # How many of the 3 dimensions actually backed this composite. A 2-of-3 score is built from
@@ -296,6 +323,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     _validate(df, dim_cols, dev_state)
     corr = _dimension_correlations(df, dim_cols)
     eff_dims = _effective_dimensions(df, dim_cols)
+    lens = _lens_diag(df)
     anchor = _outcome_anchor(df)
     df.to_parquet(OUT_PARQUET, index=False)
     _write_slim_json(df, dim_cols)
@@ -307,6 +335,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         "low_confidence": int(df["low_confidence"].sum()),
         "dimension_correlations": corr,
         "effective_dimensions": eff_dims,
+        "access_beyond_deprivation": lens,
         "outcome_anchor": anchor, "scope": dev_state or "national",
         "multiplicative_lens": "access_gap_mult_pctile = weighted GEOMETRIC mean of the 3 "
             "dimension percentiles (OECD non-compensatory aggregation); a selectable lens that "
@@ -335,7 +364,8 @@ def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     # slim payload: geography + composite + dimensions + sub-scores + flags.
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
             "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
-            "access_gap_rank_hi", "access_gap_mult_pctile", "tier", "low_confidence", "scoreable",
+            "access_gap_rank_hi", "access_gap_mult_pctile", "care_access_resid_pctile",
+            "tier", "low_confidence", "scoreable",
             "n_dims_scored", "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
@@ -422,6 +452,32 @@ def _effective_dimensions(df: pd.DataFrame, dim_cols: list[str]) -> dict:
                 "= effective number of independent dimensions (3 nominal). Low value => "
                 "re-weighting barely moves ranks; the sliders are a sensitivity probe.",
     }
+
+
+def _lens_diag(df: pd.DataFrame) -> dict:
+    """Diagnostic for the access-beyond-deprivation lens: confirm it is ~orthogonal to the
+    deprivation gradient (the point), and whether the residual still tracks an independent
+    outcome (low life expectancy) - vs the raw care_access score it is derived from."""
+    need, vuln, care, resid = ("health_need_pctile", "social_vulnerability_pctile",
+                               "care_access_pctile", "care_access_resid_pctile")
+    if not all(c in df.columns for c in (need, vuln, care, resid)):
+        return {}
+    d = df[df["scoreable"] == True]  # noqa: E712
+
+    def corr(a: str, b: str) -> float | None:
+        s = d[[a, b]].dropna()
+        return round(float(s[a].corr(s[b])), 3) if len(s) > 100 else None
+
+    out = {
+        "method": "OLS residual of care_access_pctile on health_need + social_vulnerability, "
+                  "re-ranked. Higher = barriers to care worse than the deprivation gradient predicts.",
+        "orthogonality": {"vs_health_need": corr(resid, need),
+                          "vs_social_vulnerability": corr(resid, vuln)},
+    }
+    if "life_expectancy_pctile" in df.columns:
+        out["vs_low_life_expectancy"] = {"residualized_care_access": corr(resid, "life_expectancy_pctile"),
+                                         "raw_care_access": corr(care, "life_expectancy_pctile")}
+    return out
 
 
 def _validate(df: pd.DataFrame, dim_cols: list[str], dev_state: str | None) -> None:

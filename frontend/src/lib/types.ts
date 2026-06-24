@@ -14,6 +14,7 @@ export interface SlimMetric {
   access_gap_pctile: number | null;
   access_gap_rank_lo: number | null;  // 5-95 national-rank band under plausible re-weighting
   access_gap_rank_hi: number | null;
+  care_access_resid_pctile: number | null; // barriers to care net of deprivation (orthogonalized lens)
   tier: number | null;                // decile 1-10 (the resolution the data supports)
   low_confidence: boolean;
   scoreable: boolean;
@@ -170,6 +171,10 @@ export const COMPOSITE_METRIC = 'access_gap_score';
 // vs the additive default which is fully compensatory. Recomputed client-side from the
 // dimension percentiles (respects the weight sliders), same 0-100 scale as the composite.
 export const COMPOSITE_MULT_METRIC = 'access_gap_mult';
+// Diagnostic lens: barriers to care residualized on need + social vulnerability, re-ranked.
+// Higher = access worse than this area's deprivation level predicts (the structural-access part
+// not explained by poverty). Server-computed, weight-independent. Answers the collinearity critique.
+export const ACCESS_RESID_METRIC = 'care_access_resid_pctile';
 
 export const OUTCOME_METRICS: SubSpec[] = [
   { key: 'life_expectancy', label: 'Low life expectancy' }, // colors by life_expectancy_pctile
@@ -178,6 +183,7 @@ export const OUTCOME_METRICS: SubSpec[] = [
 export function metricLabel(metric: string): string {
   if (metric === COMPOSITE_METRIC) return 'Access gap';
   if (metric === COMPOSITE_MULT_METRIC) return 'Access gap (coincidence lens)';
+  if (metric === ACCESS_RESID_METRIC) return 'Barriers to care, net of deprivation';
   const base = metric.replace(/_pctile$/, '');
   for (const d of MODEL) {
     if (d.key === base) return d.label;
@@ -191,6 +197,8 @@ export function metricLabel(metric: string): string {
 
 export const ALL_METRICS: string[] = [
   COMPOSITE_METRIC,
+  COMPOSITE_MULT_METRIC,
+  ACCESS_RESID_METRIC,
   ...MODEL.map((d) => `${d.key}_pctile`),
   ...MODEL.flatMap((d) => d.subs.map((s) => `${s.key}_pctile`)),
   ...OUTCOME_METRICS.map((o) => `${o.key}_pctile`),

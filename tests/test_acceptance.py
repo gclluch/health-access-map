@@ -231,6 +231,21 @@ def test_composite_quality_flag(df):
     assert df.loc[~df["scoreable"], "n_dims_scored"].isna().all()
 
 
+def test_access_beyond_deprivation_lens(df):
+    """The orthogonalized lens (care_access residualized on need + vulnerability, re-ranked) must
+    be a valid percentile AND near-orthogonal to the deprivation gradient it removes - that
+    orthogonality is the whole point (it isolates structural access from 'just a poor area')."""
+    col = "care_access_resid_pctile"
+    assert col in df.columns
+    s = df[df["scoreable"]]
+    v = s[col].dropna()
+    assert len(v) and v.min() >= -0.001 and v.max() <= 100.001
+    # near-orthogonal to the predictors it was residualized on (observed ~0.05)
+    for pred in ("health_need_pctile", "social_vulnerability_pctile"):
+        pair = s[[col, pred]].dropna()
+        assert abs(pair[col].corr(pair[pred])) < 0.15, f"{col} not orthogonal to {pred}"
+
+
 def test_rank_uncertainty_band(df):
     """Each scoreable ZCTA carries a 5-95 rank band (Saisana sensitivity) that contains
     its point percentile, plus a coarse tier - the comparability machinery."""

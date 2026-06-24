@@ -133,8 +133,10 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df = pd.read_parquet(METRICS)
     df = df[df["scoreable"] == True].copy()  # noqa: E712
     # composite-level _pctile columns are not sub-scores: exclude the additive rank, the
-    # multiplicative-lens rank, and the life-expectancy outcome rank.
-    _not_subscores = ("access_gap_pctile", "access_gap_mult_pctile", "life_expectancy_pctile")
+    # multiplicative-lens rank, the life-expectancy outcome rank, and the access-beyond-
+    # deprivation diagnostic lens (a residual, not a member of any dimension).
+    _not_subscores = ("access_gap_pctile", "access_gap_mult_pctile", "life_expectancy_pctile",
+                      "care_access_resid_pctile")
     sub_cols = [c for c in df.columns if c.endswith("_pctile")
                 and c not in DIM_COLS and c not in _not_subscores]
 

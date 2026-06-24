@@ -16,6 +16,7 @@ export function makeMetric(over: Partial<SlimMetric> = {}): SlimMetric {
     access_gap_pctile: null,
     access_gap_rank_lo: null,
     access_gap_rank_hi: null,
+    care_access_resid_pctile: null,
     tier: null,
     low_confidence: false,
     scoreable: true,

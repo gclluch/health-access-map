@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { RAMP, CHROME } from '../lib/colors';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS } from '../lib/types';
+import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS } from '../lib/types';
 import { fmtScore } from '../lib/format';
 
 const BINS = 44;
@@ -45,6 +45,7 @@ export default function Legend() {
         >
           <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
           <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
+          <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
           {MODEL.map((d) => (
             <optgroup key={d.key} label={d.label}>
               <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
@@ -64,6 +65,13 @@ export default function Legend() {
           </optgroup>
         </select>
       </div>
+
+      {metric === ACCESS_RESID_METRIC && (
+        <p className="text-[10px] text-graphite mb-1 leading-snug">
+          Barriers to care with health need + social vulnerability statistically removed - brighter
+          = access worse than this area's deprivation predicts (structural, not just "a poor area").
+        </p>
+      )}
 
       <svg viewBox={`0 0 ${BINS} 30`} preserveAspectRatio="none" className="w-full h-[42px]">
         {hist.map((c, i) => (

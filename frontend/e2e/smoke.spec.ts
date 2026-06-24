@@ -12,6 +12,12 @@ test('boots, loads data, and renders core chrome', async ({ page }) => {
   await expect(page.getByText('Loading ~33,000 ZIP areas')).toHaveCount(0);
 });
 
+test('access-beyond-deprivation lens colors the map and explains itself', async ({ page }) => {
+  await page.goto('/?metric=care_access_resid_pctile');
+  // the lens-specific caption only renders when that metric is active
+  await expect(page.getByText('Barriers to care with health need')).toBeVisible({ timeout: 20_000 });
+});
+
 test('methodology panel opens and states the collinearity caveat', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'How to read this' }).click();
