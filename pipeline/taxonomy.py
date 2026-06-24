@@ -197,9 +197,16 @@ DIMENSIONS: dict = {
                     M("access2_pct", 1, "Uninsured adults 18-64 (PLACES)"),
                 ],
             },
+            # REALIZED care use - computed + displayed but NOT SCORED (scored=False). This is
+            # utilization (a MEDIATOR between barriers and outcomes / Donabedian "process"),
+            # not a barrier (the "cause"). Including a downstream mediator in a cause-construct
+            # is endogenous, and `mammouse_pct` is literally the `mammography` validation
+            # outcome (criterion contamination). So it moves to the validation/outcome layer:
+            # a realized-access process indicator, not a scored barrier. See docs/VALIDATION.md.
             "preventive_use": {
-                "label": "Low preventive-care use",
+                "label": "Low preventive-care use (realized access)",
                 "source": "places",
+                "scored": False,
                 "members": [
                     M("checkup_pct", -1, "Annual checkup"),
                     M("dental_pct", -1, "Dental visit"),

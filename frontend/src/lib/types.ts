@@ -139,13 +139,13 @@ export const MODEL: DimSpec[] = [
   {
     key: 'care_access',
     label: 'Barriers to care',
-    blurb: 'Low provider supply, official provider shortage (HPSA), lack of insurance, unmet preventive care. Higher = more barriers. (Safety-net need is shown for context but not scored - it is wrong-signed within counties; see methodology.)',
+    blurb: 'Low provider supply, official provider shortage (HPSA), and lack of insurance. Higher = more barriers. (Two items are shown for context but NOT scored: safety-net need, wrong-signed within counties; and preventive-care use, which is realized utilization - an outcome of access, not a barrier. See methodology.)',
     subs: [
       { key: 'provider_supply', label: 'Low provider supply (spatial)' },
       { key: 'shortage_designation', label: 'Official provider shortage (HPSA)' },
       { key: 'safetynet_access', label: 'Unmet safety-net need (FQHC desert)', scored: false },
       { key: 'insurance', label: 'Lack of insurance' },
-      { key: 'preventive_use', label: 'Low preventive-care use' },
+      { key: 'preventive_use', label: 'Low preventive-care use (realized access)', scored: false },
     ],
   },
 ];
