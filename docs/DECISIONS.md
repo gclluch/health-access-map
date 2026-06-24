@@ -46,7 +46,7 @@ composite **0.495** / split-half **0.955** / scoreable **33176**.
 | Drive-time E2SFCA | infeasible | no free precomputed provider-reachable matrix; circuity's value is within-rural variance, needs routing. Adaptive catchment is the analog |
 | Medicaid / new-patient acceptance (C4) | no data | no free national file; only the near-saturated CMS NDF assignment flag |
 | Sub-county HPSA (vs county outcomes) | wash 0.206→0.209 | **REOPENED** - that test was county-resolution-blind. Against the sub-county gate it's tract-only +0.089 additive within-county (small, below ship bar). See [VALIDATION](VALIDATION.md) |
-| PM2.5 / ozone (this session) | orthogonal but +0.09-0.12 | first genuinely-orthogonal axis (survives partial-r, mechanism-consistent vs ACSC) but modest, and a **need**-axis not access. Candidate for a `health_need` environmental sub-score, not shipped |
+| PM2.5 environmental burden (CDC tract, this session) | sub-score gate FAIL | The first genuinely-*orthogonal* axis (corr ~0 w/ gradient, survives partial-r +0.119 vs county ACSC, mechanism-consistent). BUT as a `health_need` sub-score it **dilutes** the dimension (0.518→0.511) and regresses the composite (county 0.503→0.501, within-county 0.601→0.597) - its solo clean-r (+0.098) is too weak to survive averaging into 4 strong disease sub-scores. *Same lesson as broadband (C6): orthogonal-but-weak averaged into a strong dimension dilutes, not lifts.* Gated offline before any build; not shipped. (CDC Socrata `vpk8-vfhm`, server-side annual mean.) |
 
 ## What's next (open)
 
