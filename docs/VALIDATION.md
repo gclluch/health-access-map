@@ -68,14 +68,30 @@ subsamples −0.11 to −0.13), `hpsa_tractonly` +0.285. `provider_supply` flips
 (ex-NYC), the textbook urbanicity confound. A tract-confined HPSA carries +0.275 raw → **+0.089
 partial** within-county (small, below ship bar, but nonzero where county-max gives zero).
 
-**Verdict:** the ceiling is **soft, not hard** - real sub-county signal was hiding below county
-resolution - but the magnitude is modest, so the need-dominated conclusion holds. **Most
-actionable:** the `safetynet_access` within-county wrong-sign (a shipped, scored sub-score).
+**National confirmation (USALEEP, `--national`):** NY's ACSC is one state, so the findings are
+re-tested nationally against USALEEP life expectancy (tract→ZCTA, all states, independent death
+records - need-dominated, but the only *national* sub-county outcome). **21,244 ZCTAs / 2,208
+counties**, within-county: `access_gap_score` **+0.583**, `care_access` +0.393, `shortage_
+designation` **+0.000**, `safetynet_access` **−0.072**. So the composite resolves sub-county
+signal *nationally*, and both structural negatives hold beyond NY. The `safetynet_access`
+wrong-sign is wrong-signed within-county in **85% of states** (median −0.084) - a national
+property, not an NY/urban artifact. Two independent outcomes (NY ACSC claims + national USALEEP
+mortality), same conclusion. *No second open-data ACSC state was needed: MD is county-level, CA
+restricted, and only NY publishes statewide ZIP ACSC - USALEEP gives the national check instead.*
 
-**Caveat - why NY only:** NY is the *validation ruler*, not an input; the index is national and
-unchanged. NY is the only free, observed, ZIP-level ACSC source (CA's is restricted; most
-states' discharge data is DUA-gated). The open gap is single-state *validation coverage*, not
-signal generalization. A second open-data state is the priority.
+**Verdict:** the ceiling is **soft, not hard** - real sub-county signal was hiding below county
+resolution - but the magnitude is modest, so the need-dominated conclusion holds.
+
+**The `safetynet_access` sub-score is resolution-dependent (open decision).** It is correctly
+signed *between* counties (+0.126 pooled; FQHC deserts genuinely flag underserved rural counties)
+but wrong-signed *within* counties (FQHC-distance tracks suburban-ness, not need). Removing it
+from the composite is a clean tradeoff: composite within-county +0.583→**+0.601** (national) and
+care_access NY within-O/E +0.305→**+0.388**, at the cost of a tiny county-level loss (care_access
+mean-r 0.380→0.370; composite 0.504→0.503). Because the tool is **ZCTA-native**, the sub-county
+gain arguably outweighs the county loss - but it touches shipped scoring and slightly regresses
+the historical county gate, so it is a **judgment call left to the maintainer**, not auto-applied.
+Do *not* re-tune the desert×poverty form against the within-county metric (overfitting); the
+honest options are keep (county-helpful) or remove (sub-county-helpful).
 
 ## 4. Amenable mortality - the gold-standard anchor (wired, not yet pulled)
 

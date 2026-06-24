@@ -127,7 +127,49 @@ def run(extra_csv: str | None = None) -> dict:
     return report
 
 
+def run_national() -> dict:
+    """National sub-county check using USALEEP life expectancy (tract→ZCTA, already in metrics).
+    LE is a *need* outcome so it understates care access, BUT it is national (all ~2,200 multi-
+    ZCTA counties) and independent (death records), so it generalizes the NY-only ACSC finding:
+    does the index resolve sub-county signal, and do the structural negatives (shortage = 0
+    resolution; safetynet wrong-signed) hold beyond NY? Also reports the per-state safetynet sign."""
+    m = pd.read_parquet(METRICS)
+    m = m[(m["scoreable"] == True) & m["life_expectancy"].notna() & (m["population"] >= MIN_POP)].copy()  # noqa: E712
+    m["county_fips"] = m["county_fips"].astype(str)
+    m["le_worse"] = -m["life_expectancy"]  # orient higher = worse
+    vc = m["county_fips"].value_counts()
+    m = m[m["county_fips"].isin(vc[vc >= 3].index)].copy()
+    y = _within(m, "le_worse")
+    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
+    cols = [c for c in cols if c in m.columns]
+    print("\n=== NATIONAL sub-county validation vs USALEEP life expectancy (need outcome) ===")
+    print(f"  {len(m)} ZCTAs / {m['county_fips'].nunique()} counties (>=3 ZCTAs each)\n")
+    rep = {"n": len(m), "counties": int(m["county_fips"].nunique()), "within_county": {}}
+    for c in cols:
+        r = _corr(_within(m, c), y)
+        rep["within_county"][c] = round(r, 3)
+        mark = "  <-- WRONG-SIGNED" if r < -0.02 else ("  <-- ~0 resolution" if abs(r) < 0.01 else "")
+        print(f"  {c:32s} within-county r = {r:+.3f}{mark}")
+    # per-state robustness of the safetynet wrong-sign
+    if "safetynet_access_pctile" in m.columns:
+        rs = []
+        for st, g in m.groupby("state"):
+            if g["county_fips"].nunique() < 5:
+                continue
+            rs.append(_corr(_within(g, "safetynet_access_pctile"), _within(g, "le_worse")))
+        rs = np.array([r for r in rs if not np.isnan(r)])
+        frac = float((rs < 0).mean())
+        rep["safetynet_wrong_signed_state_frac"] = round(frac, 2)
+        print(f"\n  safetynet_access within-county wrong-signed in {frac*100:.0f}% of "
+              f"{len(rs)} states (median r {np.median(rs):+.3f}) - a national property, not an NY artifact.")
+    return rep
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--extra-csv", help="optional 2nd-state ZIP PQI CSV (cols: zcta5,obs,exp)")
-    run(ap.parse_args().extra_csv)
+    ap.add_argument("--national", action="store_true", help="run the national USALEEP within-county check too")
+    a = ap.parse_args()
+    run(a.extra_csv)
+    if a.national:
+        run_national()

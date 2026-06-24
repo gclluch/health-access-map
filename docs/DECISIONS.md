@@ -49,7 +49,7 @@ composite **0.495** / split-half **0.955** / scoreable **33176**.
 
 ## What's next (open)
 
-1. **Confirm the sub-county findings in a 2nd state** - `safetynet_access` wrong-signed within-county (−0.11, robust ex-NYC) and the tract-HPSA +0.089. CA's ZIP PQI is restricted; needs another open-data state.
+1. **Decide `safetynet_access`** - now confirmed wrong-signed *within*-county nationally (85% of states, NY ACSC + national USALEEP). It's resolution-dependent: helps between counties, hurts within. Removing it lifts the composite at sub-county resolution (+0.583→+0.601) at a tiny county cost - a maintainer judgment call ([VALIDATION](VALIDATION.md) §3). The national check (`validate_subcounty --national`) replaced the need for a 2nd ACSC state (MD county-only, CA restricted).
 2. **Amenable mortality** - `build_amenable.py` is wired; needs the one manual CDC WONDER county pull (API is national-only). Unlocks the frontier-gap construct.
 3. **Frontend lens toggle** - `access_gap_mult_pctile` is already in the payload; only the UI control is left.
 4. **PM2.5 → `build_environment.py`** only if adopting it for health_need completeness (not an access win).
