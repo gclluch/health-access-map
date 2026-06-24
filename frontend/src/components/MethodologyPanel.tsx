@@ -119,8 +119,9 @@ function ValidationTable() {
         </table>
         <p className="mt-1 leading-snug">
           Provider supply tracks infant mortality (+) but is ~0 vs life expectancy; safety-net
-          (FQHC) reads wrong-signed (red) - clinics sit in the highest-need areas. Diagnostics
-          that guide the supply layer, not the composite weights.
+          (FQHC) reads wrong-signed (red) - clinics sit in the highest-need areas, and it is
+          wrong-signed <i>within</i> counties in 85% of states, so it is now shown for context
+          but <b>excluded from the composite</b> (computed + displayed, not scored).
         </p>
       </div>
     </div>
@@ -179,8 +180,8 @@ export default function MethodologyPanel() {
         <div className="px-5 py-4">
           <p className="text-[13px] text-ink leading-relaxed mb-3">
             The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, CMS NPPES, and Census
-            ACS roll up into 11 sub-scores, then 3 dimensions (health need, social vulnerability,
-            care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
+            ACS roll up into 11 sub-scores (10 scored), then 3 dimensions (health need, social
+            vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
           </p>
