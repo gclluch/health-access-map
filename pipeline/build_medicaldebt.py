@@ -19,6 +19,16 @@ from .common import assert_zcta, dev_filter, die, download_file, log
 OUT = config.PROCESSED / "medicaldebt.parquet"
 
 
+def _county_shares(h: pd.DataFrame) -> pd.DataFrame:
+    """Urban 'Debt in America' rows -> (fips, medical_debt). Zero-pads the FIPS, coerces the
+    share to numeric, keeps only 5-digit county rows with a parseable value, dedupes by FIPS."""
+    h = h.copy()
+    h["fips"] = h[config.MEDICAL_DEBT_COL_FIPS].astype(str).str.strip().str.zfill(5)
+    h["medical_debt"] = pd.to_numeric(h[config.MEDICAL_DEBT_COL_SHARE], errors="coerce")
+    return (h.loc[h["fips"].str.match(r"^\d{5}$"), ["fips", "medical_debt"]]
+             .dropna(subset=["medical_debt"]).drop_duplicates("fips").reset_index(drop=True))
+
+
 def build(dev_state: str | None = None, force: bool = False) -> str:
     if OUT.exists() and not force:
         log("medicaldebt", f"skip (exists): {OUT.name}")
@@ -36,10 +46,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     for c in (config.MEDICAL_DEBT_COL_FIPS, config.MEDICAL_DEBT_COL_SHARE):
         if c not in h.columns:
             die("medicaldebt", f"medical-debt file missing column {c!r}: {list(h.columns)[:6]}...")
-    h["fips"] = h[config.MEDICAL_DEBT_COL_FIPS].astype(str).str.zfill(5)
-    h["medical_debt"] = pd.to_numeric(h[config.MEDICAL_DEBT_COL_SHARE], errors="coerce")
-    cty = h.loc[h["fips"].str.match(r"^\d{5}$"), ["fips", "medical_debt"]] \
-           .dropna(subset=["medical_debt"]).drop_duplicates("fips")
+    cty = _county_shares(h)
     log("medicaldebt", f"{len(cty)} counties with a medical-debt share")
 
     out = geo.merge(cty, on="fips", how="left")[["zcta5", "medical_debt"]].copy()
