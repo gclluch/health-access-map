@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { accessGap, dimensionContributions } from '../lib/scoring';
 import { synthesize } from '../lib/synthesis';
 import { DEFAULT_WEIGHTS, MODEL, type DimSpec, type SlimMetric } from '../lib/types';
-import { SUBSCORE_MEASURES, fmtMeasure } from '../lib/measures';
+import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal } from '../lib/format';
 import Tip from './Tip';
@@ -86,10 +86,18 @@ function SubScoreRow({
         aria-expanded={open}
       >
         <span className="text-graphite text-[9px] w-2">{open ? '▾' : '▸'}</span>
-        <span className="flex-1 text-[12px] text-ink truncate" title={scored ? label : `${label} - shown for context, not scored`}>
-          {label}
-          {!scored && <span className="ml-1 text-[9px] text-graphite font-normal">· not scored</span>}
-        </span>
+        <Tip
+          className="flex-1 min-w-0 cursor-help"
+          tip={
+            `${label}${SUBSCORE_BLURB[subKey] ? ` — ${SUBSCORE_BLURB[subKey]}` : ''}` +
+            (scored ? '' : ' Shown for context, not scored (wrong-signed within counties).')
+          }
+        >
+          <span className="block text-[12px] text-ink truncate">
+            {label}
+            {!scored && <span className="ml-1 text-[9px] text-graphite font-normal">· not scored</span>}
+          </span>
+        </Tip>
         <span className="num text-[10px] text-graphite w-14 text-right">
           {pct == null ? 'no data' : `${ordinal(pct)} pct`}
         </span>
@@ -154,6 +162,39 @@ export default function DetailPanel() {
   const m = selectedZcta ? metrics.get(selectedZcta) : undefined;
   const [rec, setRec] = useState<Record<string, unknown> | null>(null);
 
+  // Desktop-only resizable width (drag the left edge). Persisted across selections.
+  const [width, setWidth] = useState<number>(() => {
+    const saved = Number(localStorage.getItem('ham_detail_width'));
+    return saved >= 320 ? saved : 348;
+  });
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)');
+    const h = () => setIsDesktop(mq.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = width;
+    const maxW = Math.min(720, Math.round(window.innerWidth * 0.6));
+    let last = startW;
+    const onMove = (ev: PointerEvent) => {
+      last = Math.max(320, Math.min(maxW, startW + (startX - ev.clientX))); // drag left = wider
+      setWidth(last);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      try { localStorage.setItem('ham_detail_width', String(last)); } catch { /* ignore */ }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') select(null);
@@ -200,7 +241,19 @@ export default function DetailPanel() {
   const contrib = dimensionContributions(m, weights);
 
   return (
-    <div className="panel rounded-md w-full sm:w-[348px] max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto">
+    <div className="relative w-full sm:w-auto" style={isDesktop ? { width } : undefined}>
+      {isDesktop && (
+        <div
+          onPointerDown={startResize}
+          role="separator"
+          aria-label="Drag to resize panel"
+          title="Drag to resize"
+          className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group"
+        >
+          <div className="h-10 w-1 rounded-full bg-hairline group-hover:bg-accent transition-colors" />
+        </div>
+      )}
+      <div className="panel rounded-md w-full max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto">
       <div className="px-4 pt-3 pb-2 border-b border-hairline sticky top-0 bg-surface z-10">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
@@ -408,6 +461,7 @@ export default function DetailPanel() {
           access is a 2SFCA catchment metric over registered providers. Every score is a relative
           national rank; higher = worse.
         </div>
+      </div>
       </div>
     </div>
   );

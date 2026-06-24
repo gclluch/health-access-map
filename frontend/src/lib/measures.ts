@@ -97,6 +97,25 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
   ],
 };
 
+// One-line "what this sub-score measures" - shown in the instant hover tip on each
+// sub-score title (mirrors the dimension blurbs). Every sub-score is oriented so a
+// higher national percentile = worse access. Keep these short and source-accurate.
+export const SUBSCORE_BLURB: Record<string, string> = {
+  chronic_disease: 'Combined burden of diabetes, high blood pressure, heart disease, COPD, cancer and more (CDC PLACES).',
+  behavioral_risk: 'Smoking, no leisure physical activity, binge drinking and short sleep (CDC PLACES).',
+  mental_social_health: 'Depression, frequent poor mental-health days, loneliness and lack of emotional support (CDC PLACES).',
+  disability: 'Adults with a disability - mobility, cognition, vision, hearing, self-care or independent living (CDC PLACES).',
+  socioeconomic: 'Poverty, low median income, unemployment and no high-school diploma (Census ACS).',
+  housing_transport: 'No vehicle, crowded housing, mobile homes and large multi-unit structures (Census ACS) - barriers to reaching care.',
+  social_needs: 'Food, housing, transportation and utility insecurity, plus SNAP receipt (CDC PLACES social needs).',
+  digital_access: 'Households with no internet - the telehealth / remote-care barrier (Census ACS).',
+  provider_supply: 'Primary, mental-health, dental and maternity providers reachable per resident via a spatial catchment (E2SFCA). Higher percentile = fewer providers.',
+  shortage_designation: 'Whether the county is a federal HRSA primary-care shortage area (HPSA), and how severe.',
+  safetynet_access: 'FQHC safety-net clinic deserts weighted by local poverty.',
+  insurance: 'Uninsured rate - all ages (Census ACS) and adults 18-64 (CDC PLACES).',
+  preventive_use: 'Low use of checkups, dental visits and cancer/cholesterol screenings - whether people actually engage with care (CDC PLACES).',
+};
+
 export function fmtMeasure(v: unknown, unit: Unit): string {
   if (v == null || typeof v !== 'number' || Number.isNaN(v)) return '--';
   switch (unit) {
