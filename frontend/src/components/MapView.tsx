@@ -5,11 +5,16 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { buildQuantile, colorFor, SELECT_CASING, SELECT_LINE } from '../lib/colors';
+import { buildQuantile, colorFor, SELECT_CASING, SELECT_LINE, CHROME, HOVER_LINE, IDLE_LINE } from '../lib/colors';
 import { fmtScore } from '../lib/format';
 import { metricLabel } from '../lib/types';
 
+// Carto Positron - quiet light basemap. Mirrors pipeline/config.py BASEMAP_STYLE
+// (cross-language, so it cannot be a shared import); keep the two in sync if changed.
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+// deck.gl GeoJSON feature shape we read (single definition; used by every layer handler).
+type ZctaFeature = { properties: { zcta5: string } };
 
 function DeckOverlay(props: { layers: unknown[]; getTooltip?: (o: unknown) => unknown }) {
   // interleaved: the choropleth is inserted *beneath* the basemap's label/road layers
@@ -87,7 +92,7 @@ export default function MapView() {
         stroked: true,
         filled: true,
         lineWidthUnits: 'pixels',
-        getFillColor: (f: { properties: { zcta5: string } }) => {
+        getFillColor: (f: ZctaFeature) => {
           const m = metrics.get(f.properties.zcta5);
           const v = m ? metricValue(m, metric, weights) : null;
           const [r, g, b] = colorFor(v, scale);
@@ -96,17 +101,14 @@ export default function MapView() {
           const alpha = v == null || Number.isNaN(v) ? 55 : 158;
           return [r, g, b, alpha];
         },
-        getLineColor: (f: { properties: { zcta5: string } }) => {
-          const z = f.properties.zcta5;
-          if (z === hoveredZcta) return [20, 84, 90, 220];
-          return [120, 130, 145, 40];
-        },
-        getLineWidth: (f: { properties: { zcta5: string } }) =>
+        getLineColor: (f: ZctaFeature) =>
+          f.properties.zcta5 === hoveredZcta ? HOVER_LINE : IDLE_LINE,
+        getLineWidth: (f: ZctaFeature) =>
           f.properties.zcta5 === hoveredZcta ? 1.5 : 0.3,
-        onClick: (info: { object?: { properties: { zcta5: string } } }) => {
+        onClick: (info: { object?: ZctaFeature }) => {
           if (info.object) select(info.object.properties.zcta5);
         },
-        onHover: (info: { object?: { properties: { zcta5: string } } }) => {
+        onHover: (info: { object?: ZctaFeature }) => {
           hover(info.object ? info.object.properties.zcta5 : null);
         },
         // smooth recolor when weights/metric change (§14.5); gentle, reduced-motion
@@ -125,7 +127,7 @@ export default function MapView() {
   // dedicated overlay so the selected ZIP reads clearly against BOTH ends of the ramp.
   const selectionLayers = useMemo(() => {
     if (!selectedZcta || !geojson) return [];
-    const feats = (geojson as { features: Array<{ properties: { zcta5: string } }> }).features;
+    const feats = (geojson as { features: ZctaFeature[] }).features;
     const feat = feats.find((f) => f.properties.zcta5 === selectedZcta);
     if (!feat) return [];
     const data = { type: 'FeatureCollection', features: [feat] } as never;
@@ -141,7 +143,7 @@ export default function MapView() {
     ];
   }, [selectedZcta, geojson]);
 
-  const getTooltip = (info: { object?: { properties: { zcta5: string } } }) => {
+  const getTooltip = (info: { object?: ZctaFeature }) => {
     if (!info.object) return null;
     const z = info.object.properties.zcta5;
     const m = metrics.get(z);
@@ -150,9 +152,9 @@ export default function MapView() {
     return {
       html: `<div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:1.35">
         ${place ? `<div style="font-weight:600">${place}</div>` : ''}
-        <div style="font-family:'IBM Plex Mono',monospace;color:#C9CDd6">ZIP ${z} · ${metricLabel(metric)} <b style="color:#fff">${fmtScore(v)}</b></div></div>`,
+        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${z} · ${metricLabel(metric)} <b style="color:#fff">${fmtScore(v)}</b></div></div>`,
       style: {
-        background: '#14181F',
+        background: CHROME.ink,
         color: '#fff',
         padding: '4px 8px',
         borderRadius: '4px',

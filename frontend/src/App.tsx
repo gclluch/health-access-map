@@ -42,7 +42,6 @@ export default function App() {
   const load = useStore((s) => s.load);
   const selectedZcta = useStore((s) => s.selectedZcta);
   const showWeights = useStore((s) => s.showWeights);
-  const toggleWeights = useStore((s) => s.toggleWeights);
   const toggleMethodology = useStore((s) => s.toggleMethodology);
   const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 640);
 
@@ -91,24 +90,9 @@ export default function App() {
               <span className="text-graphite text-[11px]">{railOpen ? '▾' : '▸'}</span>
             </button>
             {railOpen && (
-              <>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <RankingsList />
-                </div>
-                <div className="shrink-0 bg-surface">
-                  <button
-                    onClick={toggleWeights}
-                    className="w-full px-3 py-2 text-[12px] text-left text-accent border-t border-hairline hover:bg-paper"
-                  >
-                    {showWeights ? '▾ Customize the score' : '▸ Customize the score'}
-                  </button>
-                  {showWeights && (
-                    <div className="max-h-[46vh] overflow-y-auto">
-                      <WeightSliders />
-                    </div>
-                  )}
-                </div>
-              </>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <RankingsList />
+              </div>
             )}
           </div>
         </div>
@@ -121,10 +105,17 @@ export default function App() {
         </div>
       )}
 
-      {/* legend: bottom-center; sits below the sheet z-layer on mobile so an open
-          sheet covers it rather than colliding with the wrapped header. */}
+      {/* "What you're seeing" cluster: bottom-center. The legend (color-by metric +
+          histogram) and the weighting control are siblings - both govern what the map
+          shows - so they live together here. Weights expand UPWARD above the legend.
+          Sits below the sheet z-layer on mobile so an open sheet covers it. */}
       {status === 'ready' && (
-        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4">
+        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5">
+          {showWeights && (
+            <div className="panel rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
+              <WeightSliders />
+            </div>
+          )}
           <Legend />
         </div>
       )}

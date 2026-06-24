@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { RAMP } from '../lib/colors';
+import { RAMP, CHROME } from '../lib/colors';
 import { COMPOSITE_METRIC, MODEL, OUTCOME_METRICS } from '../lib/types';
 import { fmtScore } from '../lib/format';
 
@@ -13,6 +13,8 @@ const BINS = 44;
 export default function Legend() {
   const { metrics, metric, weights, selectedZcta } = useStore();
   const setMetric = useStore((s) => s.setMetric);
+  const showWeights = useStore((s) => s.showWeights);
+  const toggleWeights = useStore((s) => s.toggleWeights);
 
   const { hist, max, selValue, selBin } = useMemo(() => {
     const vals: number[] = [];
@@ -32,7 +34,7 @@ export default function Legend() {
   }, [metrics, metric, weights, selectedZcta]);
 
   return (
-    <div className="panel rounded-md px-3 py-2.5 w-[340px] max-w-[88vw]">
+    <div className="panel rounded-md px-3 py-2.5 w-full">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[11px] uppercase tracking-wide text-graphite">Color by</span>
         <select
@@ -70,11 +72,11 @@ export default function Legend() {
             y={30 - (c / max) * 28}
             width={0.92}
             height={(c / max) * 28}
-            fill={i === selBin ? '#14545A' : '#9AA4B2'}
+            fill={i === selBin ? CHROME.accent : CHROME.histBar}
           />
         ))}
         {selBin != null && (
-          <line x1={selBin + 0.5} y1={0} x2={selBin + 0.5} y2={30} stroke="#14545A" strokeWidth={0.4} />
+          <line x1={selBin + 0.5} y1={0} x2={selBin + 0.5} y2={30} stroke={CHROME.accent} strokeWidth={0.4} />
         )}
       </svg>
 
@@ -94,6 +96,22 @@ export default function Legend() {
         )}
         <span>high</span>
       </div>
+
+      {/* Weighting control - sibling of the metric selector above. Expands the sliders
+          upward (rendered above this panel by App). Shows the live weights at a glance. */}
+      <button
+        onClick={toggleWeights}
+        aria-expanded={showWeights}
+        className="mt-2 pt-1.5 w-full flex items-center justify-between border-t border-hairline text-[11px] text-accent hover:text-accent-soft"
+      >
+        <span>
+          <span aria-hidden>⚖ </span>Adjust weighting
+          <span className="num text-graphite">
+            {' · '}{weights.health_need}/{weights.social_vulnerability}/{weights.care_access}
+          </span>
+        </span>
+        <span className="text-graphite">{showWeights ? '▾' : '▸'}</span>
+      </button>
     </div>
   );
 }

@@ -14,6 +14,18 @@ export const SELECTED_OUTLINE: [number, number, number, number] = [20, 84, 90, 2
 export const SELECT_CASING: [number, number, number, number] = [16, 20, 27, 235]; // ink
 export const SELECT_LINE: [number, number, number, number] = [255, 255, 255, 255]; // white
 
+// Chrome colors for canvas/SVG contexts (deck.gl layers, inline <svg>, the HTML
+// tooltip) that cannot use Tailwind classes. Single source so they stay in lockstep
+// with tailwind.config.js instead of being re-typed as raw hex at each call site.
+export const CHROME = {
+  ink: '#14181F',         // tooltip background (== tailwind `ink`)
+  accent: '#14545A',      // selected histogram bar + marker (== tailwind `accent`)
+  histBar: '#9AA4B2',     // unselected histogram bars
+  tooltipMono: '#C9CDD6', // muted mono text on the dark tooltip
+} as const;
+export const HOVER_LINE: [number, number, number, number] = [20, 84, 90, 220]; // accent, hovered border
+export const IDLE_LINE: [number, number, number, number] = [120, 130, 145, 40]; // quiet idle border
+
 const seq = scaleSequential(interpolateCividis).domain([0, 100]);
 
 // d3 interpolators may return "rgb(r, g, b)" or "#rrggbb"; handle both.
