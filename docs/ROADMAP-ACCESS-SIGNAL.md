@@ -391,6 +391,20 @@ already hold → predict nationally → validate on held-out scraped ZCTAs → g
   density + poverty + provider-mix + dual rate → predict other 45 states → validate on held-out state →
   gate. Skip language concordance (ACS limited-English is known wrong-signed here, Layer A1).
 
+### SCOUTED 2026-06-23: drive-time E2SFCA - C3 verdict reconfirmed, not built
+The public OSRM demo server is reachable, so a circuity-calibration was probed (162 stratified
+ZCTA-pair queries). **Circuity (drive-km / haversine-km) DOES vary by urbanicity** - rural 1.66
+(SD 0.72), suburban 1.49, urban 1.42; between/within-stratum variance ratio **3.93** - so drive-time
+carries genuine rank-reordering information. BUT the capturable part splits badly: a calibration
+model captures only the **between-stratum mean shift** (modest, ~1.17× rural-vs-urban, largely a
+per-stratum rescale that percentile-ranking absorbs), while the valuable signal is the **within-rural
+variance** (SD 0.72 - mountain/water detours that reorder specific ZCTAs), which needs actual
+pairwise routing = the full matrix / self-hosted OSRM that remains infeasible (and the demo server's
+ToS forbids bulk). No free precomputed national provider-reachable matrix exists (the NPPES provider
+coords are arbitrary, so a fixed tract-tract matrix doesn't map). **The C3 decision (adaptive
+catchment as the feasible analog) stands - and the composite north-star is capped regardless, so even
+a successful drive-time build could not move outcome agreement.** Not built.
+
 ### Methods worth gate-testing (no new data)
 BFCA (removes E2SFCA's 3-8× supply/demand inflation, conservation property, unit-testable);
 gravity model (drops the catchment-cutoff artifact; E2SFCA is its binary special case); free
