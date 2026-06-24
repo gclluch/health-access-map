@@ -71,10 +71,10 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'no_internet_rate', label: 'No household internet', unit: 'rate', desc: 'Households with no Internet access of any kind - cut off from the telehealth/remote-care channel. The digital analog of the no-vehicle transport barrier. Source: Census ACS 5-year (B28002).' },
   ],
   provider_supply: [
-    { col: 'primary_2sfca', label: 'Primary-care access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Primary-care providers per 1,000 people reachable within ~16 km, distance-decay weighted (E2SFCA). Higher = better access. Source: CMS NPPES.' },
-    { col: 'mental_2sfca', label: 'Mental-health access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Mental-health providers per 1,000 people reachable within ~16 km (E2SFCA). Higher = better. Source: CMS NPPES.' },
-    { col: 'dental_2sfca', label: 'Dental access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Dentists per 1,000 people reachable within ~16 km (E2SFCA). Higher = better. Source: CMS NPPES.' },
-    { col: 'ob_2sfca', label: 'Maternity / OB-GYN access (2SFCA)', unit: 'per1k', better: 'high', desc: 'OB/GYN (maternity) providers per 1,000 people reachable within ~16 km (E2SFCA). Higher = better. Source: CMS NPPES.' },
+    { col: 'primary_2sfca', label: 'Primary-care access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Primary-care providers per 1,000 people reachable within a variable/adaptive catchment (≈8-60 km, sized to local settlement density), Gaussian distance-decay weighted (E2SFCA). Higher = better access. Source: CMS NPPES.' },
+    { col: 'mental_2sfca', label: 'Mental-health access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Mental-health providers per 1,000 people reachable within the adaptive catchment (≈8-60 km, E2SFCA). Higher = better. Source: CMS NPPES.' },
+    { col: 'dental_2sfca', label: 'Dental access (2SFCA)', unit: 'per1k', better: 'high', desc: 'Dentists per 1,000 people reachable within the adaptive catchment (≈8-60 km, E2SFCA). Higher = better. Source: CMS NPPES.' },
+    { col: 'ob_2sfca', label: 'Maternity / OB-GYN access (2SFCA)', unit: 'per1k', better: 'high', desc: 'OB/GYN (maternity) providers per 1,000 people reachable within the adaptive catchment (≈8-60 km, E2SFCA). Higher = better. Source: CMS NPPES.' },
   ],
   shortage_designation: [
     { col: 'hpsa_pc_score', label: 'Primary-care HPSA score', unit: 'count', better: 'low', desc: 'HRSA primary-care Health Professional Shortage Area score (0-26, higher = worse shortage) for the county, factoring population-to-provider ratio, % below poverty, and travel distance to the nearest source of care. 0 = no active shortage designation. Source: HRSA data.hrsa.gov.' },
