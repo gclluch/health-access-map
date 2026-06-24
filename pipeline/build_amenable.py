@@ -3,7 +3,7 @@ gold standard (IHME HAQ concept). Produces `amenable_mortality_county.csv`, whic
 `build_outcomes.py` already auto-merges as the `amenable_mortality` anchor.
 
 WHY: all-cause life expectancy is a *need* outcome (disease dominates), so it starves
-the care-access weight by construction (docs/COMPOSITE-ENHANCEMENT.md). Amenable/
+the care-access weight by construction (docs/VALIDATION.md). Amenable/
 treatable mortality - deaths timely effective care should prevent (Nolte-McKee ->
 OECD/Eurostat 2019 list) - is the outcome the access literature validates against,
 and is the frontier outcome for the Phase-4 frontier-gap construct.
@@ -15,7 +15,7 @@ tool behind a data-use agreement. So this stage CONSUMES a manual WONDER export 
 than auto-downloading it. The OECD treatable ICD-10 list is encoded below so the export
 is a 10-minute, fully-specified pull.
 
-EXPECTED-IMPACT NOTE: the sub-county validation (docs/SUBCOUNTY-VALIDATION.md) found
+EXPECTED-IMPACT NOTE: the sub-county validation (docs/VALIDATION.md) found
 care_access stays modest (+0.31) even against a sub-county, risk-adjusted, access-
 sensitive outcome (NY PQI), with health_need dominating. So an access-sensitive *county*
 outcome is unlikely to flip the care_access hierarchy. Amenable mortality's primary value

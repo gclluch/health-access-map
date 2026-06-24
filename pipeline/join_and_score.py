@@ -46,7 +46,7 @@ def _pct(s: pd.Series) -> pd.Series:
 # input resample (perturb each ACS rate by its published SE, propagate to the dimension
 # percentile): scale=36 puts social_vulnerability within ±20% of that ground truth. Resulting
 # bands: high-conf ≈10, low-conf ≈25, ratio ≈2.5× (gate 1 target ≥1.6), median ≈13-15 -
-# consistent with docs/COMPOSITE-EVALUATION.md's ~10-15pt comparability threshold.
+# consistent with docs/VALIDATION.md's ~10-15pt comparability threshold.
 _RANK_CV_SIGMA_SCALE = 36.0
 _RANK_CV_FLOOR_Q = 0.50
 _RANK_CV_EXCESS_CAP = 1.5
@@ -69,7 +69,7 @@ _ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.47}
 # preventive_use + access2 (0.78); social_vulnerability barely, via social_needs (0.14). SCALE_p
 # is calibrated so health_need's injected σ matches that resample (median ≈4.4 pctile pts);
 # re-verified by verify_bands gate 3. health_need previously had ZERO band noise term - B3 is the
-# completeness fix that closes that gap. See docs/ROADMAP-ACCESS-SIGNAL.md B3.
+# completeness fix that closes that gap. See docs/DECISIONS.md B3.
 _RANK_PLACES_SIGMA_SCALE = 71.0
 _PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.78,
                  "social_vulnerability_pctile": 0.14}
@@ -200,7 +200,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     # E2SFCA FQHC-access score is wrong-signed against every outcome (clinics cluster in
     # high-need areas, so "access" is highest where need is highest); this need-relative
     # form is correctly signed and adds signal beyond poverty alone for the access-proximal
-    # outcomes (flu/maternity/premature death). See docs/ROADMAP-ACCESS-SIGNAL.md A2.
+    # outcomes (flu/maternity/premature death). See docs/DECISIONS.md A2.
     if "nearest_fqhc_km" in df.columns and "poverty_rate" in df.columns:
         km = pd.to_numeric(df["nearest_fqhc_km"], errors="coerce")
         df["safetynet_barrier"] = _pct(km) / 100.0 * pd.to_numeric(df["poverty_rate"], errors="coerce")
@@ -253,7 +253,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     # present dims. Unlike the additive default it is NON-compensatory (OECD/JRC geometric
     # aggregation): a surplus in one dimension cannot fully offset a deficit in another, so it
     # concentrates on areas where need AND barriers COINCIDE - the targeting construct
-    # (Penchansky-Thomas access-as-fit; COMPOSITE-ENHANCEMENT rec 6). Shipped as a SELECTABLE
+    # (Penchansky-Thomas access-as-fit; VALIDATION rec 6). Shipped as a SELECTABLE
     # LENS, not the default: it tracks outcomes ~identically (clean mean-r 0.500 vs additive
     # 0.502, rank corr 0.994, identical coverage) but down-weights one-dimensional highs
     # (need-only / barrier-only) by ~4-5 pctile pts vs the additive. Frac clipped to [0.01,1]

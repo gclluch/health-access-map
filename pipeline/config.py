@@ -179,7 +179,7 @@ EARTH_KM = 6371.0
 # cities, up to MAX in sparse rural. Removes the urbanicity artifact of a single fixed radius
 # (McGrail & Humphreys 2009); roughly doubled supply's correlation with independent mortality.
 # The fixed CATCHMENT_KM above is retained only for the HRSA-shortage benchmark (an absolute
-# 3,500:1 ratio needs a fixed service area). See docs/METHODOLOGY.md + ROADMAP-ACCESS-SIGNAL C3.
+# 3,500:1 ratio needs a fixed service area). See docs/METHODOLOGY.md + DECISIONS C3.
 ADAPTIVE_K = 30
 ADAPTIVE_SIGMA_MIN_KM = 8.0
 ADAPTIVE_SIGMA_MAX_KM = 60.0

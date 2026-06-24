@@ -95,7 +95,7 @@ DIMENSIONS: dict = {
             # context (signal-less / wrong-signed at the area level - retirement areas read
             # "vulnerable" but have good access) and limited English is wrong-signed vs
             # mortality (the immigrant-health paradox: r=-0.25 vs infant mortality). These
-            # remain raw context columns, never scored. See docs/ROADMAP-ACCESS-SIGNAL.md A1.
+            # remain raw context columns, never scored. See docs/DECISIONS.md A1.
             "housing_transport": {
                 "label": "Housing & transport barriers",
                 "source": "acs",
@@ -158,7 +158,7 @@ DIMENSIONS: dict = {
             # composite agreement 0.488->0.495. HPSA encodes need + travel + safety-net distance
             # a raw provider count cannot see. Mental-health/dental HPSA and the MUA/IMU index
             # were gate-tested and add ~nothing beyond PC-HPSA (subsumed / wrong-signed). See
-            # docs/METHODOLOGY.md decision log + ROADMAP-ACCESS-SIGNAL.md C5.
+            # docs/METHODOLOGY.md decision log + DECISIONS.md C5.
             "shortage_designation": {
                 "label": "Official provider shortage (HPSA)",
                 "source": "hpsa",
@@ -172,7 +172,7 @@ DIMENSIONS: dict = {
                 # need-relative: a raw FQHC-access (E2SFCA) score is wrong-signed because
                 # clinics cluster in high-need areas. safetynet_barrier = FQHC-distance
                 # percentile x poverty (computed in join_and_score) is the correctly-signed
-                # "unmet need" form. See docs/METHODOLOGY.md + ROADMAP-ACCESS-SIGNAL.md A2.
+                # "unmet need" form. See docs/METHODOLOGY.md + DECISIONS.md A2.
                 "members": [
                     M("safetynet_barrier", 1, "FQHC desert x poverty (unmet need)"),
                 ],
@@ -181,7 +181,7 @@ DIMENSIONS: dict = {
             # Medicare claims-volume capacity weighting (C2) were both built, gate-tested, and
             # REJECTED - C1's lift was circular with the flu/mammography outcomes, C2 was a wash.
             # The access-signal fix that worked was spatial: the variable catchment (C3). See
-            # docs/METHODOLOGY.md "What we tried and rejected" + ROADMAP-ACCESS-SIGNAL.md.
+            # docs/METHODOLOGY.md "What we tried and rejected" + DECISIONS.md.
             "insurance": {
                 "label": "Lack of insurance",
                 "source": "mixed",

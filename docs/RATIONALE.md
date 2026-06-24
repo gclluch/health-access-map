@@ -334,3 +334,29 @@ provider density is low - a signal the raw count was blind to. Conversely, **~37
 FQHC within 16 km** (true safety-net deserts). *Caveat:* presence ≠ unlimited capacity, sliding-fee
 ≠ free, and hours are a rough capacity proxy. *Backlog (validity, in priority order):* network
 travel-time E2SFCA; dental/maternity/ER provider types; claims-based active-provider FTEs.
+
+## 13. Alternative aggregation - the multiplicative (geometric) lens
+
+The default `access_gap_score` is a weighted **arithmetic** mean of the three dimension
+percentiles - **fully compensatory**: a surplus in one dimension fully offsets a deficit in
+another, so it scores "high need / fine access" the same as "low need / terrible access" (both
+land mid-scale). For a *targeting* tool that is a category error - the gap should light up only
+where need **and** barriers **coincide**.
+
+`access_gap_mult` is the weighted **geometric** mean of the same percentiles with the same
+weights (frac clipped to [0.01, 1] so a 0-rank dimension can't zero the product; renormalized
+over present dims). This is the OECD/JRC Handbook's **non-compensatory** aggregation: a deficit
+in one dimension can no longer be fully bought back by a surplus in another.
+
+**Precedent.** OECD/JRC Handbook (geometric vs linear aggregation); Penchansky-Thomas
+access-as-fit; HRSA IMU (itself a supply/demand product). **Gated as a construct, not a signal:**
+it tracks outcomes ~identically to the additive default (clean mean-r 0.500 vs 0.502, rank corr
+0.994, identical coverage) but down-weights one-dimensional highs (need-only / barrier-only) by
+~4-5 percentile points while preserving coincidence-highs. It is therefore gated on construct
+validity + no-outcome-regression, **not** on an outcome-r lift (the additive form is the one that
+maximizes outcome correlation, so gating on outcome-r would wrongly reject a correct construct).
+
+**Shipped as a selectable lens, not the default** (the user owns the compensability assumption,
+as they own the weights). Stored as `access_gap_mult` / `access_gap_mult_pctile`; the pctile is
+in the `metrics.json` payload. Remaining: the frontend toggle. See [VALIDATION.md](VALIDATION.md)
+for the gate detail.

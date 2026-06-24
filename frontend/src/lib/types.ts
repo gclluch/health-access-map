@@ -76,7 +76,7 @@ export const PRESETS: Record<string, Weights> = {
 // Outcome-anchored validation, produced by pipeline/validate.py -> weights.json. Each
 // anchor is an independent (non-PLACES) outcome; `weights` are correlation-based presets
 // (care access stays visible), `regressionWeights` is the NNLS diagnostic that collapses
-// it via collinearity. See docs/COMPOSITE-ENHANCEMENT.md.
+// it via collinearity. See docs/VALIDATION.md.
 export interface AnchorPreset {
   key: string;
   label: string;

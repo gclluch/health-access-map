@@ -47,7 +47,7 @@ const POINTS: Array<[string, string]> = [
 
 // Live multi-anchor validation, straight from weights.json (pipeline/validate.py). Shows
 // the correlation-based preset weights per outcome + how the regression collapses care
-// access - the honest, in-product version of docs/COMPOSITE-ENHANCEMENT.md.
+// access - the honest, in-product version of docs/VALIDATION.md.
 function ValidationTable() {
   const anchors = useStore((s) => s.anchors);
   const subCorr = useStore((s) => s.subscoreCorrelations);

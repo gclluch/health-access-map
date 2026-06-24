@@ -3,7 +3,7 @@
 Reports five checks against the six independent (non-PLACES) outcomes. A change ships
 only if it passes; the north-star is the marginal value of the care-access dimension -
 today dropping it *improves* outcome agreement (a problem we are fixing). See
-docs/ROADMAP-ACCESS-SIGNAL.md.
+docs/DECISIONS.md.
 
     python -m pipeline.diagnostics
 """

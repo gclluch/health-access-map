@@ -3,10 +3,12 @@
 A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
 
 > **New here?** Start with [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) - the "follow the
-> logic" guide: every design choice, its rationale, the validation gate, and the decision log
-> of what we tried and rejected (enough for a person or agent to safely extend the model).
-> Then [`docs/PRIMER.md`](docs/PRIMER.md) for the dataset/field dictionary, and
-> [`docs/RATIONALE.md`](docs/RATIONALE.md) for the per-formula math + precedent.
+> logic" guide: every design choice, its rationale, and how to extend the model safely. Then
+> [`docs/PRIMER.md`](docs/PRIMER.md) (dataset/field dictionary),
+> [`docs/RATIONALE.md`](docs/RATIONALE.md) (per-formula math + precedent),
+> [`docs/DECISIONS.md`](docs/DECISIONS.md) (the ledger of what we tried, kept, and rejected -
+> don't re-run these), and [`docs/VALIDATION.md`](docs/VALIDATION.md) (outcomes, the sub-county
+> gate, comparability, and uncertainty).
 
 The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
 11 sub-scores → ~50 measures, all drill-downable in the detail panel.

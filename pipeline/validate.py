@@ -15,7 +15,7 @@ What it produces:
     (constrained NNLS + 5% floor, HPI-style), the fit R^2, and each dimension's signed
     correlation with the outcome.
   - Per-sub-score signed correlations with each anchor (exposes which care-access pieces
-    actually track outcomes vs. which are confounded - see docs/COMPOSITE-ENHANCEMENT.md).
+    actually track outcomes vs. which are confounded - see docs/VALIDATION.md).
   - frontend/public/weights.json (default theory weights + the labeled anchored presets +
     diagnostics) and a "validation" block in provenance.json.
 
@@ -104,7 +104,7 @@ def _regression(X: np.ndarray, y: np.ndarray) -> dict | None:
     """Constrained NNLS of standardized dimensions on the (oriented) outcome + R^2.
     Reported as a DIAGNOSTIC: under collinearity it routes shared variance to the
     strongest single dimension (health need), so it understates care access - which is
-    exactly why the presets use correlation weighting, not this. See COMPOSITE-ENHANCEMENT."""
+    exactly why the presets use correlation weighting, not this. See VALIDATION."""
     try:
         from scipy.optimize import nnls
     except Exception:  # noqa: BLE001
@@ -203,7 +203,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         "note": "Area outcomes (even ACSC) are disease/need-dominated and care access is "
                 "collinear with need, so multivariate regression understates access. The "
                 "composite keeps care access at a value-judgment weight by default; the "
-                "anchored presets weight by univariate association. See COMPOSITE-ENHANCEMENT.",
+                "anchored presets weight by univariate association. See VALIDATION.",
     }})
     log("validate", f"anchors: {list(anchors_out)}")
     for a, v in anchors_out.items():

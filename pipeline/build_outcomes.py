@@ -3,7 +3,7 @@ crosswalked to ZCTA - for validating the Access Gap composite (never in the comp
 
 Why this stage exists: the project's only outcome was all-cause life expectancy
 (USALEEP), which is dominated by disease/need - so regressing the composite on it
-crushes the care-access weight to ~0 (see docs/COMPOSITE-ENHANCEMENT.md). Area-level
+crushes the care-access weight to ~0 (see docs/VALIDATION.md). Area-level
 all-cause mortality is a *need* outcome, not an *access* outcome. The access literature
 validates against outcomes that good ambulatory care should prevent:
 

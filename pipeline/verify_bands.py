@@ -2,7 +2,7 @@
 
 The point scores are unchanged by Layer B; only the 5-95 rank bands change, so the
 standard harness (pipeline.diagnostics) cannot see this layer. These three checks do
-(docs/ROADMAP-ACCESS-SIGNAL.md Layer B):
+(docs/DECISIONS.md Layer B):
 
   1. Differentiation  - low-confidence median band width >= 1.6x high-confidence.
   2. Shrinkage visible - low-conf bands narrower with shrinkage ON than OFF.

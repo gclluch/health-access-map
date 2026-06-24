@@ -268,7 +268,7 @@ def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
     (low-pop) ZCTAs get wider bands. Shrinkage's own value is a point-estimate improvement
     (validated separately in Layer 0 against outcomes), not a band-narrowing - using the
     posterior SD here would invert the confidence ordering (heavy shrinkage collapses the
-    band of the noisiest ZCTAs below the well-measured ones). See docs/ROADMAP-ACCESS-SIGNAL.md B."""
+    band of the noisiest ZCTAs below the well-measured ones). See docs/DECISIONS.md B."""
     df = df.reset_index(drop=True)
     # Shrink toward the finest stable local mean: county where it has enough ZCTAs to
     # estimate one, else state. County preserves real sub-state variation that shrinking
@@ -279,7 +279,7 @@ def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
     # Per-ZCTA input-noise summary fed to the Layer-B rank bands: mean coefficient of
     # variation (raw SE / pre-shrinkage estimate) across the scored rates. Computed BEFORE
     # shrinkage smooths the estimate. Per-rate CV clipped to [0,2] so a near-zero denominator
-    # can't blow up the mean. See docs/ROADMAP-ACCESS-SIGNAL.md B1.
+    # can't blow up the mean. See docs/DECISIONS.md B1.
     cvs = []
     for col in rate_cols:
         est = df[col].where(df[col] > 0)

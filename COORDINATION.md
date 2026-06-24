@@ -16,7 +16,7 @@ OB-GYN added; more specialties planned), each as an E2SFCA `*_2sfca` column feed
 
 **Owns:** `pipeline/build_outcomes.py` (new), `pipeline/validate.py` (new), the
 weight/validation tail of `pipeline/join_and_score.py`, `frontend/.../MethodologyPanel`,
-weight presets, and `docs/COMPOSITE-ENHANCEMENT.md`.
+weight presets, and `docs/VALIDATION.md`.
 
 **Doing:** replacing the single life-expectancy-regression weight set with honest,
 multi-anchor outcome validation (ACSC preventable hospitalizations, premature death,
@@ -62,4 +62,4 @@ To validate a supply specialty you need an **access-sensitive** outcome matched 
 - OB-GYN / maternity supply           -> infant mortality
 Stream B's `validate.py` provides exactly these anchors + per-sub-score signed
 correlations, so once your specialties land, `--only validate` will tell you whether each
-one carries real, correctly-signed signal. See `docs/COMPOSITE-ENHANCEMENT.md` §2.
+one carries real, correctly-signed signal. See `docs/VALIDATION.md` §2.

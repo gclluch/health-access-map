@@ -7,13 +7,11 @@ is the way it is* before changing it. Read this first; the detailed docs below g
 
 | Doc | What it covers |
 |---|---|
-| **METHODOLOGY.md** (this) | the cohesive logic + decision log + how to extend safely |
+| **METHODOLOGY.md** (this) | the cohesive logic + how to extend safely |
 | `PRIMER.md` | data-source dictionary (every input, vintage, caveat) and the field list |
-| `RATIONALE.md` | per-formula math + published precedent, including the v1 history |
-| `ROADMAP-ACCESS-SIGNAL.md` | the gated layer log (A/B/C) with per-layer gate results |
-| `COMPOSITE-ENHANCEMENT.md` | the "why care access reads ~5%" research note |
-| `COMPOSITE-EVALUATION.md` | OECD/JRC evaluation: is it meaningful, can you compare ZIPs |
-| `uncertainty-research.md` | small-area uncertainty literature behind the rank bands |
+| `RATIONALE.md` | per-formula math + published precedent (incl. the multiplicative lens) |
+| `DECISIONS.md` | compact ledger: every lever tried, kept, or rejected (don't re-run these) |
+| `VALIDATION.md` | how the index is validated: outcomes, sub-county gate, comparability, uncertainty |
 
 ---
 
@@ -75,7 +73,7 @@ percentile, so the two are never confused.
 Four sub-scores from **CDC PLACES** (model-based small-area estimates): chronic disease,
 behavioral risk, mental & social distress, disability. Precedent: standardize-then-combine
 composite indices. Caveat: PLACES is partly SES-conditioned, so disease/poverty correlation
-partly recovers the model's own assumptions (`COMPOSITE-ENHANCEMENT.md`).
+partly recovers the model's own assumptions (`VALIDATION.md`).
 
 ### Social vulnerability (the enabling barriers) - why it is access, not a descriptor
 Three sub-scores from **Census ACS** + PLACES SDOH: socioeconomic deprivation, housing &
@@ -132,7 +130,7 @@ trade-off rather than hiding it.**
 dimensions by how strongly they correlate with an independent outcome. Across every outcome and
 method, **care access lands modest** - it is collinear with need (~0.5), and area outcomes are
 disease-dominated. That is a true finding about outcomes, **not** proof access is irrelevant
-(`COMPOSITE-ENHANCEMENT.md`: it is a category error to tune a *gap* against an all-cause outcome
+(`VALIDATION.md`: it is a category error to tune a *gap* against an all-cause outcome
 that care access barely moves). Care access is kept meaningful by deliberate choice because it
 is the **actionable lever** - exactly as CHR weights clinical care at 20%.
 
@@ -179,145 +177,22 @@ ones.** This rule is what caught Layer C1 (§8).
   combined in quadrature. A ZCTA's rank moves ~+/-6 pts under reweighting and ~+/-4 from noise.
 - **Honest resolution:** internally reliable (split-half 0.95), but two ZIPs differ reliably
   only by ~10-15 percentile points - about **7-10 tiers, not 33,000 ranks**. The UI shows
-  deciles + a reliable range, not a false integer leaderboard (`COMPOSITE-EVALUATION.md`).
+  deciles + a reliable range, not a false integer leaderboard (`VALIDATION.md`).
 
 ---
 
-## 8. Decision log - what we tried, kept, and rejected (the stream of logic)
+## 8. Decision log - pointer
 
 The access dimension was the project's weakest link: originally **dropping care access
-*improved* outcome agreement** (it was subtracting signal). The fix was pursued cheapest-first,
-gated after every step. This is the reasoning trail.
+*improved* outcome agreement** (it was subtracting signal). It was fixed cheapest-first, gated
+after every step - the adaptive catchment (C3) was the structural win that roughly doubled
+supply's clean-outcome correlation (+0.13 -> +0.265); HPSA (C5) added an orthogonal official-
+shortage signal; the FQHC reframe and `household` removal fixed two wrong-signed pieces.
 
-### Kept (passed the gate)
-- **Digital / telehealth access (`digital_access` sub-score, ACS B28002 no-internet rate)** -
-  the telehealth analog of the no-vehicle transport barrier, placed in **social_vulnerability**
-  (the enabling-barriers dimension). Solo clean signed-r **+0.25** (premature_death +0.35,
-  infant_mort +0.31, life_exp +0.23), non-circular (infrastructure, not healthcare use).
-  **Kept as a reliability + completeness add, NOT a signal win:** in care_access it slightly
-  *regressed* the composite (broadband is collinear with provider supply); in
-  social_vulnerability it holds outcome agreement at 0.495 and **raises split-half 0.943 ->
-  0.955**, filling the telehealth axis the index otherwise lacked. *Lesson: a non-circular
-  measure that is collinear with the existing deprivation gradient improves coherence and
-  completeness without moving outcome agreement - ship it for the dimension it adds, not for a
-  signal lift, and place it where it does not dilute a distinct sub-score.* Free, one ACS call.
-- **HRSA primary-care HPSA as its own `shortage_designation` sub-score (Layer C5)** - an
-  official shortage designation that is **near-orthogonal to our E2SFCA density (corr ~0.05)**
-  yet tracks independent mortality on its own (clean signed-r **+0.20**: premature_death +0.28,
-  life_exp +0.17, infant_mort +0.22, preventable_hosp +0.13). It encodes need + travel +
-  safety-net distance a raw provider count cannot see. **Kept as a separate sub-score, not
-  folded into provider_supply** - at corr 0.05 the averaging-then-rerank inside provider_supply
-  partially washes out its distinct signal (folded: FULL 0.488; separate: FULL **0.492**,
-  agreement **0.495**). County-level (max HPSA score per county → ZCTA), free daily CSV from
-  data.hrsa.gov (`build_hpsa.py`). *Lesson: an official designation can out-signal a modeled
-  density precisely because it is built from different evidence.*
-- **Hierarchical percentile model** (SVI method) - skew-robust, interpretable. §2.
-- **E2SFCA with adaptive catchment (C3)** - the win: provider_supply mean|r| 0.173 -> 0.273,
-  clean-outcome r +0.13 -> +0.265. §4. *Lesson: the supply weakness was the spatial confound
-  (fixed radius), not the input data.*
-- **Provider-type breadth** (dental, maternity) - surfaces real, distinct deserts. §4.
-- **FQHC reframe to desert x poverty (Layer A2)** - the raw FQHC-access score was wrong-signed
-  (clinics cluster in high-need areas); the need-relative form is correctly signed and adds
-  signal beyond poverty alone. Sub-score signed-r 0.118 -> 0.233.
-- **Drop the `household` sub-score (Layer A1)** - age-65+/age-17 are demographic *context*
-  (retirement areas read "vulnerable" but have good access); limited-English is wrong-signed vs
-  infant mortality (the immigrant-health paradox). All three demoted to context, never scored.
-- **Measurement-noise rank bands (Layer B)** - low-confidence ZCTAs now get visibly wider bands.
-- **PLACES measurement-noise bands (Layer B3)** - the completeness fix: health_need's noise,
-  previously absent from the bands (σ=0), is now parsed from PLACES 95% CIs and injected in
-  quadrature with the ACS term, calibrated to a member-input resample (gate-3 inj/emp 0.97). Unlike
-  the ACS term it is *not* floor-subtracted - PLACES is model-based, so its uncertainty is a small
-  (~0.06 CV), near-population-flat *irreducible* floor, not a low-pop effect. Point scores unchanged
-  (bands only). *Lesson: model-based small-area estimates carry a uniform uncertainty floor, not a
-  population-scaled one; represent it as such.*
-
-### Rejected (failed the gate - kept as documented negatives so nobody re-runs them)
-- **Condition-specific quality-of-care / "realized access conditional on need" (C1-redux)** -
-  the lever §10 *predicted* would be strongest. Tested **Dartmouth Atlas** county-level diabetic
-  process measures (HbA1c testing + eye exam *among diabetics*, 2019). **Clean-outcome signed-r
-  +0.036** (vs provider_supply +0.265) - life expectancy even faintly wrong-signed. *Weaker than
-  the raw-visit-rate C1 it was meant to replace.* Root cause: HbA1c testing is ~85-90% saturated
-  among diabetics (little geographic variance), county-level (diluted across ZCTAs), 2019 vintage.
-  The "conditional on need" denominator did **not** rescue it. Probed before any build (the right
-  move). Blood-lipid testing was retired from HEDIS in 2015 so only 2 measures survive to 2019.
-- **Mental-health / dental HPSA, and the MUA/IMU index** - tested alongside PC-HPSA. MH-HPSA
-  (+0.09) and DH-HPSA (+0.12) are highly correlated with PC-HPSA (0.59 / 0.75) and add **~0
-  beyond it** (partial-r ≈ −0.05). The MUA Index of Medical Underservice is **wrong-signed at
-  ZCTA level** (−0.04) - its elderly-% term makes retirement areas read "served." Only PC-HPSA
-  ships.
-- **Realized utilization (C1)** - CMS Medicare visit-rates (% with an E&M visit, etc.) as a
-  "low realized use = barrier" sub-score. *Looked* like a win across all 6 outcomes, **but it
-  was circular**: its only strong correlations were with flu (+0.66) and mammography (+0.54),
-  which are engagement outcomes; against life expectancy r = **-0.00**, and the clean-outcome
-  north star **regressed** 0.480 -> 0.470. Medicare visit-rates are saturated (~90%),
-  need-endogenous (sick areas use more care), and 65+-only. **This is why the anti-circularity
-  rule (§6) exists.**
-- **Capacity-weight NPIs by Medicare claims volume (C2)** - down-weight dormant registrations
-  via `w = benes/(benes+K)`. A **wash** vs clean outcomes (provider_supply 0.132 -> 0.129):
-  premature-death nudged up but infant-mortality dropped (Medicare doesn't cover pediatricians,
-  so weighting zeroed them). Confirmed the weakness was *not* dormant registrations.
-- **Need-adjusted supply** - demand weighted by disease burden. Computed historically but never
-  scored: it double-counts health need, which is already its own dimension.
-- **Raw facility-count access (pharmacies; predicts hospital beds, urgent care)** - pharmacy
-  E2SFCA from NPPES Entity-Type-2 NPIs (68.5k pharmacies). Clean signed-r **−0.17** - wrong-
-  signed, and *more* wrong-signed after controlling for supply (−0.21). Cause: retail facilities
-  cluster in dense high-need urban areas, so "low facility access" reads as *better* outcomes -
-  the identical confound that forced the FQHC reframe (§4) to `desert × poverty`. **General rule:
-  any raw facility-COUNT access measure is wrong-signed; it must be reframed as desert × need to
-  be correctly signed, at which point it largely duplicates the existing safety-net sub-score.**
-- **Hospital quality / ED-timeliness / HCAHPS (CMS Care Compare)** - probed every Care Compare
-  hospital measure, mapped hospital→ZCTA by Gaussian catchment. The *access-process* measures are
-  dead or wrong-signed: median ED wait (OP_18b) is **−0.148** (the ED-crowding urban confound -
-  long waits in dense cities with better outcomes), left-without-being-seen +0.03, HCAHPS patient
-  experience −0.02 (rural critical-access hospitals score higher). The overall hospital star looked
-  strong (raw clean-r **+0.228**) but **collapsed to +0.075 partial** controlling for the scored
-  gradient (corr 0.28 w/ health_need, 0.23 w/ supply - not orthogonal), and the surviving signal
-  concentrates on premature_death / preventable_hosp (which mechanically overlap the star's 30-day
-  mortality + readmission components) while life-exp and infant-mortality (the latter absent from
-  the star) go to ~0. The star's signal IS its mortality component - outcome-adjacent, which we keep
-  out of the composite. *Same shape as the cardiology negative below.* **Lesson: "it's a rate, not a
-  count" does NOT clear the clustering confound** - throughput/utilization rates carry their own
-  urbanicity confound; only orthogonality + partial-r vs the FULL gradient is decisive. Rejected on
-  the probe (no build), like Dartmouth C1-redux.
-- **SUD / behavioral-health treatment desert (SAMHSA / NPPES Entity-2)** - 146k addiction/SUD NPIs
-  (28k treatment facilities + 118k MAT prescribers), framed as *distance-to-nearest desert* (not a
-  count, to dodge the clustering confound). Raw clean-r +0.111 → **partial −0.010**; corr **+0.42**
-  with provider_supply. The SUD desert simply *is* the rural/supply gradient we already score - even
-  the desert framing did not make it orthogonal. The last genuinely-new spatial access dimension in
-  the audit queue; its failure marks the spatial-signal ceiling.
-- **FQHC operating-hours (the Accommodation axis)** - the free foothold we already download but
-  ignore (`Operating Hours per Week` in the HRSA FQHC file). *Total* accessible hours collapses
-  (partial −0.03; corr +0.47 supply - it's FQHC density). *Average hours per reachable site* is
-  density-normalized and genuinely **orthogonal** (corr +0.03 supply, partial +0.085, all outcomes
-  correctly signed) - the first orthogonal candidate since HPSA - but **too weak to survive
-  dimensional dilution**: spliced as a 6th care_access sub-score it moved the north-star by 0.000.
-  *Lesson: orthogonality is necessary but not sufficient; a signal must also be strong enough to
-  survive being 1-of-N in a fractionally-weighted dimension. HPSA cleared both bars (+0.19); FQHC
-  hours clears only orthogonality.* Conceptually fills Accommodation; statistically a no-op. Not built.
-- **Sub-county HPSA resolution** - sharpening the shipped county-max HPSA to tract level (11k
-  designations carry tract FIPS) was a **wash**: meanClean +0.206 → +0.209, 0.991 correlated. HPSA
-  designations are dense enough that nearly every ZCTA already inherits a county score, and the
-  dominant *population* HPSAs are sub-population not sub-geography. County-max stays.
-- **Demand-matched specialist supply (e.g. CHD ↔ cardiology mismatch)** - the intuitive
-  "heart disease prevalent but no cardiologists" idea. Tested empirically (2026-06-23): scanned
-  NPPES for 30k cardiologists, E2SFCA'd them on the adaptive catchment, defined mismatch =
-  CHD-need-percentile − cardiology-supply-percentile. The mismatch is **real in the world**
-  (cardiologists are scarcer where CHD is high, r = −0.30) and its raw clean-outcome r is a
-  strong **+0.273** - but it **collapses to −0.06 once you control for CHD prevalence and
-  primary supply**, both already scored (CHD in health_need, supply in care_access). The
-  mismatch is just `need − supply`, a linear combination the additive composite already sums;
-  cardiology supply is 0.80 collinear with primary supply, so the specialty breakout adds
-  ~nothing. *This is the specialist-specific proof of the double-counting trap above: the
-  weighted sum already rewards "high need AND low supply." Don't add explicit mismatch terms.*
-- **Empirical (pure-regression) weights** - NNLS regression of dimensions on an outcome floors
-  care access at ~5%. Offered only as a labeled diagnostic preset, never the default, because it
-  optimizes "predict this outcome" rather than "measure the access gap" (§5).
-
-*Meta-lesson for §8:* two of three Layer-C input-data attempts failed; the one structural
-attempt (catchment shape) won. **The care-access signal was not fixable by better supply/use
-input data - the lever was spatial.**
-
----
+**The full ledger - every lever tried, kept, or rejected, with its numbers and root cause -
+now lives in [`DECISIONS.md`](DECISIONS.md)** (the single source so completed work isn't
+re-litigated here). *Meta-lesson:* the care-access signal was not fixable by better supply/use
+input data - the lever was spatial (catchment shape) and structural, not more data.
 
 ## 9. Honest limitations
 - **Relative, not absolute** - a 95 means "worse than 95% of ZIPs," not "objectively bad."
@@ -346,7 +221,7 @@ construct gaps**, and both are *unfillable from free national data* - every free
 either collinear with the captured deprivation gradient (collapses in partial-r) or, where
 orthogonal, too weak to survive dimensional dilution. Closing them needs the **scrape-to-calibrate**
 heuristic (sample → regress on held features → predict nationally → gate the predicted column;
-specced in ROADMAP-ACCESS-SIGNAL.md), the only remaining lever that could add genuinely new signal.
+specced in DECISIONS.md), the only remaining lever that could add genuinely new signal.
 
 ---
 
@@ -381,12 +256,12 @@ remaining levers are therefore **completeness/structural, not signal** (in rough
    measurement noise (previously σ=0 in the bands) is now parsed from PLACES 95% CIs into a
    `places_input_cv`, injected in quadrature with the ACS term and calibrated to a member-input
    resample (gate 3 health_need inj/emp 0.97). Point scores unchanged; the uncertainty model is now
-   complete across all three dimensions. See ROADMAP-ACCESS-SIGNAL.md Layer B3.
+   complete across all three dimensions. See DECISIONS.md Layer B3.
 2. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
    isochrones. A *build* (routing over provider coords), not a download; deemed infeasible at C3,
    revisit only with a precomputed travel-time matrix (e.g. Urban Institute national tract OSRM).
    Sharpens provider_supply; does not expand signal.
 3. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
    file exists (only the CMS NDF Medicare-assignment flag, near-saturated); needs the scrape-to-
-   calibrate heuristic in ROADMAP-ACCESS-SIGNAL.md. A real slog. Lowest ROI.
+   calibrate heuristic in DECISIONS.md. A real slog. Lowest ROI.
 ~~ZIP/sub-county HPSA resolution~~ - tested 2026-06-23, a wash (0.991 correlated with county-max).
