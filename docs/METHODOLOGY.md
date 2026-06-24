@@ -154,14 +154,16 @@ never in the composite.
   wrong-sign (correct between counties, wrong within) that the county gate passed. See VALIDATION.md.
 
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
-coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.488**; `drop_care_access`
-0.467 (**below** FULL, so care access *adds* signal); composite agreement **0.491**; clean (non-
-circular) composite-r **0.501**; split-half **0.955**; composite within-county (national) **0.601**;
-provider_supply mean|r| **0.273**, plus **shortage_designation** (HPSA, clean +0.20) and
-**digital_access** (broadband, +0.25). `safetynet_access` is computed + displayed but **unscored**
-(resolution-dependent wrong-sign). (Numbers shifted slightly from the pre-safetynet-removal
-FULL 0.492 / agreement 0.495 - the drop is concentrated in the circular flu/mammo outcomes; the
-clean-outcome composite held and sub-county rose. See VALIDATION.md + DECISIONS.md.)
+coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.510**; `drop_care_access`
+0.467 (**below** FULL, so care access *adds* signal, margin **+0.043**); composite agreement
+**0.514**; clean (non-circular) composite-r **0.547**; split-half **0.954**; bands ALL PASS;
+composite within-county (national) **0.599**. Care sub-scores: **medical_debt** mean|r| **0.40**
+(the strongest - affordability barrier, survives partial-r +0.27), insurance 0.34,
+provider_supply 0.273, **shortage_designation** (HPSA) 0.20. Two care items are computed +
+displayed but **unscored**: `safetynet_access` (wrong-signed within counties) and `preventive_use`
+(realized utilization - a mediator/outcome, not a barrier). The arc this session: dropped the
+`preventive_use` mediator (clean-r 0.501→0.516) and added the `medical_debt` barrier (→0.547),
+lifting FULL from 0.492. See VALIDATION.md + DECISIONS.md.
 
 ### The cardinal anti-circularity rule
 Flu vaccination and mammography are **healthcare-engagement** measures *and* validation

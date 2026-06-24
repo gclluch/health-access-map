@@ -10,8 +10,10 @@ narrative logic lives in [METHODOLOGY.md](METHODOLOGY.md); the validation eviden
 (`drop_care_access` stays below FULL) and reliability (>=0.93) hold, judged against the
 **death-records / ACSC** outcomes, never flu/mammography (the anti-circularity rule).
 
-Current baseline: FULL **0.492** / drop_care_access **0.467** (care access adds +0.025) /
-composite **0.495** / split-half **0.955** / scoreable **33176**.
+Current baseline: FULL **0.510** / drop_care_access **0.467** (care access adds **+0.043**) /
+composite **0.514** / clean-4 **0.547** / split-half **0.954** / bands ALL PASS / scoreable **33176**.
+(Up from FULL 0.492 at session start: dropped the mediator `preventive_use`, added the
+`medical_debt` affordability barrier - see Kept below.)
 
 ## Kept (passed the gate)
 
@@ -21,6 +23,8 @@ composite **0.495** / split-half **0.955** / scoreable **33176**.
 | **E2SFCA + adaptive catchment (C3)** | provider_supply mean\|r\| 0.173→**0.273**; clean-r +0.13→+0.265 | the project's main win - removed the fixed-radius urbanicity confound (structural, not new data) |
 | FQHC reframe → desert×poverty (A1/A2) | sub-score 0.118→0.233 (county) | raw FQHC access is wrong-signed (clinics cluster in high-need areas); need-relative form is correctly signed **between** counties... |
 | **safetynet_access → unscored** (kept displayed) | composite within-county +0.583→**+0.601**; clean county-r flat 0.502→0.501 | ...but **wrong-signed WITHIN** counties in 85% of states (resolution-dependent). Removed from the composite for a ZCTA-native tool; kept as a displayed sub-score. `scored=False` in taxonomy |
+| **preventive_use → unscored** (moved to realized-access layer) | composite clean-r 0.501→**0.516**; care access still adds signal | It is **utilization (a mediator/Donabedian "process"), not a barrier** - and `mammouse_pct` is literally the `mammography` validation outcome (criterion contamination). Removing the mediator *improved* the composite (it had double-counted the PLACES need inputs). `scored=False`; shown as realized access. |
+| **medical_debt** (Urban Institute, scored barrier) | composite clean-r 0.519→**0.547**; care_access 0.393→**0.480**; care access marginal value →**+0.043** | **The first new scored barrier to SURVIVE partial-r (+0.27)** vs need+vuln+care_access - an AFFORDABILITY barrier (under-insured / cost-burden) distinct from coverage+poverty (corr ~0.4, not subsumed). Clean signed-r +0.48; strongest care sub-score (mean\|r\| 0.40). County-level (0 sub-county, like HPSA). Free GitHub CSV (`build_medicaldebt.py`). The redemption: replaced the contaminated mediator with a legitimate, stronger barrier. |
 | Drop `household` sub-score (A1) | removed wrong-signed members | age structure is context; limited-English wrong-signed vs infant mortality (immigrant-health paradox) |
 | Provider-type breadth (dental, OB/GYN) | surfaces real deserts | distinct care axes, distinct deserts |
 | **HPSA as own `shortage_designation` (C5)** | FULL 0.486→**0.492**, agreement →0.495 | official designation **orthogonal** to E2SFCA density (corr 0.05); clean +0.20 on its own |

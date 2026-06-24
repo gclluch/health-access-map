@@ -112,19 +112,18 @@ sub-county (within-county, national USALEEP) signal:
 least productive at the resolution the tool runs. (Enabling A's in social_vulnerability behave
 the same: socioeconomic/Affordability within-county +0.524, digital/telehealth +0.356.)
 
-**5 A's coverage:** Availability over-built + weak (spatial); Affordability strong (insurance +
-socioeconomic); Accessibility decent on the *demand* side (no-vehicle, telehealth) but weak on the
-*supply* side (the spatial catchment); **Accommodation absent** (no hours / wait / walk-in /
-appointment measure); **Acceptability absent** (FQHC proxy now unscored; language removed as
-wrong-signed, A1). The two missing A's are practice-behavior axes, so they are the most likely to
-be *orthogonal* to the poverty/rural gradient (like HPSA was) - but they have no free national
-ZCTA data: Medicaid/new-patient acceptance needs the scrape-to-calibrate build (DECISIONS C4),
-FQHC-hours/urgent-care inherit the FQHC clustering confound. **`preventive_use` is the highest-ROI
-care signal** because it is *realized* access - the net signature of all 5 A's ("did people
-actually get care") - so leaning toward non-circular realized-access measures beats chasing each
-thin upstream A separately (which collapse in partial-r). *Implication: stop over-investing
-engineering in spatial supply; the productive frontier for care_access is Acceptability
-(Medicaid-acceptance) and realized access, not more geography.*
+**5 A's coverage (updated):** Availability over-built + weak (spatial); **Affordability strong and
+now deepened** - uninsured (coverage) **+ medical-debt burden** (the under-insured / cost-burden
+barrier, the first new scored barrier to survive partial-r at +0.27, mean|r| 0.40); Accessibility
+decent on the *demand* side (no-vehicle, telehealth), weak on the *supply* side; **Accommodation
+absent** (FQHC-hours flat - no signal); **Acceptability absent** (FQHC proxy unscored; real
+Medicaid-acceptance data is orthogonal but need-endogenous/unsigned - DECISIONS). **`preventive_use`
+was REMOVED from the composite** (it is *realized utilization* - a mediator/Donabedian "process",
+not a barrier; `mammouse` was criterion-contaminated with the mammography validator). Removing the
+mediator *raised* clean-r (0.501→0.516); adding the medical-debt barrier raised it further (→0.547).
+*Implication / lesson: the productive frontier for care_access was not more geography and not
+realized-use proxies (mediators) - it was a genuine upstream **affordability** barrier (medical
+debt). Spatial supply stays the weakest, least-productive piece.*
 
 ## 4. Amenable mortality - the gold-standard anchor (wired, not yet pulled)
 
