@@ -69,11 +69,13 @@ function SubScoreRow({
   label,
   pct,
   rec,
+  scored = true,
 }: {
   subKey: string;
   label: string;
   pct: number | null | undefined;
   rec: Record<string, unknown> | null;
+  scored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -84,7 +86,10 @@ function SubScoreRow({
         aria-expanded={open}
       >
         <span className="text-graphite text-[9px] w-2">{open ? '▾' : '▸'}</span>
-        <span className="flex-1 text-[12px] text-ink truncate" title={label}>{label}</span>
+        <span className="flex-1 text-[12px] text-ink truncate" title={scored ? label : `${label} - shown for context, not scored`}>
+          {label}
+          {!scored && <span className="ml-1 text-[9px] text-graphite font-normal">· not scored</span>}
+        </span>
         <span className="num text-[10px] text-graphite w-14 text-right">
           {pct == null ? 'no data' : `${ordinal(pct)} pct`}
         </span>
@@ -132,6 +137,7 @@ function Dimension({
               key={s.key}
               subKey={s.key}
               label={s.label}
+              scored={s.scored !== false}
               pct={m[`${s.key}_pctile`] as number | null}
               rec={rec}
             />

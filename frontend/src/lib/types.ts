@@ -110,7 +110,7 @@ export function parseAnchors(raw: RawWeights): AnchorPreset[] {
 
 // The hierarchy, mirroring pipeline/taxonomy.py — drives the Color-by menu,
 // the drill-down panel, and the rankings selector.
-export interface SubSpec { key: string; label: string }
+export interface SubSpec { key: string; label: string; scored?: boolean }
 export interface DimSpec { key: DimKey; label: string; blurb: string; subs: SubSpec[] }
 
 export const MODEL: DimSpec[] = [
@@ -139,11 +139,11 @@ export const MODEL: DimSpec[] = [
   {
     key: 'care_access',
     label: 'Barriers to care',
-    blurb: 'Low provider supply, official provider shortage (HPSA), unmet safety-net need (FQHC desert), lack of insurance, unmet preventive care. Higher = more barriers.',
+    blurb: 'Low provider supply, official provider shortage (HPSA), lack of insurance, unmet preventive care. Higher = more barriers. (Safety-net need is shown for context but not scored - it is wrong-signed within counties; see methodology.)',
     subs: [
       { key: 'provider_supply', label: 'Low provider supply (spatial)' },
       { key: 'shortage_designation', label: 'Official provider shortage (HPSA)' },
-      { key: 'safetynet_access', label: 'Unmet safety-net need (FQHC desert)' },
+      { key: 'safetynet_access', label: 'Unmet safety-net need (FQHC desert)', scored: false },
       { key: 'insurance', label: 'Lack of insurance' },
       { key: 'preventive_use', label: 'Low preventive-care use' },
     ],
