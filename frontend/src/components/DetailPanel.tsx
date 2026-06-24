@@ -310,8 +310,8 @@ export default function DetailPanel() {
                         Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)}{' '}
                         · Access {pctOf(weights.care_access)}
                       </span>
-                      ), which is a value judgment, not a fact. Re-tune it under "Customize the
-                      score" and the map, rankings, and this number all update.
+                      ), which is a value judgment, not a fact. Re-tune it under "Adjust
+                      weighting" and the map, rankings, and this number all update.
                     </div>
                   );
                 })()}

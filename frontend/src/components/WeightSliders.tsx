@@ -62,11 +62,11 @@ export default function WeightSliders() {
         <button
           onClick={toggleWeights}
           aria-expanded={true}
-          aria-label="Collapse customize the score"
+          aria-label="Collapse weighting"
           className="flex items-center gap-1 text-[12px] font-medium text-ink hover:text-accent"
         >
           <span className="text-graphite text-[11px]" aria-hidden>▾</span>
-          Customize the score
+          Adjust weighting
         </button>
         <button
           className="text-[11px] text-accent hover:underline disabled:text-graphite disabled:no-underline"
