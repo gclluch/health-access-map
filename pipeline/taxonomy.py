@@ -197,6 +197,21 @@ DIMENSIONS: dict = {
                     M("access2_pct", 1, "Uninsured adults 18-64 (PLACES)"),
                 ],
             },
+            # AFFORDABILITY barrier beyond coverage: medical debt in collections (Urban Institute
+            # credit-bureau panel). Captures the UNDER-insured / cost-burden population the
+            # uninsured rate misses. The first new scored barrier to SURVIVE partial-r: clean
+            # signed-r +0.48, partial +0.27 vs need+vulnerability+care_access (corr ~0.4 w/
+            # poverty but NOT subsumed). Adding it lifted composite clean-r 0.519->0.549 and
+            # care_access 0.393->0.480, widening care-access's marginal value to +0.038. An
+            # upstream barrier (cause of care avoidance), not a mediator. County-level (no
+            # sub-county resolution, like HPSA). See docs/DECISIONS.md + VALIDATION.md.
+            "medical_debt": {
+                "label": "Medical debt burden",
+                "source": "medicaldebt",
+                "members": [
+                    M("medical_debt", 1, "Medical debt in collections (Urban Institute)"),
+                ],
+            },
             # REALIZED care use - computed + displayed but NOT SCORED (scored=False). This is
             # utilization (a MEDIATOR between barriers and outcomes / Donabedian "process"),
             # not a barrier (the "cause"). Including a downstream mediator in a cause-construct

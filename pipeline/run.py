@@ -16,7 +16,7 @@ import argparse
 import time
 
 from . import (build_acs, build_amenable, build_broadband, build_fqhc, build_gazetteer,
-               build_geometry, build_geonames, build_hpsa, build_lifeexp, build_outcomes,
+               build_geometry, build_geonames, build_hpsa, build_lifeexp, build_medicaldebt, build_outcomes,
                build_places, build_providers, build_supply, join_and_score, validate)
 from .common import load_env, log
 from .preflight import check as preflight_check
@@ -27,7 +27,7 @@ from .preflight import check as preflight_check
 # amenable: no-ops unless a manual CDC WONDER treatable-mortality export is present
 # (county data is not headlessly fetchable); runs before outcomes, which merges its CSV.
 STAGES = ["geometry", "places", "providers", "acs", "geonames",
-          "gazetteer", "supply", "fqhc", "hpsa", "broadband", "lifeexp", "amenable",
+          "gazetteer", "supply", "fqhc", "hpsa", "broadband", "lifeexp", "medicaldebt", "amenable",
           "outcomes", "join", "validate"]
 BUILDERS = {
     "geometry": build_geometry.build,
@@ -41,6 +41,7 @@ BUILDERS = {
     "hpsa": build_hpsa.build,
     "broadband": build_broadband.build,
     "lifeexp": build_lifeexp.build,
+    "medicaldebt": build_medicaldebt.build,
     "amenable": build_amenable.build,
     "outcomes": build_outcomes.build,
     "join": join_and_score.build,

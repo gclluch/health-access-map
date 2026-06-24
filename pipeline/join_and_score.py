@@ -29,7 +29,7 @@ OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
 # merged if present (safety-net + independent outcomes for display/validation). The
 # multi-anchor weight derivation lives in pipeline/validate.py (runs after join).
-OPTIONAL_STAGES = ("fqhc", "hpsa", "broadband", "lifeexp", "outcomes")
+OPTIONAL_STAGES = ("fqhc", "hpsa", "broadband", "medicaldebt", "lifeexp", "outcomes")
 
 
 def _pct(s: pd.Series) -> pd.Series:
@@ -54,10 +54,10 @@ _RANK_CV_EXCESS_CAP = 1.5
 # dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.47 × social_
 # vulnerability SD - care access is ACS only via insurance + the poverty term in safetynet,
 # vs social vulnerability's two fully-ACS sub-scores). health_need is PLACES (0; its noise is
-# Layer B3). Not a guess: 0.47 is the empirical inter-dimension propagation ratio, re-measured
-# by verify_bands gate 3 after the HPSA shortage_designation sub-score (no ACS noise) diluted
-# care_access's ACS share - it was 0.60 with 4 care sub-scores, 0.47 with 5.
-_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.47}
+# Layer B3). Not a guess: re-measured by verify_bands gate 3 after each care_access membership
+# change diluted its ACS share (0.60 -> 0.47 when HPSA was added; -> 0.40 after preventive_use
+# left and the noiseless county-level medical_debt joined - only insurance now carries ACS noise).
+_ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.40}
 
 # Layer B3: PLACES measurement-noise term. PLACES is model-based (smoothed), so its input CV is
 # small (~0.06) and nearly population-FLAT - it is an irreducible MODELING-uncertainty floor, not
@@ -66,12 +66,13 @@ _ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.47}
 # QUADRATURE (independent noise sources). _PLACES_SHARE = per-dimension propagation ratio
 # MEASURED by a member-input resample (perturb each PLACES rate by its CI-derived SE, propagate
 # member→sub-score→dimension): health_need is pure PLACES (1.0); care_access carries it via
-# preventive_use + access2 (0.78); social_vulnerability barely, via social_needs (0.14). SCALE_p
+# access2 only now (0.55 - was 0.78 when the unscored preventive_use also contributed);
+# social_vulnerability barely, via social_needs (0.14). SCALE_p
 # is calibrated so health_need's injected σ matches that resample (median ≈4.4 pctile pts);
 # re-verified by verify_bands gate 3. health_need previously had ZERO band noise term - B3 is the
 # completeness fix that closes that gap. See docs/DECISIONS.md B3.
 _RANK_PLACES_SIGMA_SCALE = 71.0
-_PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.78,
+_PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.55,
                  "social_vulnerability_pctile": 0.14}
 
 

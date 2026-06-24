@@ -87,6 +87,9 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'uninsured_rate', label: 'Uninsured (all ages)', unit: 'rate', desc: 'People of all ages with no health insurance coverage. Census ACS 5-year (B27001).' },
     { col: 'access2_pct', label: 'Uninsured adults 18-64', unit: 'pct', desc: `Adults aged 18-64 with no health insurance. ${PLACES}` },
   ],
+  medical_debt: [
+    { col: 'medical_debt', label: 'Medical debt in collections', unit: 'rate', desc: 'Share of people with medical debt in collections (Urban Institute "Debt in America," credit-bureau panel, county). An affordability barrier beyond coverage - the under-insured / cost-burden population that the uninsured rate misses.' },
+  ],
   preventive_use: [
     { col: 'checkup_pct', label: 'Annual checkup', unit: 'pct', better: 'high', desc: `Adults 18+ who had a routine checkup in the past year. ${PLACES} Higher = better.` },
     { col: 'dental_pct', label: 'Dental visit', unit: 'pct', better: 'high', desc: `Adults 18+ who visited a dentist or dental clinic in the past year. ${PLACES} Higher = better.` },
@@ -113,6 +116,7 @@ export const SUBSCORE_BLURB: Record<string, string> = {
   shortage_designation: 'Whether the county is a federal HRSA primary-care shortage area (HPSA), and how severe.',
   safetynet_access: 'FQHC safety-net clinic deserts weighted by local poverty.',
   insurance: 'Uninsured rate - all ages (Census ACS) and adults 18-64 (CDC PLACES).',
+  medical_debt: 'Share with medical debt in collections (Urban Institute, county) - the affordability barrier the uninsured rate misses: the under-insured / cost-burden population.',
   preventive_use: 'Low use of checkups, dental visits and cancer/cholesterol screenings - whether people actually engage with care (CDC PLACES).',
 };
 

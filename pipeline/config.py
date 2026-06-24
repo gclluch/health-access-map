@@ -153,6 +153,19 @@ HPSA_COL_SCORE = "HPSA Score"
 HPSA_COL_FIPS = "Common State County FIPS Code"
 HPSA_COL_STATUS = "HPSA Status"
 
+# Urban Institute "Debt in America" - share of people with medical debt in collections, by
+# county (deidentified credit-bureau panel, 2022 release). A genuine AFFORDABILITY barrier
+# distinct from coverage/poverty: it captures the UNDER-insured / cost-burden population that
+# the uninsured rate misses. Clean signed-r +0.48 vs independent mortality/ACSC, and it
+# SURVIVES partial-r at +0.27 controlling for need+vulnerability+care_access (corr ~0.4 with
+# poverty but NOT subsumed by it). An upstream barrier (a cause of care avoidance), not a
+# mediator/outcome. County-level (county->ZCTA via geonames; no sub-county resolution). Free
+# GitHub CSV. See docs/DECISIONS.md + VALIDATION.md.
+MEDICAL_DEBT_URL = ("https://raw.githubusercontent.com/UrbanInstitute/debt-interactive-map/"
+                    "master/data/20220501-update/county_medical.csv")
+MEDICAL_DEBT_COL_FIPS = "id"
+MEDICAL_DEBT_COL_SHARE = "medcoll"
+
 # HRSA Health Center (FQHC) service-delivery sites -> the safety-net access layer.
 # ~16,200 sites that serve everyone on a sliding fee scale (the access point for the
 # uninsured/Medicaid). Geocoded; operating hours used as an effective-capacity weight.
