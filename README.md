@@ -88,21 +88,24 @@ the join doesn't silently drop ZCTAs that were renumbered between the 2010 and 2
 
 ## Scoring methodology
 
-1. Outer-join the three layers on `zcta5`, left-anchored on the geometry ZCTA universe.
-2. Derive supply per capita (`primary_per_1k`), guarding divide-by-zero to null (never `inf`).
-   A geometry ZCTA with no NPPES match is treated as **zero** registered providers, not missing.
-3. Percentile-rank each component nationally (robust to skew):
-   - `disease_burden_pctile` - mean of z-scored prevalences, percentiled
-   - `provider_supply_pctile` - `primary_per_1k` percentiled (higher = better access)
-   - `econ_vuln_pctile` - mean of poverty, uninsured, and inverted-income percentiles
-4. **Access Gap = 0.40·disease + 0.35·(100 − supply) + 0.25·econ** (default weights;
-   the client sliders re-weight this live). Stored as the three percentiles so the
-   frontend recomputes without re-fetching.
-5. A ZCTA is **scoreable** only with population present and ≥ 2 of 3 components; otherwise
-   it renders gray ("no reliable data"). Small-population ZCTAs are flagged `low_confidence`
-   and excluded from the headline rankings.
+A hierarchy (SVI method - percentile-rank, average, **re-rank at each level** so every node is
+a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for the full logic.
 
-The three components are **collinear** (e.g. disease↔econ correlation is reported in
+1. Each **measure** (~50) is oriented (higher = worse access) and percentile-ranked nationally
+   (ordinal → immune to the heavy right-skew of provider density / income).
+2. **Sub-scores** (11; **10 scored**) = re-ranked mean of their available member percentiles.
+   `safetynet_access` is computed + displayed but **unscored** - it is wrong-signed *within*
+   counties (see [`docs/VALIDATION.md`](docs/VALIDATION.md)).
+3. **Dimensions** (3) = re-ranked mean of their sub-scores: health need, social vulnerability,
+   care access.
+4. **Access Gap = 0.35·need + 0.30·vulnerability + 0.35·care-access** (default; a conceptual
+   value judgment, as in County Health Rankings). The client sliders re-weight live from the
+   stored dimension percentiles. A **multiplicative "coincidence" lens** (weighted geometric
+   mean - lights up only where need *and* barriers coincide) is selectable alongside the additive default.
+5. A ZCTA is **scoreable** only with population present and ≥ 2 of 3 dimensions; otherwise it
+   renders gray. Low-population ZCTAs are flagged `low_confidence` and kept out of headline rankings.
+
+The three dimensions are **collinear** (~0.5; reported in
 `provenance.json` and the methodology panel), so the weighted sum double-counts shared
 variance - which is exactly why the weights are user-tunable rather than presented as truth.
 
@@ -119,9 +122,9 @@ in-app **"How to read this"** panel as well:
   structure, so the disease↔poverty correlation partly recovers the model's own
   assumptions - not two independent measurements confirming each other.
 - **Registered providers ≠ capacity.** An NPI is not an FTE and says nothing about
-  Medicaid/uninsured acceptance. Supply is by **ZIP containment** in v1, so a residential
-  ZIP next to a clinic-heavy ZIP reads artificially low. (Catchment smoothing is the
-  v1.1 upgrade.)
+  Medicaid/uninsured acceptance. Supply uses an **E2SFCA variable/adaptive spatial catchment**
+  (not ZIP containment), which fixed the urbanicity artifact; but it remains straight-line, not
+  drive-time, and counts registrations, not active accepting capacity.
 - **Small-area noise.** Low-population ZCTAs have wide ACS margins of error; they are
   flagged and de-emphasized.
 - **Different vintages & universes.** NPPES (this month), ACS (centered ~2-3 yrs back),
