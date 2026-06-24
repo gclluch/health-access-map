@@ -170,8 +170,11 @@ rather than silently producing a wrong column.
 - **Deploy** (`docs/DEPLOY.md`): two Dockerfiles + `docker compose up` (nginx-served SPA with
   `gzip_static` + cache headers, same-origin `/api` proxy to FastAPI). CORS and the SPA's API
   base are env-driven (`ALLOWED_ORIGINS`, `VITE_API_BASE`) so prod works without code changes.
-- **Gate with error bars**: `python -m pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
-  over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0.
+- **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
+  over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. When
+  a CDC WONDER treatable-mortality export is present it also runs the **amenable-mortality focus**
+  (care-access partial r vs the access-sensitive outcome). Finish that anchor in one step with
+  `make amenable` after the manual pull (recipe in `pipeline/build_amenable.py`).
 - **Observability**: `lib/observability.ts` - env-gated, dependency-free error + usage hooks
   (`VITE_SENTRY_DSN`, `VITE_ANALYTICS_URL`); no-ops when unset.
 - **Freshness**: the pipeline emits `frontend/public/meta.json`; the UI shows a "data as of" badge.

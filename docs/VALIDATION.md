@@ -166,14 +166,31 @@ mediator *raised* clean-r (0.501→0.516); adding the medical-debt barrier raise
 realized-use proxies (mediators) - it was a genuine upstream **affordability** barrier (medical
 debt). Spatial supply stays the weakest, least-productive piece.*
 
-## 4. Amenable mortality - the gold-standard anchor (wired, not yet pulled)
+## 4. Amenable mortality - the gold-standard anchor (fully wired; one manual pull from done)
 
-`build_amenable.py` encodes the 80-code OECD/Eurostat treatable ICD-10 list and converts a CDC
-WONDER county export into the `amenable_mortality_county.csv` that `validate.py` already merges.
-It is the one outcome that can legitimately weight care access, and the frontier outcome for a
-future frontier-gap construct. **Blocked only on the manual WONDER pull** - county data is not
-headlessly fetchable (the WONDER API is national-only). Expected impact is tempered by §3: even
-a clean sub-county access outcome left care access modest.
+All-cause mortality is a *need* outcome, so the standard gate can only ever show care access as
+marginal (§2). **Amenable (treatable) mortality** - deaths timely effective care should prevent
+(OECD/Eurostat, ages 0-74) - is the access-sensitive ruler the field validates against, and the
+one outcome that can legitimately weight care access.
+
+**The entire pipeline is now wired end to end for it:**
+- `build_amenable.py` encodes the OECD treatable ICD-10 set + a fully-specified WONDER recipe and
+  parses a dropped-in county export into `amenable_mortality_county.csv`.
+- `build_outcomes.py` merges it (county→ZCTA); `join_and_score` carries `amenable_mortality`;
+  `validate.py` produces an `amenable_mortality` anchor (the UI already renders it); and it is now
+  an (optional) outcome in `diagnostics` + `bootstrap_gate` - present-only, a no-op until pulled.
+- **The frontier analysis** lives in `bootstrap_gate.amenable_focus()`: when the column is present
+  it reports, with cluster-bootstrap CIs, the care-access **marginal value** and - the key number -
+  the **partial r(amenable, care_access | health_need, social_vulnerability)**. That partial r is
+  the legitimate test: does care access track *treatable* mortality *beyond* the deprivation
+  gradient it is collinear with? (Proven correct on synthetic data in `tests/test_amenable.py`.)
+
+**Blocked only on the manual WONDER pull** - county treatable-mortality is not headlessly fetchable
+(the WONDER API is national-only). Once the export is saved to `data/raw/wonder_amenable_county.txt`,
+the whole re-gate is one command: **`make amenable`** (`python -m pipeline.regate_amenable`). Expected
+impact is tempered by §3 (even a clean sub-county access outcome left care access modest), so the
+honest hypothesis is a *cleaner validation anchor*, not a care-access rescue - but the partial-r
+harness will now say so quantitatively, with error bars, either way.
 
 ## 5. Comparability and resolution - it's a gradient, not a 33k-rank leaderboard
 

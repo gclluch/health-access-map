@@ -70,6 +70,25 @@ def _mean_r(series: np.ndarray, Y: np.ndarray) -> float:
     return float(np.nanmean([_corr(series, Y[:, k]) for k in range(Y.shape[1])]))
 
 
+def _partial_corr(y: np.ndarray, c: np.ndarray, Z: np.ndarray) -> float:
+    """Partial correlation of c with y, controlling for the columns of Z: correlate the
+    residuals of y and c after regressing each on [1, Z]. Rows with any NaN are dropped."""
+    M = np.column_stack([y, c, Z])
+    m = ~np.isnan(M).any(axis=1)
+    if m.sum() < 100:
+        return np.nan
+    A = np.column_stack([np.ones(m.sum()), Z[m]])
+
+    def resid(v: np.ndarray) -> np.ndarray:
+        beta, *_ = np.linalg.lstsq(A, v, rcond=None)
+        return v - A @ beta
+
+    ry, rc = resid(y[m]), resid(c[m])
+    ry, rc = ry - ry.mean(), rc - rc.mean()
+    s = np.sqrt((ry @ ry) * (rc @ rc))
+    return float(ry @ rc / s) if s > 0 else np.nan
+
+
 def _mean_abs_r(series: np.ndarray, Y: np.ndarray) -> float:
     return float(np.nanmean([abs(_corr(series, Y[:, k])) for k in range(Y.shape[1])]))
 
@@ -88,6 +107,70 @@ def _cluster_groups(d: pd.DataFrame) -> list[np.ndarray]:
     key_sorted = key[order]
     bounds = np.where(key_sorted[1:] != key_sorted[:-1])[0] + 1
     return [order[s:e] for s, e in zip(np.r_[0, bounds], np.r_[bounds, len(key)])]
+
+
+def amenable_focus(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict | None:
+    """The frontier analysis the amenable-mortality anchor exists for: does care access predict
+    the outcome it is *supposed* to (deaths timely care should prevent), and does it add signal
+    BEYOND deprivation? All-cause mortality is need-dominated and can only show care access as
+    marginal (docs/VALIDATION.md §2); amenable mortality is the access-sensitive ruler.
+
+    Reports, with cluster-bootstrap (county) 95% CIs:
+      - care_access marginal value = composite-r(amenable) FULL minus drop-care (paired)
+      - PARTIAL r(amenable, care_access | health_need, social_vulnerability) - the key number:
+        care access's association net of the deprivation gradient it is collinear with.
+    Returns None (no-op) until a WONDER export has been built (see build_amenable)."""
+    if "amenable_mortality" not in d.columns:
+        return None
+    y = d["amenable_mortality"].to_numpy(float)  # higher = worse, already oriented
+    if np.isfinite(y).sum() < 100:
+        return None
+
+    X = d[DIM_COLS].to_numpy(float)
+    care_i = DIM_COLS.index("care_access_pctile")
+    keep = [i for i in range(len(DIM_COLS)) if i != care_i]  # need + vulnerability
+    groups = _cluster_groups(d)
+    n_clusters = len(groups)
+    rng = np.random.default_rng(seed)
+
+    def stats(ridx: np.ndarray) -> tuple[float, float]:
+        full = _corr(_rank(np.nanmean(X[ridx], axis=1)), y[ridx])
+        drop = _corr(_rank(np.nanmean(X[ridx][:, keep], axis=1)), y[ridx])
+        partial = _partial_corr(y[ridx], X[ridx][:, care_i], X[ridx][:, keep])
+        return full - drop, partial
+
+    base = np.arange(len(d))
+    p_margin, p_partial = stats(base)
+    p_full = _corr(_rank(np.nanmean(X, axis=1)), y)
+    p_care_raw = _corr(X[:, care_i], y)
+
+    bm, bp = [], []
+    for _ in range(n_boot):
+        pick = rng.integers(0, n_clusters, n_clusters)
+        ridx = np.concatenate([groups[i] for i in pick])
+        m, p = stats(ridx)
+        bm.append(m)
+        bp.append(p)
+
+    def ci(arr: list[float]) -> list[float]:
+        a = np.asarray(arr, float)
+        a = a[~np.isnan(a)]
+        return [round(float(np.percentile(a, 2.5)), 3), round(float(np.percentile(a, 97.5)), 3)]
+
+    n_cty = int(d.loc[d["amenable_mortality"].notna(), "county_fips"].nunique()) \
+        if "county_fips" in d.columns else None
+    return {
+        "outcome": "amenable_mortality (treatable, OECD 0-74; CDC WONDER)",
+        "n_zctas_with_outcome": int(np.isfinite(y).sum()),
+        "n_counties": n_cty,
+        "composite_full_r": round(float(p_full), 3),
+        "care_access_raw_r": round(float(p_care_raw), 3),
+        "care_access_marginal": {"point": round(float(p_margin), 3), "ci95": ci(bm)},
+        "care_access_partial_r": {"point": round(float(p_partial), 3), "ci95": ci(bp),
+                                  "controls": ["health_need", "social_vulnerability"]},
+        "reading": "partial r > 0 with a CI excluding 0 => care access tracks treatable mortality "
+                   "BEYOND the deprivation gradient - the legitimate basis for weighting it.",
+    }
 
 
 def run(n_boot: int = 1000, seed: int = 0) -> dict:
@@ -162,6 +245,9 @@ def run(n_boot: int = 1000, seed: int = 0) -> dict:
         "subscores": {s["key"]: {"point": round(p_sub[s["key"]], 3), "ci95": ci(f"sub_{s['key']}")}
                       for s in sub_specs},
     }
+    af = amenable_focus(d, n_boot, seed)  # None until a WONDER export is built
+    if af:
+        report["amenable_focus"] = af
     OUT_JSON.write_text(json.dumps(report, indent=2))
     _print(report)
     return report
@@ -180,6 +266,19 @@ def _print(r: dict) -> None:
     print("  sub-score mean|r| (95% CI):")
     for k, s in r["subscores"].items():
         print(f"    {k:22s} {s['point']:.3f}  CI{s['ci95']}")
+    af = r.get("amenable_focus")
+    if af:
+        print("\n  --- AMENABLE-MORTALITY FOCUS (the access-sensitive ruler) ---")
+        print(f"    counties={af['n_counties']}  zctas_with_outcome={af['n_zctas_with_outcome']}")
+        print(f"    composite FULL r vs amenable       {af['composite_full_r']:+.3f}")
+        print(f"    care_access raw r vs amenable      {af['care_access_raw_r']:+.3f}")
+        m = af["care_access_marginal"]
+        print(f"    care_access marginal (paired)      {m['point']:+.3f}  CI{m['ci95']}")
+        p = af["care_access_partial_r"]
+        sig = "" if (p["ci95"][0] > 0 or p["ci95"][1] < 0) else "  (CI spans 0)"
+        print(f"    care_access PARTIAL r | need,vuln   {p['point']:+.3f}  CI{p['ci95']}{sig}")
+    else:
+        print("\n  (amenable-mortality focus: no WONDER export yet - see pipeline/build_amenable.py)")
     print(f"\n  wrote {OUT_JSON.relative_to(config.ROOT)}")
 
 

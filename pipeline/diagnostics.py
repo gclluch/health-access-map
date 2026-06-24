@@ -17,10 +17,15 @@ from .join_and_score import _pct
 from .taxonomy import DIMENSIONS, subscore_specs
 
 METRICS = config.PROCESSED / "metrics.parquet"
-# outcome -> higher value is "better" (needs flipping to higher = worse) or "worse"
+# outcome -> higher value is "better" (needs flipping to higher = worse) or "worse".
+# amenable_mortality is OPTIONAL (manual CDC WONDER pull, see build_amenable): _oriented()
+# only includes outcomes actually present, so it auto-joins the gate the moment it lands and
+# is a no-op until then. It is the one access-sensitive anchor that can legitimately weight
+# care access, so bootstrap_gate.amenable_focus() reports it separately too.
 OUTCOMES = {
     "life_expectancy": "better", "flu_vaccination": "better", "mammography": "better",
     "preventable_hosp": "worse", "premature_death": "worse", "infant_mortality": "worse",
+    "amenable_mortality": "worse",
 }
 DIM_COLS = [f"{d}_pctile" for d in DIMENSIONS]
 
