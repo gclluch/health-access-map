@@ -1,8 +1,8 @@
 """bootstrap_gate: uncertainty on the diagnostics gate margins.
 
 The standard gate (`pipeline.diagnostics`) reports POINT estimates of correlation
-differences - e.g. "FULL 0.510 vs drop_care_access 0.467, margin +0.043" - and ships
-or kills inputs on those points. This module puts error bars on them, because a +0.043
+differences - e.g. "FULL 0.498 vs drop_care_access 0.452, margin +0.046" - and ships
+or kills inputs on those points. This module puts error bars on them, because a +0.046
 margin is meaningless without knowing whether it is inside sampling noise.
 
 Two design choices make the interval honest rather than flattering:

@@ -30,7 +30,8 @@ WONDER RECIPE (Underlying Cause of Death, 1999-2020 or 2018-2021 single-race):
   3. ICD-10 Codes: paste the TREATABLE_ICD10 set below (use the code search to add each).
   4. Other options: check "Age-Adjusted Rates"; years = pool 2016-2020 (or 2013-2022) to
      clear the <10-death suppression in small counties.
-  5. Export. Save the tab-delimited result to data/raw/wonder_amenable_county.txt, then:
+  5. Export. Save the tab-delimited result to data/manual/wonder_amenable_county.txt (the
+     committed durable location; data/raw/ also works as a fallback), then:
         python -m pipeline.build_amenable
   Suppressed/Unreliable rows (counts 1-9 / <20) are dropped; a rural tail will remain
   missing - that is honest (do NOT zero-fill), and validation is county-level only.
@@ -46,7 +47,11 @@ from . import config
 from .common import die, log
 
 # WONDER export (tab-delimited) the user drops in. (No auto-download - see module docstring.)
-WONDER_RAW = config.RAW / "wonder_amenable_county.txt"
+# It is NOT auto-downloadable (the WONDER county API is national-only), so the canonical copy
+# lives in the COMMITTED data/manual/ - it must survive a `data/` wipe to stay reproducible.
+# Falls back to data/raw/ for a fresh drop-in per the recipe below.
+_MANUAL_WONDER = config.RAW.parent / "manual" / "wonder_amenable_county.txt"
+WONDER_RAW = _MANUAL_WONDER if _MANUAL_WONDER.exists() else config.RAW / "wonder_amenable_county.txt"
 # The CSV build_outcomes.py auto-merges (cols: county_fips, amenable_mortality).
 OUT_CSV = config.RAW / "amenable_mortality_county.csv"
 

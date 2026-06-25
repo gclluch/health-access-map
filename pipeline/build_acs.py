@@ -45,23 +45,61 @@ def _proportion_se(moe_num: pd.Series, moe_den: pd.Series, p: pd.Series, den: pd
     return moe_p / ACS_MOE_Z
 
 
-def _eb_shrink(rate: pd.Series, se: pd.Series, state: pd.Series) -> pd.Series:
-    """Fay-Herriot empirical-Bayes shrinkage of a small-area rate toward its STATE
-    mean, weighted by reliability: shrunk = gamma*rate + (1-gamma)*mean_s, with
-    gamma = tau_s^2 / (tau_s^2 + SE^2) and tau_s^2 = max(0, Var(rate) - mean(SE^2))
-    estimated per state (method of moments). Noisy (small-pop) ZCTAs shrink hard;
-    well-measured ones keep their own value. Rows without an SE are left untouched."""
+def _fh_solve(r: np.ndarray, s2: np.ndarray) -> tuple[float, float]:
+    """Full Fay-Herriot moment fit for one group: jointly solve the between-area variance tau^2
+    and the GLS mean m. Model r_i = mu + b_i + e_i, b_i ~ N(0,tau^2), e_i ~ N(0,SE_i^2). The
+    estimator finds tau^2 satisfying the moment condition Sum (r_i-m)^2/(tau^2+SE_i^2) = n-1
+    with m the precision-weighted mean using weights 1/(tau^2+SE_i^2) - so the mean and tau^2
+    are mutually consistent (unlike a precision-weighted mean paired with an unweighted MoM
+    tau^2). g(tau^2) is monotone decreasing, so solve by bracketed bisection. tau^2=0 when the
+    between-area spread is fully explained by sampling error (full shrinkage to the GLS mean)."""
+    n = len(r)
+
+    def g(tau2: float) -> float:
+        prec = 1.0 / (tau2 + s2)
+        m = (prec * r).sum() / prec.sum()
+        return float((prec * (r - m) ** 2).sum() - (n - 1))
+
+    if g(0.0) <= 0.0:
+        tau2 = 0.0
+    else:
+        lo, hi = 0.0, max(1e-8, float(r.var()) * 10 + float(s2.max()))
+        tries = 0
+        while g(hi) > 0 and tries < 60:
+            hi *= 2.0
+            tries += 1
+        for _ in range(80):
+            mid = (lo + hi) / 2.0
+            if g(mid) > 0:
+                lo = mid
+            else:
+                hi = mid
+        tau2 = (lo + hi) / 2.0
+    prec = 1.0 / (tau2 + s2)
+    m = float((prec * r).sum() / prec.sum())
+    return tau2, m
+
+
+def _eb_shrink(rate: pd.Series, se: pd.Series, group: pd.Series) -> pd.Series:
+    """Fay-Herriot empirical-Bayes shrinkage of a small-area rate toward its LOCAL group mean
+    (county where stable, else state - the key is supplied by _local_group), weighted by
+    reliability: shrunk = gamma*rate + (1-gamma)*m, gamma = tau^2/(tau^2+SE^2). Noisy (small-pop)
+    ZCTAs shrink hard toward the group mean; well-measured ones keep their own value. Rows
+    without an SE are left untouched; groups with < 5 valid units are skipped.
+
+    tau^2 and the target mean m are fit jointly per group by the full FH moment estimator
+    (_fh_solve), so the precision weighting is internally consistent end to end."""
     out = rate.copy()
-    df = pd.DataFrame({"r": rate, "se": se, "st": state})
-    for st, g in df.groupby("st"):
-        v = g["r"].notna() & g["se"].notna()
+    df = pd.DataFrame({"r": rate, "se": se, "grp": group})
+    for _key, g in df.groupby("grp"):
+        v = g["r"].notna() & g["se"].notna() & (g["se"] > 0)
         if v.sum() < 5:
             continue
-        r, s = g.loc[v, "r"], g.loc[v, "se"]
-        m = r.mean()
-        tau2 = max(0.0, r.var() - (s ** 2).mean())
-        gamma = tau2 / (tau2 + s ** 2)
-        out.loc[r.index] = gamma * r + (1 - gamma) * m
+        r = g.loc[v, "r"].to_numpy(float)
+        s2 = g.loc[v, "se"].to_numpy(float) ** 2
+        tau2, m = _fh_solve(r, s2)
+        gamma = tau2 / (tau2 + s2)
+        out.loc[g.loc[v].index] = gamma * r + (1 - gamma) * m
     return out.clip(0, 1)
 
 
@@ -186,7 +224,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     if svi is not None:
         df = df.merge(svi, on="zcta5", how="left")
 
-    # ---- empirical-Bayes shrinkage of the noisy [0,1] rates toward the state mean ----
+    # ---- empirical-Bayes shrinkage of the noisy [0,1] rates toward their local mean ----
     df = _apply_shrinkage(df)
 
     df["population"] = df["population"].round().astype("Int64")
@@ -258,10 +296,10 @@ def _local_group(zcta5: pd.Series, min_per_county: int = 8) -> pd.Series:
 
 
 def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
-    """Shrink every rate that has a sibling `<rate>_se` column (Fay-Herriot, state-grouped),
-    emit a per-ZCTA `acs_input_cv` from the *raw published* SE, then drop the SE helper
-    columns. Records how far the low-population ZCTAs moved - that is the point: their noise
-    is pulled toward the state.
+    """Shrink every rate that has a sibling `<rate>_se` column (Fay-Herriot, grouped by the
+    local key from `_local_group` - county where stable, else state), emit a per-ZCTA
+    `acs_input_cv` from the *raw published* SE, then drop the SE helper columns. Records how far
+    the low-population ZCTAs moved - that is the point: their noise is pulled toward the local mean.
 
     The CV uses the RAW SE (not the post-shrinkage posterior SD): it is the honest 'how
     precisely do we measure this ZCTA's inputs' that feeds the Layer-B rank bands, so noisy
@@ -303,7 +341,7 @@ def _apply_shrinkage(df: pd.DataFrame) -> pd.DataFrame:
         moved[col] = round(float((df[col] - before).abs().mean()), 4)
     df = df.drop(columns=[f"{c}_se" for c in rate_cols])
     log("acs", f"EB-shrinkage applied to {len(rate_cols)} rates; mean |Δ| per rate: {moved}")
-    write_provenance({"acs_shrinkage": {"method": "Fay-Herriot EB toward county/state mean (MOE-weighted)",
+    write_provenance({"acs_shrinkage": {"method": "Fay-Herriot EB (joint iterative tau^2 + GLS mean) toward county/state local mean",
                                         "rates": rate_cols, "mean_abs_shift": moved}})
     return df
 

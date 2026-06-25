@@ -25,8 +25,13 @@ METRICS = config.PROCESSED / "metrics.parquet"
 OUTCOMES = {
     "life_expectancy": "better", "flu_vaccination": "better", "mammography": "better",
     "preventable_hosp": "worse", "premature_death": "worse", "infant_mortality": "worse",
-    "amenable_mortality": "worse",
 }
+# amenable_mortality is deliberately NOT in the main mix above. The standard gate is the
+# conservative ruler - need-dominated/all-cause outcomes care access must claw signal from
+# (the §2 "category error"). Amenable (treatable) mortality is the access-FAIR ruler and is
+# reported SEPARATELY via bootstrap_gate.amenable_focus() (partial-r | need,vuln), so folding
+# it into the headline mean-r would both dilute that clean result and mix another county-
+# broadcast outcome into the standard number. Kept out on purpose - see docs/VALIDATION.md §4.
 DIM_COLS = [f"{d}_pctile" for d in DIMENSIONS]
 
 
@@ -159,8 +164,8 @@ def run() -> dict:
           "composite_mean_r does not regress ---")
     print("--- these are POINT estimates. Run `python -m pipeline.bootstrap_gate` for 95% CIs "
           "on every margin (cluster bootstrap over county, paired); ship only if the margin CI "
-          "excludes 0. Current: care_access margin +0.042 CI[0.038,0.048], adds signal in 100% "
-          "of resamples; social_vulnerability margin -0.008 CI[-0.011,-0.004] (mildly redundant). ---")
+          "excludes 0. Current: care_access margin +0.046 CI[0.041,0.052], adds signal in 100% "
+          "of resamples; social_vulnerability margin -0.016 CI[-0.02,-0.012] (mildly redundant). ---")
     return report
 
 

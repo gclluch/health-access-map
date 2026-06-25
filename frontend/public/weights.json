@@ -10,14 +10,14 @@
       "scope": "county",
       "caveat": "Medicare 65+ FFS; the textbook ambulatory-access outcome",
       "weights": {
-        "health_need": 38.2,
-        "social_vulnerability": 32.2,
+        "health_need": 38.4,
+        "social_vulnerability": 31.9,
         "care_access": 29.6
       },
       "regression_weights": {
-        "health_need": 76.1,
+        "health_need": 77.0,
         "social_vulnerability": 5.0,
-        "care_access": 18.9
+        "care_access": 18.0
       },
       "fit": {
         "r2": 0.183,
@@ -25,8 +25,32 @@
       },
       "dimension_corr": {
         "health_need": 0.424,
-        "social_vulnerability": 0.348,
-        "care_access": 0.315
+        "social_vulnerability": 0.342,
+        "care_access": 0.312
+      }
+    },
+    "amenable_mortality": {
+      "label": "Amenable mortality",
+      "scope": "county",
+      "caveat": "deaths avoidable with timely care (IHME HAQ gold standard)",
+      "weights": {
+        "health_need": 36.7,
+        "social_vulnerability": 32.1,
+        "care_access": 31.2
+      },
+      "regression_weights": {
+        "health_need": 66.3,
+        "social_vulnerability": 5.0,
+        "care_access": 28.7
+      },
+      "fit": {
+        "r2": 0.607,
+        "n": 3066
+      },
+      "dimension_corr": {
+        "health_need": 0.758,
+        "social_vulnerability": 0.648,
+        "care_access": 0.625
       }
     },
     "premature_death": {
@@ -35,21 +59,21 @@
       "caveat": "broad mortality burden; partly need-driven",
       "weights": {
         "health_need": 35.3,
-        "social_vulnerability": 33.2,
-        "care_access": 31.5
+        "social_vulnerability": 33.1,
+        "care_access": 31.6
       },
       "regression_weights": {
-        "health_need": 50.9,
-        "social_vulnerability": 19.9,
-        "care_access": 29.3
+        "health_need": 52.8,
+        "social_vulnerability": 16.3,
+        "care_access": 30.9
       },
       "fit": {
-        "r2": 0.519,
+        "r2": 0.515,
         "n": 3069
       },
       "dimension_corr": {
         "health_need": 0.685,
-        "social_vulnerability": 0.637,
+        "social_vulnerability": 0.634,
         "care_access": 0.6
       }
     },
@@ -58,23 +82,23 @@
       "scope": "county",
       "caveat": "natural validator for maternity (OB-GYN) supply; sparse at county",
       "weights": {
-        "health_need": 35.5,
-        "social_vulnerability": 33.0,
+        "health_need": 35.4,
+        "social_vulnerability": 33.1,
         "care_access": 31.5
       },
       "regression_weights": {
-        "health_need": 53.3,
-        "social_vulnerability": 17.4,
-        "care_access": 29.4
+        "health_need": 54.1,
+        "social_vulnerability": 15.1,
+        "care_access": 30.8
       },
       "fit": {
-        "r2": 0.444,
+        "r2": 0.443,
         "n": 1177
       },
       "dimension_corr": {
         "health_need": 0.634,
-        "social_vulnerability": 0.58,
-        "care_access": 0.55
+        "social_vulnerability": 0.586,
+        "care_access": 0.551
       }
     },
     "flu_vaccination": {
@@ -82,23 +106,23 @@
       "scope": "county",
       "caveat": "proximal: did people actually receive care? Closer to access than mortality",
       "weights": {
-        "health_need": 31.0,
-        "social_vulnerability": 32.5,
-        "care_access": 36.5
+        "health_need": 32.1,
+        "social_vulnerability": 30.6,
+        "care_access": 37.3
       },
       "regression_weights": {
-        "health_need": 19.9,
-        "social_vulnerability": 20.7,
-        "care_access": 59.4
+        "health_need": 30.4,
+        "social_vulnerability": 5.0,
+        "care_access": 64.6
       },
       "fit": {
-        "r2": 0.171,
+        "r2": 0.165,
         "n": 3107
       },
       "dimension_corr": {
         "health_need": 0.329,
-        "social_vulnerability": 0.348,
-        "care_access": 0.398
+        "social_vulnerability": 0.311,
+        "care_access": 0.393
       }
     },
     "mammography": {
@@ -106,22 +130,22 @@
       "scope": "county",
       "caveat": "proximal access/utilization; claims-based, independent of the PLACES model",
       "weights": {
-        "health_need": 28.9,
-        "social_vulnerability": 34.3,
-        "care_access": 36.9
+        "health_need": 29.4,
+        "social_vulnerability": 33.2,
+        "care_access": 37.5
       },
       "regression_weights": {
         "health_need": 5.0,
-        "social_vulnerability": 37.4,
-        "care_access": 57.6
+        "social_vulnerability": 30.8,
+        "care_access": 64.2
       },
       "fit": {
-        "r2": 0.257,
+        "r2": 0.248,
         "n": 3103
       },
       "dimension_corr": {
         "health_need": 0.363,
-        "social_vulnerability": 0.445,
+        "social_vulnerability": 0.42,
         "care_access": 0.484
       }
     },
@@ -130,23 +154,23 @@
       "scope": "zcta",
       "caveat": "all-cause -> a NEED outcome; starves care-access by construction. Validity check only, not a recommended weighting.",
       "weights": {
-        "health_need": 37.9,
-        "social_vulnerability": 32.7,
-        "care_access": 29.4
+        "health_need": 37.6,
+        "social_vulnerability": 32.9,
+        "care_access": 29.5
       },
       "regression_weights": {
-        "health_need": 63.5,
-        "social_vulnerability": 15.2,
-        "care_access": 21.3
+        "health_need": 59.6,
+        "social_vulnerability": 19.5,
+        "care_access": 20.8
       },
       "fit": {
-        "r2": 0.386,
+        "r2": 0.39,
         "n": 31467
       },
       "dimension_corr": {
         "health_need": 0.606,
-        "social_vulnerability": 0.511,
-        "care_access": 0.451
+        "social_vulnerability": 0.52,
+        "care_access": 0.457
       }
     }
   },
@@ -157,29 +181,45 @@
       "mental_social_health": 0.328,
       "disability": 0.324,
       "socioeconomic": 0.352,
-      "housing_transport": 0.194,
+      "housing_transport": 0.168,
       "social_needs": 0.365,
       "digital_access": 0.277,
       "provider_supply": 0.112,
       "shortage_designation": 0.187,
-      "safetynet_access": 0.014,
-      "insurance": 0.169,
+      "safetynet_access": 0.05,
+      "insurance": 0.164,
       "medical_debt": 0.347,
       "preventive_use": 0.129
+    },
+    "amenable_mortality": {
+      "chronic_disease": 0.634,
+      "behavioral_risk": 0.658,
+      "mental_social_health": 0.581,
+      "disability": 0.717,
+      "socioeconomic": 0.654,
+      "housing_transport": 0.315,
+      "social_needs": 0.671,
+      "digital_access": 0.564,
+      "provider_supply": 0.313,
+      "shortage_designation": 0.331,
+      "safetynet_access": 0.246,
+      "insurance": 0.419,
+      "medical_debt": 0.581,
+      "preventive_use": 0.368
     },
     "premature_death": {
       "chronic_disease": 0.608,
       "behavioral_risk": 0.538,
       "mental_social_health": 0.505,
       "disability": 0.7,
-      "socioeconomic": 0.621,
-      "housing_transport": 0.353,
+      "socioeconomic": 0.627,
+      "housing_transport": 0.334,
       "social_needs": 0.681,
       "digital_access": 0.547,
       "provider_supply": 0.271,
       "shortage_designation": 0.379,
-      "safetynet_access": 0.18,
-      "insurance": 0.432,
+      "safetynet_access": 0.259,
+      "insurance": 0.44,
       "medical_debt": 0.506,
       "preventive_use": 0.295
     },
@@ -188,14 +228,14 @@
       "behavioral_risk": 0.506,
       "mental_social_health": 0.434,
       "disability": 0.653,
-      "socioeconomic": 0.563,
-      "housing_transport": 0.221,
+      "socioeconomic": 0.579,
+      "housing_transport": 0.24,
       "social_needs": 0.606,
       "digital_access": 0.625,
       "provider_supply": 0.391,
       "shortage_designation": 0.236,
-      "safetynet_access": 0.339,
-      "insurance": 0.393,
+      "safetynet_access": 0.39,
+      "insurance": 0.398,
       "medical_debt": 0.483,
       "preventive_use": 0.111
     },
@@ -204,14 +244,14 @@
       "behavioral_risk": 0.237,
       "mental_social_health": 0.055,
       "disability": 0.476,
-      "socioeconomic": 0.312,
-      "housing_transport": 0.165,
+      "socioeconomic": 0.282,
+      "housing_transport": 0.097,
       "social_needs": 0.276,
       "digital_access": 0.414,
       "provider_supply": 0.448,
       "shortage_designation": 0.12,
-      "safetynet_access": 0.422,
-      "insurance": 0.377,
+      "safetynet_access": 0.421,
+      "insurance": 0.369,
       "medical_debt": 0.147,
       "preventive_use": 0.358
     },
@@ -220,14 +260,14 @@
       "behavioral_risk": 0.262,
       "mental_social_health": 0.297,
       "disability": 0.442,
-      "socioeconomic": 0.41,
-      "housing_transport": 0.331,
+      "socioeconomic": 0.411,
+      "housing_transport": 0.28,
       "social_needs": 0.446,
       "digital_access": 0.257,
       "provider_supply": 0.254,
       "shortage_designation": 0.231,
-      "safetynet_access": 0.222,
-      "insurance": 0.482,
+      "safetynet_access": 0.245,
+      "insurance": 0.489,
       "medical_debt": 0.323,
       "preventive_use": 0.585
     },
@@ -236,14 +276,14 @@
       "behavioral_risk": 0.535,
       "mental_social_health": 0.515,
       "disability": 0.549,
-      "socioeconomic": 0.52,
-      "housing_transport": 0.23,
+      "socioeconomic": 0.538,
+      "housing_transport": 0.271,
       "social_needs": 0.567,
       "digital_access": 0.317,
       "provider_supply": 0.157,
       "shortage_designation": 0.183,
-      "safetynet_access": 0.09,
-      "insurance": 0.384,
+      "safetynet_access": 0.14,
+      "insurance": 0.39,
       "medical_debt": 0.443,
       "preventive_use": 0.329
     }

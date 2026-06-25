@@ -82,16 +82,20 @@ def _injected_sigma(d: pd.DataFrame, dim: str) -> np.ndarray:
 
 
 def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
-                      seed: int = 0) -> bool:
+                      seed: int = 0) -> bool | None:
     """Independent member-input resample: perturb each ACS member rate by its effective SE,
     re-percentile through member -> sub-score -> dimension against the fixed national
     distributions, and measure the empirical SD of each ACS dimension's percentile. Compare
     to the sigma Layer B injects. Pass if the median injected/empirical ratio is in [0.8,1.2]
-    per ACS dimension. The draw loop is vectorized (draws-wide arrays per ZCTA)."""
+    per ACS dimension. The draw loop is vectorized (draws-wide arrays per ZCTA).
+
+    Returns True/False when the SE-debug artifact is present, or **None (SKIPPED)** when it
+    is absent - a skip is NOT a pass. The band-width calibration is simply unverified in that
+    run, and the caller must report it as such rather than letting it read as ALL PASS."""
     if not SE_DEBUG.exists():
-        print("=== GATE 3. Calibration === SKIPPED (no acs_se_debug.parquet; "
-              "rebuild acs with HAM_SE_DEBUG=1)")
-        return True
+        print("=== GATE 3. Calibration === SKIPPED - NOT VERIFIED (no acs_se_debug.parquet; "
+              "rebuild acs+places with HAM_SE_DEBUG=1 to actually run this gate)")
+        return None
     dbg = pd.read_parquet(SE_DEBUG).set_index("zcta5")
     # Layer B3: fold in the PLACES per-measure SEs (same HAM_SE_DEBUG dump) so PLACES members
     # resample too and health_need (pure PLACES) gets a real empirical SD to calibrate against.
@@ -178,14 +182,28 @@ def main():
     d = pd.read_parquet(METRICS)
     d = d[d["scoreable"] == True].reset_index(drop=True)  # noqa: E712
     g1 = gate1_differentiation(d)
-    g3 = gate3_calibration(d)
+    g3 = gate3_calibration(d)  # None == SKIPPED (artifact absent), not a pass
     g2 = True
     if args.compare:
         off = pd.read_parquet(args.compare)
         off = off[off["scoreable"] == True].reset_index(drop=True)  # noqa: E712
         g2 = gate2_shrinkage(d, off)
-    print(f"\nLAYER B GATE: {'ALL PASS' if (g1 and g2 and g3) else 'NOT YET'} "
-          f"(g1={g1} g2={g2 if args.compare else 'run --compare'} g3={g3})")
+
+    # A skipped calibration gate (g3 is None) must never read as ALL PASS - the band widths
+    # are unverified in that run. Distinguish "everything that ran passed but calibration was
+    # not checked" from a true clean pass.
+    ran = [g for g in (g1, g2, g3) if g is not None]
+    all_ran_pass = all(ran)
+    skipped = g3 is None
+    if not all_ran_pass:
+        verdict = "NOT YET"
+    elif skipped:
+        verdict = "PASS (gate 3 calibration SKIPPED - band widths NOT verified)"
+    else:
+        verdict = "ALL PASS"
+    g3_disp = "SKIPPED" if g3 is None else g3
+    print(f"\nLAYER B GATE: {verdict} "
+          f"(g1={g1} g2={g2 if args.compare else 'run --compare'} g3={g3_disp})")
 
 
 if __name__ == "__main__":

@@ -267,7 +267,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["access_gap_score"] = (num / wsum).where(wsum > 0)
 
     # ---- diagnostic lens: care access BEYOND deprivation (orthogonalized) ----
-    # The three dimensions are ~1.6 effective dimensions (need<->vulnerability 0.74), so a high
+    # The three dimensions are ~1.6 effective dimensions (need<->vulnerability 0.73), so a high
     # care_access score is hard to read: genuinely poor access, or just a poor area? This lens
     # residualizes care_access_pctile on health_need + social_vulnerability and re-ranks the
     # residual: higher = barriers to care WORSE than this area's deprivation level predicts (the
@@ -278,7 +278,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     n_dims = df[dim_cols].notna().sum(axis=1)
     df["scoreable"] = pop.notna() & (pop > 0) & (n_dims >= 2)
     # How many of the 3 dimensions actually backed this composite. A 2-of-3 score is built from
-    # dimensions that are themselves collinear (need<->vulnerability 0.74), so it is a weaker
+    # dimensions that are themselves collinear (need<->vulnerability 0.73), so it is a weaker
     # estimate than a 3-of-3 score and must not be presented with equal authority (audit S5).
     df["n_dims_scored"] = n_dims.where(df["scoreable"]).astype("Int64")
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
