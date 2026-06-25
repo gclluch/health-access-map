@@ -372,10 +372,25 @@ A methodologist's review raised five specific weaknesses. Each was implemented a
 honest results are below. Two strengthen the project, two are real-but-bounded, one is the
 known structural ceiling.
 
-### 6a. Sub-county validation generalized to a second state (`validate_subcounty --colorado`)
+### 6a. Sub-county validation across four states + two national rulers (`validate_subcounty --all`)
+
+**The scorecard** - composite + care_access WITHIN-county correlation, each against an INDEPENDENT
+outcome (none in the inputs):
+
+| Source | ZCTAs | counties | composite within-r | care_access within-r |
+|---|---|---|---|---|
+| NY SPARCS PQI (ACSC, O/E) | 1,265 | 61 | **+0.504** | +0.302 |
+| CO CDPHE diabetes ACSC | 293 | 45 | **+0.568** | +0.440 |
+| CA ACSC mortality (age-adj) | 1,170 | 46 | **+0.440** | +0.324 |
+| US CDC overdose (national) | 21,376 | 2,210 | **+0.224** | +0.156 |
+| US USALEEP life expectancy (national) | 21,244 | 2,208 | **+0.608** | +0.409 |
+
+Positive within-county composite **and** care_access in **every** independent ruler, across four
+states and two national outcomes - the index discriminates *sub-county*, not just between counties.
+Detail by source below.
 
 The central critique: nearly all validation is county-resolution, so the index's *within-county*
-discrimination - its reason to exist over CHR/SVI - rests on one state (NY ACSC, §3). It now has a
+discrimination - its reason to exist over CHR/SVI - rested on one state (NY ACSC, §3). It now has a
 **second, geographically independent state against an independent outcome**: Colorado CDPHE
 age-adjusted **diabetes ACSC hospitalizations by census tract** (a core AHRQ PQI; in none of the
 inputs), crosswalked tract→ZCTA with the **HUD `res_ratio` population weight** (each tract weighted by
