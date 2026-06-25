@@ -6,7 +6,7 @@ import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
 import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
-import { fmtInt, fmtScore, ordinal } from '../lib/format';
+import { fmtInt, fmtScore, ordinal, severity } from '../lib/format';
 import Tip from './Tip';
 
 // A percentile bar (0-100). Higher = worse (more gap), so more fill = worse.
@@ -130,7 +130,7 @@ function Dimension({
         aria-expanded={open}
       >
         <span className="text-graphite text-[10px] w-2">{open ? '▾' : '▸'}</span>
-        <span className="flex-1 text-[12.5px] font-medium text-ink">{dim.label}</span>
+        <span className="flex-1 text-[12px] font-medium text-ink">{dim.label}</span>
         <span className="num text-[13px] font-semibold text-ink w-7 text-right">
           {fmtScore(dimPct)}
         </span>
@@ -234,7 +234,7 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
         aria-expanded={open}
         className="w-full flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-graphite/60"
       >
-        <span className="text-graphite/50 text-[8px] w-2">{open ? '▾' : '▸'}</span>
+        <span className="text-graphite/50 text-[9px] w-2">{open ? '▾' : '▸'}</span>
         <span>Who lives here</span>
         <span className="text-graphite/45 normal-case">· context · only income (†) feeds the score</span>
       </button>
@@ -438,28 +438,51 @@ export default function DetailPanel() {
 
         <WhoLivesHere m={m} rec={rec} />
 
-        <div className="flex items-baseline gap-2">
-          <span className="num text-[34px] font-semibold text-ink leading-none">{fmtScore(scorePercentile)}</span>
-          <span className="text-[11px] text-graphite">/ 100 · national access-gap rank</span>
-        </div>
-        <div className="text-[11px] text-graphite mt-0.5">
-          {score == null
-            ? 'Insufficient reliable data to score this area.'
-            : `Worse access than ${fmtScore(scorePercentile)}% of U.S. ZIPs. Built from a weighted index of ${fmtScore(score)} (see "What drives the gap"), then ranked against every ZIP.`}
-        </div>
-        {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
-          <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
-            <span className="text-ink font-medium">Tier {Math.ceil(scorePercentile / 10)} of 10</span>
-            {' · reliable range '}
-            <span className="num text-ink">
-              {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
-            </span>
-            {' pct under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
-          </div>
-        )}
+        {(() => {
+          const sev = score != null && scorePercentile != null ? severity(scorePercentile) : null;
+          return (
+            <>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span
+                  className="num text-[34px] font-semibold leading-none"
+                  style={{ color: sev ? sev.color : undefined }}
+                >
+                  {fmtScore(scorePercentile)}
+                </span>
+                <span className="text-[11px] text-graphite">/ 100 · access-gap rank</span>
+                {sev && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
+                    style={{ color: sev.color, backgroundColor: `${sev.color}14` }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sev.color }} />
+                    {sev.label}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-graphite mt-0.5">
+                {score == null || scorePercentile == null
+                  ? 'Insufficient reliable data to score this area.'
+                  : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Ranked from a weighted index of need, vulnerability and barriers (see "What drives the gap").`}
+              </div>
+              {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
+                <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
+                  <span className="font-medium" style={{ color: sev ? sev.color : undefined }}>
+                    Tier {Math.ceil(scorePercentile / 10)} of 10
+                  </span>
+                  {' · reliable range '}
+                  <span className="num text-ink">
+                    {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
+                  </span>
+                  {' percentile under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {score != null && (
-          <p className="font-serif text-[13.5px] text-ink leading-snug mt-2.5">
+          <p className="font-serif text-[13px] text-ink leading-snug mt-2.5">
             {synthesize(m, weights)}
           </p>
         )}
@@ -537,10 +560,9 @@ export default function DetailPanel() {
           </div>
         )}
 
-        <div className="mt-3 text-[10px] text-graphite leading-snug">
+        <div className="mt-3 text-[11px] text-graphite/80 leading-snug">
           Disease/behavior values are modeled CDC PLACES estimates (BRFSS), not counts. Provider
-          access is a 2SFCA catchment metric over registered providers. The headline score is a
-          relative national rank (percentile); higher = worse.
+          access is a 2SFCA catchment metric over registered providers.
         </div>
       </div>
       </div>
