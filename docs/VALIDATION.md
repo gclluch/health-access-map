@@ -485,11 +485,47 @@ the national rank - different enough to matter: a ZCTA can be middling nationall
 state, which is the unit a state administrator acts on. (Within-commuting-zone is the natural next
 refinement.)
 
+### 6f. B4 bounded - the index's validity barely depends on the circular PLACES dimension
+
+B4 (PLACES disease estimates are SES-conditioned, so `health_need` shares modeled variance with
+`social_vulnerability`) is **not fixable** - it is a *non-identification* problem (you cannot separate
+the model-induced SES↔disease correlation from the genuine one using the same variables), and the
+only true fix (non-modeled sub-county disease) is paywalled. But it can be **bounded**: rebuild the
+composite WITHOUT `health_need` (the pure-PLACES dimension; care_access + social_vulnerability are
+ACS/NPPES-dominant) and re-correlate against the independent death/hospitalization-records outcomes
+(`bootstrap_gate.b4_circularity_bound`):
+
+| Independent outcome | full composite r | no-PLACES composite r | **validity retained** |
+|---|---|---|---|
+| amenable mortality | +0.660 | +0.606 | **92%** (CI [90%, 93%]) |
+| premature death | +0.642 | +0.602 | 94% |
+| infant mortality | +0.543 | +0.510 | 94% |
+| preventable hosp | +0.342 | +0.305 | 89% |
+
+**~90-94% of the index's external validity survives deleting the entire PLACES dimension.** So the
+circularity inflates the *internal-coherence story* (the need↔vulnerability correlation, the
+PLACES-general-health anchor) but is **not load-bearing for predictive usefulness** - the index
+tracks independent death records nearly as well with PLACES removed. B4 is therefore a bounded,
+disclosed limitation, not a hidden dependency. (The PLACES anchor r=0.865 is reported elsewhere only
+to *contrast* with these independent rulers, never as validation.)
+
 **Net:** the sub-county claim now holds in two states on ACSC outcomes **and nationally on overdose
 mortality** (21k ZCTAs, within-county +0.202); the headline survives spatially-honest CIs; the
 weights survive cross-validation; the one genuine selection effect (2-of-3 scores) is quantified and
 already flagged. The residual ceiling is narrower than before: no *national ACSC* sub-county panel is
 free (HCUP SID is paid), so the strongest access-specific sub-county evidence is state-by-state (NY,
 CO), while the national sub-county check rides on overdose mortality - a real but construct-specific
-ruler. The deepest unfixable item stays B4 (PLACES is SES-conditioned, so need↔vulnerability share
-some modeled variance).
+ruler. B4 (PLACES SES-conditioning) is structurally unfixable but now **bounded** (§6f): ≤10% of
+external validity depends on the circular dimension.
+
+**Access-blocked refinements (logged, not done).** Two improvements were attempted and hit headless
+data walls, not logic walls: (1) **population-weighted** tract→ZCTA crosswalk (vs the current
+area-weighted) needs tract population - the Census API now requires a registered key and HUD's
+crosswalk sits behind a bot-wall; (2) a **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single
+expansion) needs the fixed-length record layout and S3 listing is disabled. Both are real recipes for
+a session with credentials. (3) **California ZIP mortality** was fetched and tested but *rejected*:
+crude cause-specific death rates are age-confounded (the ACSC-death *fraction* even reads slightly
+wrong-signed), so it is a noisier validator than the age-adjusted ACSC/overdose rulers already in
+hand - a tested negative, not an improvement. The area-weighted crosswalk caveat is therefore
+disclosed but unrefined; the within-county findings are dominated by urban/suburban ZCTAs where the
+crosswalk is cleanest.

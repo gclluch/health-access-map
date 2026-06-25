@@ -63,6 +63,22 @@ def test_spatial_blocking_widens_ci():
     assert sw >= cw - 0.005   # state CI no narrower than county (allow tiny MC noise)
 
 
+def test_b4_circularity_bound():
+    """B4 bound: most of the index's validity against an independent (non-PLACES) outcome must
+    survive dropping the PLACES dimension - retained_frac should be substantial and <= ~1."""
+    import pandas as pd
+    from pipeline import bootstrap_gate, config
+
+    d = pd.read_parquet(config.PROCESSED / "metrics.parquet")
+    d = d[d["scoreable"] == True].reset_index(drop=True)  # noqa: E712
+    res = bootstrap_gate.b4_circularity_bound(d, n_boot=100, seed=0)
+    if res is None:
+        pytest.skip("no independent outcome columns")
+    for o, v in res["independent_outcomes"].items():
+        if v["retained_frac"] is not None:
+            assert 0.5 < v["retained_frac"] <= 1.05   # majority of validity survives w/o PLACES
+
+
 def test_amenable_subscores_shape():
     """B2: if the WONDER amenable export is built, every scored care sub-score gets a partial-r,
     a 2-element CI, and an FDR verdict; otherwise the function no-ops (None)."""

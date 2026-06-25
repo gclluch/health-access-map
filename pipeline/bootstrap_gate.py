@@ -235,6 +235,78 @@ def spatial_sensitivity(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> d
     return out
 
 
+def b4_circularity_bound(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict | None:
+    """B4 is not fixable (PLACES disease estimates are SES-conditioned, so health_need shares modeled
+    variance with social_vulnerability - a non-identified circularity). But it can be BOUNDED: how
+    much of the index's validity against INDEPENDENT (non-PLACES, death/hospitalization-records)
+    outcomes actually depends on the PLACES dimension? Rebuild the composite WITHOUT health_need (the
+    pure-PLACES dimension; care_access + social_vulnerability are ACS/NPPES-dominant) and re-correlate.
+    If most validity survives, the external-validity case does NOT rest on the circular dimension, so
+    the circularity caps the internal-coherence story, not the index's usefulness.
+
+    Also contrasts the CIRCULAR anchor (PLACES general health) against the independent ones, with a
+    cluster-bootstrap CI on the retained fraction for amenable (the cleanest ruler)."""
+    indep = {"amenable_mortality": "worse", "preventable_hosp": "worse",
+             "premature_death": "worse", "infant_mortality": "worse"}
+    outs = {}
+    for o, direction in indep.items():
+        if o in d.columns:
+            y = d[o].to_numpy(float)
+            outs[o] = (np.nanmax(y) - y) if direction == "better" else y
+    if not outs:
+        return None
+    X = d[DIM_COLS].to_numpy(float)
+    hn_i = DIM_COLS.index("health_need_pctile")
+    keep = [i for i in range(len(DIM_COLS)) if i != hn_i]  # vuln + care: the minimal-PLACES index
+
+    def full_rank(ridx):
+        return _rank(np.nanmean(X[ridx], axis=1))
+
+    def nohn_rank(ridx):
+        return _rank(np.nanmean(X[ridx][:, keep], axis=1))
+
+    base = np.arange(len(d))
+    rows = {}
+    for o, y in outs.items():
+        rf, rn = _corr(full_rank(base), y), _corr(nohn_rank(base), y)
+        rows[o] = {"full": round(float(rf), 3), "no_health_need": round(float(rn), 3),
+                   "retained_frac": round(float(rn / rf), 3) if rf else None}
+
+    # cluster-bootstrap CI on the retained fraction for amenable (the load-bearing independent ruler)
+    ci = None
+    if "amenable_mortality" in outs:
+        y = outs["amenable_mortality"]
+        groups = _cluster_groups(d)
+        rng = np.random.default_rng(seed)
+        fr = []
+        for _ in range(n_boot):
+            pick = rng.integers(0, len(groups), len(groups))
+            ridx = np.concatenate([groups[i] for i in pick])
+            rf, rn = _corr(full_rank(ridx), y[ridx]), _corr(nohn_rank(ridx), y[ridx])
+            if rf:
+                fr.append(rn / rf)
+        a = np.asarray(fr, float)
+        a = a[~np.isnan(a)]
+        if len(a):
+            ci = [round(float(np.percentile(a, 2.5)), 3), round(float(np.percentile(a, 97.5)), 3)]
+
+    anchor = None
+    if "ghlth_pct" in d.columns:
+        g = d["ghlth_pct"].to_numpy(float)
+        anchor = {"full_r": round(float(_corr(full_rank(base), g)), 3),
+                  "note": "PLACES fair/poor general health - CIRCULAR (PLACES-derived); shown only "
+                          "to contrast with the independent rulers, NOT as validation"}
+    return {
+        "independent_outcomes": rows,
+        "amenable_retained_frac_ci95": ci,
+        "places_anchor_circular": anchor,
+        "reading": "retained_frac = validity of the NO-PLACES composite / the full composite, on an "
+                   "outcome PLACES never touched. High retained_frac => the external-validity case "
+                   "does not depend on the SES-conditioned dimension, so B4 bounds the internal "
+                   "coherence story, not the index's predictive usefulness.",
+    }
+
+
 def _bh_fdr(pvals: dict[str, float], q: float = 0.05) -> dict[str, dict]:
     """Benjamini-Hochberg FDR across a candidate set. Returns per-key the raw p, the BH-adjusted
     p (q-value), and whether it survives at the given q. Quantifies the multiplicity the
@@ -410,6 +482,9 @@ def run(n_boot: int = 1000, seed: int = 0) -> dict:
     spat = spatial_sensitivity(d, n_boot, seed)  # point 2: state vs county spatial blocking
     if spat:
         report["spatial_sensitivity"] = spat
+    b4 = b4_circularity_bound(d, n_boot, seed)   # B4: how much validity survives without PLACES
+    if b4:
+        report["b4_circularity_bound"] = b4
     OUT_JSON.write_text(json.dumps(report, indent=2))
     _print(report)
     return report
@@ -463,6 +538,18 @@ def _print(r: dict) -> None:
                 tag = "excludes 0" if b["excludes_0"] else "  <-- CI SPANS 0"
                 print(f"      {lvl:7s} (k={b['n_clusters']:4d} blocks)  {b['point']:+.3f}  "
                       f"CI{b['ci95']}  {tag}")
+    b4 = r.get("b4_circularity_bound")
+    if b4:
+        print("\n  --- B4 BOUND: composite validity WITHOUT the PLACES dimension (health_need) ---")
+        print(f"    {'independent outcome':22s} {'full':>7s} {'no-PLACES':>10s} {'retained':>9s}")
+        for o, v in b4["independent_outcomes"].items():
+            rf = v["retained_frac"]
+            print(f"    {o:22s} {v['full']:+7.3f} {v['no_health_need']:+10.3f} "
+                  f"{(rf if rf is not None else float('nan')):8.0%}")
+        if b4.get("amenable_retained_frac_ci95"):
+            print(f"    amenable retained-fraction 95% CI: {b4['amenable_retained_frac_ci95']}")
+        print("    => most external validity survives without PLACES: the circularity bounds the "
+              "internal\n       coherence story, not the predictive usefulness.")
     print(f"\n  wrote {OUT_JSON.relative_to(config.ROOT)}")
 
 
