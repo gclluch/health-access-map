@@ -28,6 +28,7 @@ the composite.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import urllib.parse
 import urllib.request
@@ -41,6 +42,15 @@ from .taxonomy import DIMENSIONS, subscore_specs
 
 METRICS = config.PROCESSED / "metrics.parquet"
 NY_PQI_SOCRATA = "https://health.data.ny.gov/resource/5q8c-d6xq.json"
+# Colorado CDPHE: age-adjusted hospitalization rates per 100k by CENSUS TRACT (open ArcGIS REST,
+# no key/DUA). DIABETES is the core ACSC here (AHRQ PQI-1/3/14/16); asthma (PQI-15) + heart disease
+# (CHF = PQI-8) are also ACSC-family. An INDEPENDENT, second-state, sub-county outcome to generalize
+# the NY finding to opposite geography. Tract -> ZCTA via the Census 2020 relationship file.
+CO_ACSC_ARCGIS = ("https://www.cohealthmaps.dphe.state.co.us/arcgis/rest/services/OPEN_DATA/"
+                  "cdphe_health_outcomes_census_tract_county/MapServer/17/query")
+ZCTA_TRACT_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/"
+                  "tab20_zcta520_tract20_natl.txt")
+CO_XWALK_CACHE = config.PROCESSED / "co_zcta_tract_xwalk.parquet"
 POOL_YEARS = ("2019", "2020", "2021", "2022", "2023")  # 5-yr pool for small-ZIP stability
 MIN_POP = 1000          # drop ZCTAs below the index's own low-confidence floor
 MIN_YEARS = 4           # require a near-full pool so a single noisy year can't dominate
@@ -127,6 +137,88 @@ def run(extra_csv: str | None = None) -> dict:
     return report
 
 
+def _fetch_co_acsc() -> pd.DataFrame:
+    """CO age-adjusted ACSC hospitalization rates per 100k by census tract (diabetes/asthma/HD)."""
+    q = ("?where=1%3D1&outFields=TRACT_FIPS,DIABETES_ADJRATE,ASTHMA_ADJRATE,HD_ADJRATE"
+         "&resultRecordCount=3000&f=json")
+    with urllib.request.urlopen(CO_ACSC_ARCGIS + q, timeout=90) as r:
+        feats = json.load(r)["features"]
+    co = pd.DataFrame([f["attributes"] for f in feats])
+    co["tract"] = co["TRACT_FIPS"].astype(str).str.zfill(11)
+    for c in ("DIABETES_ADJRATE", "ASTHMA_ADJRATE", "HD_ADJRATE"):
+        co[c] = pd.to_numeric(co[c], errors="coerce")
+    return co.rename(columns={"DIABETES_ADJRATE": "diabetes", "ASTHMA_ADJRATE": "asthma",
+                              "HD_ADJRATE": "hd"})
+
+
+def _co_zcta_acsc() -> pd.DataFrame:
+    """Crosswalk CO tract ACSC rates up to ZCTA, land-area-weighted over the tracts overlapping each
+    ZCTA (Census 2020 ZCTA<->tract relationship file, cached CO-only). Area weighting is the crude
+    part - acceptable for a read-only validation crosswalk, not the production score."""
+    co = _fetch_co_acsc()
+    if CO_XWALK_CACHE.exists():
+        rel = pd.read_parquet(CO_XWALK_CACHE)
+    else:
+        log("subcounty", "fetching Census ZCTA<->tract relationship file (one-time, ~24MB)...")
+        with urllib.request.urlopen(ZCTA_TRACT_REL, timeout=120) as r:
+            full = pd.read_csv(io.BytesIO(r.read()), sep="|", dtype=str)
+        rel = full[["GEOID_ZCTA5_20", "GEOID_TRACT_20", "AREALAND_PART"]].dropna()
+        rel = rel[rel["GEOID_TRACT_20"].str.startswith("08")].copy()  # CO tracts
+        rel["AREALAND_PART"] = pd.to_numeric(rel["AREALAND_PART"], errors="coerce")
+        rel.to_parquet(CO_XWALK_CACHE, index=False)
+    m = rel.merge(co, left_on="GEOID_TRACT_20", right_on="tract", how="inner")
+    m = m[m["AREALAND_PART"] > 0]
+
+    def wavg(g: pd.DataFrame, col: str) -> float:
+        w, v = g["AREALAND_PART"].to_numpy(), g[col].to_numpy()
+        ok = ~np.isnan(v) & (w > 0)
+        return float((v[ok] * w[ok]).sum() / w[ok].sum()) if ok.any() else np.nan
+
+    zc = (m.groupby("GEOID_ZCTA5_20")
+          .apply(lambda g: pd.Series({k: wavg(g, k) for k in ("diabetes", "asthma", "hd")}),
+                 include_groups=False)
+          .reset_index().rename(columns={"GEOID_ZCTA5_20": "zcta5"}))
+    return zc
+
+
+def run_colorado() -> dict:
+    """Second-state sub-county validation: the index vs CO tract ACSC (independent of every input).
+    Reports pooled + WITHIN-county correlations - the within-county number is the decisive test of
+    sub-county discrimination that county outcomes cannot provide."""
+    if not METRICS.exists():
+        raise SystemExit(f"missing {METRICS}; run the pipeline first")
+    log("subcounty", "fetching CO CDPHE tract ACSC + crosswalking to ZCTA...")
+    zc = _co_zcta_acsc()
+    m = pd.read_parquet(METRICS)
+    m = m[m["scoreable"] == True].copy()  # noqa: E712
+    m["zcta5"] = m["zcta5"].astype(str)
+    j = zc.merge(m, on="zcta5", how="inner")
+    j = j[j["population"] >= MIN_POP].copy()
+    vc = j["county_fips"].value_counts()
+    j = j[j["county_fips"].isin(vc[vc >= 2].index)].copy()
+    log("subcounty", f"CO: {len(j)} ZCTAs / {j['county_fips'].nunique()} multi-ZCTA counties")
+
+    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
+    cols = [c for c in cols if c in j.columns]
+    yw = _within(j, "diabetes")
+    rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
+           "outcome": "CO CDPHE diabetes ACSC hospitalization (age-adjusted, tract->ZCTA)",
+           "pooled": {}, "within_county": {}}
+    print("\n=== SUB-COUNTY validation vs COLORADO CDPHE diabetes ACSC (2nd state, independent) ===")
+    print(f"  {len(j)} ZCTAs / {j['county_fips'].nunique()} multi-ZCTA counties\n")
+    print(f"  {'column':32s} {'pooled':>9s} {'WITHIN-county':>14s}")
+    for c in cols:
+        po = _corr(j[c].to_numpy(), j["diabetes"].to_numpy())
+        wo = _corr(_within(j, c), yw)
+        rep["pooled"][c] = round(po, 3)
+        rep["within_county"][c] = round(wo, 3)
+        mark = "  <-- 0 sub-county resolution" if abs(wo) < 0.01 else ""
+        print(f"  {c:32s} {po:+9.3f} {wo:+14.3f}{mark}")
+    print("\n  Reading: a positive WITHIN-county r in a SECOND state (CO, vs NY) against an "
+          "independent\n  tract ACSC outcome generalizes the sub-county finding beyond one state's data.")
+    return rep
+
+
 def run_national() -> dict:
     """National sub-county check using USALEEP life expectancy (tract→ZCTA, already in metrics).
     LE is a *need* outcome so it understates care access, BUT it is national (all ~2,200 multi-
@@ -169,7 +261,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--extra-csv", help="optional 2nd-state ZIP PQI CSV (cols: zcta5,obs,exp)")
     ap.add_argument("--national", action="store_true", help="run the national USALEEP within-county check too")
+    ap.add_argument("--colorado", action="store_true", help="run the CO tract-ACSC 2nd-state check")
+    ap.add_argument("--ny", action="store_true", help="run the NY SPARCS PQI check (default if no flags)")
     a = ap.parse_args()
-    run(a.extra_csv)
+    # default to NY if nothing specified (preserves prior behavior)
+    if not (a.colorado or a.national) or a.ny:
+        run(a.extra_csv)
+    if a.colorado:
+        run_colorado()
     if a.national:
         run_national()

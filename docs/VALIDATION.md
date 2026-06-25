@@ -365,3 +365,103 @@ an explicit "can't tell these apart" rule the federal indices omit, and shrink t
 Key sources: IHME HAQ (GBD 2016, PMC5986687); Robert Graham Center SDI (Butler 2013); OECD/JRC
 Handbook 2008; Saisana/Saltelli/Tarantola 2005; Spielman/Folch/Nagle 2014 (Applied Geography);
 Petterson 2023 (ADI critique, Health Affairs Scholar); CHR ranking-methods.
+
+## 6. Robustness program - answering the hardest statistical critiques (2026-06-25)
+
+A methodologist's review raised five specific weaknesses. Each was implemented and run; the
+honest results are below. Two strengthen the project, two are real-but-bounded, one is the
+known structural ceiling.
+
+### 6a. Sub-county validation generalized to a second state (`validate_subcounty --colorado`)
+
+The central critique: nearly all validation is county-resolution, so the index's *within-county*
+discrimination - its reason to exist over CHR/SVI - rests on one state (NY ACSC, §3). It now has a
+**second, geographically independent state against an independent outcome**: Colorado CDPHE
+age-adjusted **diabetes ACSC hospitalizations by census tract** (a core AHRQ PQI; in none of the
+inputs), crosswalked tract→ZCTA (Census 2020 relationship file, land-area weighted). 295 CO ZCTAs
+across 45 multi-ZCTA counties:
+
+| Column | pooled r | **WITHIN-county r** |
+|---|---|---|
+| `access_gap_score` | +0.513 | **+0.507** |
+| `social_vulnerability` | +0.550 | +0.494 |
+| `care_access` | +0.365 | **+0.417** |
+| `insurance` | +0.416 | +0.396 |
+| `provider_supply` | +0.048 | +0.175 |
+| `shortage_designation` | +0.120 | ~0.000 |
+| `medical_debt` | +0.419 | **~0.000** |
+| `safetynet_access` | -0.149 | -0.150 |
+
+The composite resolves real **sub-county** ACSC variance (+0.507) in a state whose data never
+trained it, and so does the novel `care_access` construct (+0.417). The structural negatives
+**replicate** the NY/national findings: `safetynet_access` is wrong-signed; `shortage_designation`
+and `medical_debt` show ~0 within-county resolution because they are **county-constant** - which
+independently corroborates the §4a caveat that medical_debt's strong *between*-county signal
+(+0.441) buys **zero** sub-county discrimination. (Caveats: area-weighted crosswalk; one ACSC
+condition; CO + NY ≠ national.) The exhaustive data hunt also converted B1 from "blocked" to a
+verified recipe: free, headless-fetchable sub-county sources now in hand include **TX DSHS PUDF**
+(true 5-digit patient-ZIP discharge microdata, 2006-2019) and the CO tract feed used here;
+HCUP SID remains the paid national gold standard. See [BACKLOG.md](BACKLOG.md) B1.
+
+### 6b. Spatially-honest CIs - the claim survives state blocking (`bootstrap_gate.spatial_sensitivity`)
+
+The county cluster bootstrap fixes within-county pseudo-replication but still treats counties as
+spatially independent; health geography is autocorrelated, so those CIs are too narrow. Re-running
+the load-bearing claim (care_access partial r vs amenable | need, vuln) under **state blocking**
+(whole states resampled - the conservative correction for between-county autocorrelation):
+
+| Blocking | clusters | care_access partial r | 95% CI |
+|---|---|---|---|
+| county (baseline) | 3,225 | +0.395 | [0.366, 0.426] |
+| **state** (spatial) | 52 | +0.395 | **[0.334, 0.455]** |
+
+The interval roughly **doubles in width** - the honest cost of acknowledging spatial dependence -
+but **still excludes 0 by a wide margin**. The headline result is not an artifact of treating
+counties as independent.
+
+### 6c. Cross-validated weights - the fit is not overfit (`validate._cv_regression`)
+
+The data-driven weights are fit to an outcome, then fit quality was reported on the same outcome
+(optimism). Honest **leave-one-state-out CV** (standardize on the training fold only, predict the
+held-out state, pool):
+
+| Anchor | in-sample R² | **CV R²** | optimism | weight SD across folds |
+|---|---|---|---|---|
+| amenable mortality | 0.607 | **0.598** | 0.009 | ≤0.5 pts |
+| premature death | 0.515 | 0.505 | 0.010 | ≤1.0 |
+| infant mortality | 0.443 | 0.412 | 0.031 | ≤1.9 |
+| life expectancy | 0.390 | 0.382 | 0.008 | ≤0.8 |
+
+Optimism is **small** (≤0.03 R², largest for the sparse/noisy outcomes), and the weights are
+**stable** (≤2-point swing when any state is removed). The "data-driven" weighting is not noise.
+
+### 6d. Missingness is mostly benign, with two disclosed selection effects (`pipeline.selection_diag`)
+
+- **Scoreability: benign.** The 615 non-scoreable ZCTAs hold **0.000%** of national population
+  (they are unpopulated), so they carry no rank to bias.
+- **2-of-3 dimension scores (764 ZCTAs, 2.3%): a real, disclosed selection.** They are
+  systematically worse-access and higher-mortality than 3-of-3 ZCTAs (Cohen d **+0.27** on the
+  composite, **+0.24** on amenable mortality) - their partial composite is *not* missing-at-random.
+  This is exactly why the build flags `n_dims_scored` and the UI caveats a 2-of-3 score.
+- **Validation-subset selection: a real range restriction.** ZCTAs missing the amenable /
+  preventable-hosp outcome are **+0.38 / +0.33 SD worse-access** than those with it, so those
+  validation r's are computed on a slightly better-access (truncated) subset - which *attenuates*
+  correlations, i.e. the reported r's are if anything conservative. Life expectancy is clean
+  (d +0.02, 96% coverage).
+- **Member completeness:** every sub-score averages ≥0.90 of its members present (thinnest:
+  mental/social health 0.90), so the skipna-mean is not silently averaging over large gaps.
+
+### 6e. Decision-context ranking - within-state, not just a national ladder (point 5)
+
+National percentiles compare a ZCTA to the whole country, but care is allocated **within** state
+programs. The build now emits `access_gap_pctile_within_state` (the composite re-ranked within each
+state) and the map exposes an "Access gap (within-state rank)" lens. It correlates **0.72** with
+the national rank - different enough to matter: a ZCTA can be middling nationally yet worst-in-its-
+state, which is the unit a state administrator acts on. (Within-commuting-zone is the natural next
+refinement.)
+
+**Net:** the sub-county claim now holds in two states on independent outcomes; the headline survives
+spatially-honest CIs; the weights survive cross-validation; the one genuine selection effect
+(2-of-3 scores) is quantified and already flagged. The remaining ceiling is unchanged and structural:
+no *national* independent sub-county outcome is free (HCUP SID is paid), so national sub-county
+validity is corroborated state-by-state, not in one national panel.

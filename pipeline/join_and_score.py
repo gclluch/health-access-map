@@ -291,6 +291,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["n_dims_scored"] = n_dims.where(df["scoreable"]).astype("Int64")
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
     df["access_gap_pctile"] = _pct(df["access_gap_score"])  # true rank of the composite
+    # WITHIN-STATE rank (point 5 / decision-context calibration): a national percentile compares a
+    # ZCTA to the whole country, but care is allocated within state programs (Medicaid, state HRSA
+    # offices). This re-ranks the composite WITHIN each state so "worst 10% in my state" is
+    # answerable - the unit a state administrator actually acts on. NaN for non-scoreable (no score
+    # to rank). rank(pct) skips NaN, so each state's rank spans only its scoreable ZCTAs.
+    df["access_gap_pctile_within_state"] = (
+        df.groupby("state", dropna=False)["access_gap_score"].rank(pct=True) * 100.0)
 
     # ---- alternative LENS: multiplicative (geometric) gap ----
     # Weighted GEOMETRIC mean of the same dimension percentiles + weights, renormalized over
@@ -375,8 +382,8 @@ RAW_DISPLAY = (
 def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     # slim payload: geography + composite + dimensions + sub-scores + flags.
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
-            "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
-            "access_gap_rank_hi", "care_access_resid_pctile",
+            "access_gap_score", "access_gap_pctile", "access_gap_pctile_within_state",
+            "access_gap_rank_lo", "access_gap_rank_hi", "care_access_resid_pctile",
             "tier", "low_confidence", "institutional", "scoreable",
             "n_dims_scored", "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]

@@ -127,6 +127,54 @@ def _regression(X: np.ndarray, y: np.ndarray) -> dict | None:
     }
 
 
+def _cv_regression(X: np.ndarray, y: np.ndarray, groups: np.ndarray, floor: float = 5.0) -> dict | None:
+    """Point 3 (statistician's critique): the reported R^2 is in-sample - the weights are FIT to
+    the outcome, then fit quality is measured on the same outcome (optimism). This does honest
+    leave-one-STATE-out CV: fit NNLS on all-but-one state (standardizing on the TRAINING fold only,
+    no leakage), predict the held-out state, pool the out-of-sample predictions into one OOS R^2.
+    Also returns weight stability (mean +/- SD across folds): if the weights swing wildly when a
+    state is removed, the 'data-driven' weighting is really noise. Compare cv_r2 to the in-sample
+    r2 - the gap IS the optimism."""
+    try:
+        from scipy.optimize import nnls
+    except Exception:  # noqa: BLE001
+        return None
+    g = np.asarray(groups, dtype=object)
+    m = ~(np.isnan(y) | np.isnan(X).any(axis=1)) & np.array([gi is not None and gi == gi for gi in g])
+    X, y, g = X[m], y[m], g[m]
+    uniq = [u for u in pd.unique(g)]
+    if len(uniq) < 5 or len(y) < 200:
+        return None
+    preds = np.full(len(y), np.nan)
+    fold_w = []
+    for u in uniq:
+        tr = g != u
+        te = ~tr
+        if tr.sum() < 100 or te.sum() < 1:
+            continue
+        mu, sd = X[tr].mean(0), X[tr].std(0)
+        sd = np.where(sd > 0, sd, 1.0)
+        Xtr, Xte = (X[tr] - mu) / sd, (X[te] - mu) / sd
+        ybar = y[tr].mean()
+        coef, _ = nnls(Xtr, y[tr] - ybar)
+        if coef.sum() == 0:
+            continue
+        preds[te] = Xte @ coef + ybar           # predict held-out state
+        fold_w.append(floor + (100 - floor * len(coef)) * coef / coef.sum())
+    ok = ~np.isnan(preds)
+    if ok.sum() < 100 or not fold_w:
+        return None
+    ss_res = float(((y[ok] - preds[ok]) ** 2).sum())
+    ss_tot = float(((y[ok] - y[ok].mean()) ** 2).sum())
+    W = np.asarray(fold_w)
+    return {
+        "cv_r2": round(1.0 - ss_res / ss_tot, 3) if ss_tot > 0 else None,
+        "n_folds": len(fold_w), "n": int(ok.sum()),
+        "weight_mean": {d: round(float(W[:, i].mean()), 1) for i, d in enumerate(DIMENSIONS)},
+        "weight_sd": {d: round(float(W[:, i].std()), 1) for i, d in enumerate(DIMENSIONS)},
+    }
+
+
 def build(dev_state: str | None = None, force: bool = False) -> str:
     if not METRICS.exists():
         die("validate", f"missing {METRICS.name}; run join_and_score first")
@@ -170,7 +218,15 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         dim_corr = {d: _corr(frame[f"{d}_pctile"].to_numpy(float), y) for d in DIMENSIONS}
         if any(r is None for r in dim_corr.values()):
             continue
-        reg = _regression(frame[DIM_COLS].to_numpy(float), y)  # diagnostic (may be None)
+        Xreg = frame[DIM_COLS].to_numpy(float)
+        reg = _regression(Xreg, y)  # diagnostic (may be None)
+        # leave-one-state-out CV groups: county_fips prefix for county-aggregated frames, the
+        # state column for the ZCTA-level LE anchor.
+        if scope == "county":
+            grp = frame["county_fips"].astype(str).str[:2].to_numpy()
+        else:
+            grp = frame["state"].astype(str).to_numpy() if "state" in frame.columns else None
+        cv = _cv_regression(Xreg, y, grp) if grp is not None else None
         anchors_out[a] = {
             "label": label, "scope": scope, "caveat": caveat,
             # PRESET weights: proportional to univariate correlation, 5% floor. Keeps care
@@ -180,6 +236,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
             "dimension_corr": {d: round(r, 3) for d, r in dim_corr.items()},
             "regression_weights": reg["regression_weights"] if reg else None,
             "fit": reg["fit"] if reg else None,
+            "cv": cv,  # point 3: honest out-of-sample fit + weight stability (None if scipy/folds short)
         }
         for sc in sub_cols:
             r = _corr(frame[sc].to_numpy(float), y)
@@ -197,7 +254,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
                   "(diagnostic; collapses care access via collinearity). County outcomes "
                   "pop-weighted to county level.",
         "anchors": {a: {"label": v["label"], "scope": v["scope"], "weights": v["weights"],
-                        "regression_weights": v["regression_weights"], "fit": v["fit"]}
+                        "regression_weights": v["regression_weights"], "fit": v["fit"],
+                        "cv": v["cv"]}
                     for a, v in anchors_out.items()},
         "subscore_correlations": sub_diag,
         "supply_density_confound": density_diag,
@@ -210,7 +268,9 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     log("validate", f"anchors: {list(anchors_out)}")
     for a, v in anchors_out.items():
         r2 = v["fit"]["r2"] if v["fit"] else None
-        log("validate", f"  {a}: preset(corr)={v['weights']} | regression={v['regression_weights']} R2={r2}")
+        cv = v["cv"]
+        cvstr = f" | CV R2={cv['cv_r2']} (in-sample {r2}; wSD={cv['weight_sd']})" if cv else ""
+        log("validate", f"  {a}: preset(corr)={v['weights']} | regression={v['regression_weights']} R2={r2}{cvstr}")
     log("validate", f"wrote {WEIGHTS_JSON.name}")
     return str(WEIGHTS_JSON)
 
@@ -245,7 +305,7 @@ def _write_weights(anchors_out: dict, sub_diag: dict) -> None:
         "default": default_pct,
         "anchors": {a: {"label": v["label"], "scope": v["scope"], "caveat": v["caveat"],
                         "weights": v["weights"], "regression_weights": v["regression_weights"],
-                        "fit": v["fit"], "dimension_corr": v["dimension_corr"]}
+                        "fit": v["fit"], "cv": v["cv"], "dimension_corr": v["dimension_corr"]}
                     for a, v in anchors_out.items()},
         "subscore_correlations": sub_diag,
         "note": ("default = conceptual value judgment (theory weights); care access counts "

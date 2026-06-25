@@ -119,7 +119,18 @@ log; consider committing it as `pipeline/audit.py`.)
 - **External.** No free ZIP-level treatable-mortality exists. Would need **restricted-access NCHS
   mortality microdata** (death records geocoded to ZIP/tract; via the NCHS RDC) - a major data-use
   agreement effort. Not headlessly obtainable.
-- **Status.** Blocked on restricted data; document as a structural ceiling, not a to-do.
+- **Status (2026-06-25): PARTIALLY UNBLOCKED - the premise was too pessimistic.** An exhaustive
+  data hunt found multiple **free, no-DUA, headless-fetchable, observed, non-circular sub-county**
+  outcomes (the original "no free ZIP-level outcome" was true only for *amenable mortality
+  specifically*). Integrated: **Colorado CDPHE tract diabetes ACSC** as a second sub-county
+  validation state (`validate_subcounty --colorado`) - composite within-county r **+0.507**,
+  care_access **+0.417**, generalizing the NY finding to independent geography + an independent
+  outcome (VALIDATION §6a). Verified-live additional sources for further expansion: **TX DSHS PUDF**
+  (true 5-digit patient-ZIP discharge microdata, free 2006-2019), **CDC `4day-mt2f`** (NATIONAL
+  census-tract overdose mortality, Socrata, observed - the one *national* sub-county outcome found),
+  **CA ZIP Death Profiles** (ZIP cause-specific deaths, 1989-2024), **AZ Community Profiles** (sub-
+  county PQI). The residual ceiling: no *national ACSC* sub-county panel is free (HCUP SID is paid),
+  so national sub-county validity is corroborated **state-by-state**, not in one panel.
 
 ### B2 (P2) - Thin sub-score margins not individually replicated out-of-outcome
 - **Problem.** Only the *dimension-level* care-access claim got the clean out-of-outcome replication

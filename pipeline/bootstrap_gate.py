@@ -93,15 +93,24 @@ def _mean_abs_r(series: np.ndarray, Y: np.ndarray) -> float:
     return float(np.nanmean([abs(_corr(series, Y[:, k])) for k in range(Y.shape[1])]))
 
 
-def _cluster_groups(d: pd.DataFrame) -> list[np.ndarray]:
-    """Row-position arrays grouped by county (state|county_name). Rows with no county
-    label become singleton clusters so they are still resampled, just not pooled."""
+def _cluster_groups(d: pd.DataFrame, level: str = "county") -> list[np.ndarray]:
+    """Row-position arrays grouped by a spatial BLOCK. Resampling whole blocks (not rows) is
+    what makes the bootstrap CI honest under spatial dependence:
+      - "county" (state|county_name): the default - respects that one county's ~11 ZCTAs are
+        ~1 independent look at a county-level outcome (within-county pseudo-replication).
+      - "state": the spatial-autocorrelation block. County outcomes in the same state are NOT
+        independent (shared Medicaid/policy + spatial proximity), so resampling whole states is
+        the conservative correction for BETWEEN-county autocorrelation. Far fewer clusters (~50)
+        => deliberately wider, more honest CIs.
+    Rows with no label for the chosen level become singleton clusters (resampled, not pooled)."""
     state = d.get("state", pd.Series([""] * len(d))).astype("string").fillna("")
-    county = d.get("county_name", pd.Series([""] * len(d))).astype("string").fillna("")
-    key = (state + "|" + county).to_numpy()
-    # unlabeled -> unique per-row id so they cluster alone
-    blank = (county.to_numpy() == "") | (state.to_numpy() == "")
-    key = key.astype(object)
+    if level == "state":
+        key = state.to_numpy().astype(object)
+        blank = state.to_numpy() == ""
+    else:
+        county = d.get("county_name", pd.Series([""] * len(d))).astype("string").fillna("")
+        key = (state + "|" + county).to_numpy().astype(object)
+        blank = (county.to_numpy() == "") | (state.to_numpy() == "")
     key[blank] = [f"__solo_{i}" for i in np.where(blank)[0]]
     order = np.argsort(key, kind="stable")
     key_sorted = key[order]
@@ -171,6 +180,59 @@ def amenable_focus(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict |
         "reading": "partial r > 0 with a CI excluding 0 => care access tracks treatable mortality "
                    "BEYOND the deprivation gradient - the legitimate basis for weighting it.",
     }
+
+
+def _block_ci(d: pd.DataFrame, stat_fn, level: str, n_boot: int, seed: int) -> dict:
+    """Generic block-bootstrap CI for a scalar statistic `stat_fn(ridx)->float` under a given
+    spatial blocking level. Returns point, CI, and the cluster count (so the reader sees how
+    many independent blocks back the interval)."""
+    groups = _cluster_groups(d, level)
+    n_clusters = len(groups)
+    rng = np.random.default_rng(seed)
+    point = stat_fn(np.arange(len(d)))
+    boot = []
+    for _ in range(n_boot):
+        pick = rng.integers(0, n_clusters, n_clusters)
+        boot.append(stat_fn(np.concatenate([groups[i] for i in pick])))
+    a = np.asarray(boot, float)
+    a = a[~np.isnan(a)]
+    ci = [round(float(np.percentile(a, 2.5)), 3), round(float(np.percentile(a, 97.5)), 3)]
+    return {"point": round(float(point), 3), "ci95": ci, "n_clusters": n_clusters,
+            "excludes_0": bool(ci[0] > 0 or ci[1] < 0)}
+
+
+def spatial_sensitivity(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict | None:
+    """Point 2 (statistician's critique): the county cluster bootstrap respects WITHIN-county
+    pseudo-replication but still treats counties as spatially independent. Health geography is
+    strongly autocorrelated, so the true effective N is below the county count and every county-
+    blocked CI is too narrow. This re-runs the two headline claims under STATE blocking (whole
+    states resampled - the conservative correction for between-county autocorrelation) beside the
+    county baseline, so the reader sees how much the interval widens and whether the claim SURVIVES
+    the honest bar. amenable-only (it is the load-bearing out-of-outcome claim)."""
+    if "amenable_mortality" not in d.columns:
+        return None
+    y = d["amenable_mortality"].to_numpy(float)
+    if np.isfinite(y).sum() < 100:
+        return None
+    X = d[DIM_COLS].to_numpy(float)
+    care_i = DIM_COLS.index("care_access_pctile")
+    keep = [i for i in range(len(DIM_COLS)) if i != care_i]
+
+    def partial(ridx: np.ndarray) -> float:
+        return _partial_corr(y[ridx], X[ridx][:, care_i], X[ridx][:, keep])
+
+    def margin(ridx: np.ndarray) -> float:
+        full = _corr(_rank(np.nanmean(X[ridx], axis=1)), y[ridx])
+        drop = _corr(_rank(np.nanmean(X[ridx][:, keep], axis=1)), y[ridx])
+        return full - drop
+
+    out = {"claim": "care_access vs amenable mortality, county vs state spatial blocking"}
+    for name, fn in (("care_access_partial_r", partial), ("care_access_marginal", margin)):
+        out[name] = {lvl: _block_ci(d, fn, lvl, n_boot, seed) for lvl in ("county", "state")}
+    out["reading"] = ("If 'state' (the spatially-honest block) still excludes 0, the claim survives "
+                      "the between-county autocorrelation the county bootstrap ignores. A wider but "
+                      "still-positive CI is the expected, honest outcome.")
+    return out
 
 
 def _bh_fdr(pvals: dict[str, float], q: float = 0.05) -> dict[str, dict]:
@@ -345,6 +407,9 @@ def run(n_boot: int = 1000, seed: int = 0) -> dict:
     asub = amenable_subscores(d, n_boot, seed)  # B2: thin care sub-scores vs the independent outcome
     if asub:
         report["amenable_subscores"] = asub
+    spat = spatial_sensitivity(d, n_boot, seed)  # point 2: state vs county spatial blocking
+    if spat:
+        report["spatial_sensitivity"] = spat
     OUT_JSON.write_text(json.dumps(report, indent=2))
     _print(report)
     return report
@@ -388,6 +453,16 @@ def _print(r: dict) -> None:
                 else "COLLAPSES"
             print(f"    {k:22s} {s['raw_r']:+7.3f} {s['partial_r']:+10.3f} "
                   f"  [{ci[0]:+.3f},{ci[1]:+.3f}] {s.get('q_value', float('nan')):7.3f}  {verdict}")
+    sp = r.get("spatial_sensitivity")
+    if sp:
+        print("\n  --- POINT 2: SPATIAL BLOCKING (county vs state) on the amenable claim ---")
+        for name in ("care_access_partial_r", "care_access_marginal"):
+            print(f"    {name}:")
+            for lvl in ("county", "state"):
+                b = sp[name][lvl]
+                tag = "excludes 0" if b["excludes_0"] else "  <-- CI SPANS 0"
+                print(f"      {lvl:7s} (k={b['n_clusters']:4d} blocks)  {b['point']:+.3f}  "
+                      f"CI{b['ci95']}  {tag}")
     print(f"\n  wrote {OUT_JSON.relative_to(config.ROOT)}")
 
 

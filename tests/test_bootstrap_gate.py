@@ -44,6 +44,25 @@ def test_bh_fdr_monotone_and_correct():
     assert abs(out["d"]["q_value"] - 0.5) < 1e-9  # largest p: q = p
 
 
+def test_spatial_blocking_widens_ci():
+    """Point 2: state blocking (fewer, spatially-honest clusters) must produce a CI at least as
+    wide as county blocking on the same statistic - resampling whole states cannot make the
+    interval narrower. Skips if no amenable outcome is built."""
+    import pandas as pd
+    from pipeline import bootstrap_gate, config
+
+    d = pd.read_parquet(config.PROCESSED / "metrics.parquet")
+    d = d[d["scoreable"] == True].reset_index(drop=True)  # noqa: E712
+    res = bootstrap_gate.spatial_sensitivity(d, n_boot=120, seed=0)
+    if res is None:
+        pytest.skip("no amenable_mortality column")
+    p = res["care_access_partial_r"]
+    assert p["state"]["n_clusters"] < p["county"]["n_clusters"]  # states << counties
+    cw = p["county"]["ci95"][1] - p["county"]["ci95"][0]
+    sw = p["state"]["ci95"][1] - p["state"]["ci95"][0]
+    assert sw >= cw - 0.005   # state CI no narrower than county (allow tiny MC noise)
+
+
 def test_amenable_subscores_shape():
     """B2: if the WONDER amenable export is built, every scored care sub-score gets a partial-r,
     a 2-element CI, and an FDR verdict; otherwise the function no-ops (None)."""
