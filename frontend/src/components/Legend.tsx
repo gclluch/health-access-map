@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { RAMP, CHROME } from '../lib/colors';
-import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS } from '../lib/types';
+import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS, WITHIN_STATE_METRIC } from '../lib/types';
 import { fmtScore } from '../lib/format';
 
 const BINS = 44;
@@ -46,6 +46,7 @@ export default function Legend() {
           <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
           <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
           <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
+          <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>
           {MODEL.map((d) => (
             <optgroup key={d.key} label={d.label}>
               <option value={`${d.key}_pctile`}>{d.label} (overall)</option>

@@ -23,6 +23,21 @@
         "r2": 0.183,
         "n": 3051
       },
+      "cv": {
+        "cv_r2": 0.172,
+        "n_folds": 51,
+        "n": 3051,
+        "weight_mean": {
+          "health_need": 77.0,
+          "social_vulnerability": 5.0,
+          "care_access": 18.0
+        },
+        "weight_sd": {
+          "health_need": 1.2,
+          "social_vulnerability": 0.0,
+          "care_access": 1.2
+        }
+      },
       "dimension_corr": {
         "health_need": 0.424,
         "social_vulnerability": 0.342,
@@ -46,6 +61,21 @@
       "fit": {
         "r2": 0.607,
         "n": 3066
+      },
+      "cv": {
+        "cv_r2": 0.598,
+        "n_folds": 51,
+        "n": 3066,
+        "weight_mean": {
+          "health_need": 66.3,
+          "social_vulnerability": 5.0,
+          "care_access": 28.7
+        },
+        "weight_sd": {
+          "health_need": 0.5,
+          "social_vulnerability": 0.0,
+          "care_access": 0.5
+        }
       },
       "dimension_corr": {
         "health_need": 0.758,
@@ -71,6 +101,21 @@
         "r2": 0.515,
         "n": 3069
       },
+      "cv": {
+        "cv_r2": 0.505,
+        "n_folds": 51,
+        "n": 3069,
+        "weight_mean": {
+          "health_need": 52.8,
+          "social_vulnerability": 16.3,
+          "care_access": 30.9
+        },
+        "weight_sd": {
+          "health_need": 1.0,
+          "social_vulnerability": 0.9,
+          "care_access": 0.5
+        }
+      },
       "dimension_corr": {
         "health_need": 0.685,
         "social_vulnerability": 0.634,
@@ -94,6 +139,21 @@
       "fit": {
         "r2": 0.443,
         "n": 1177
+      },
+      "cv": {
+        "cv_r2": 0.412,
+        "n_folds": 51,
+        "n": 1177,
+        "weight_mean": {
+          "health_need": 54.1,
+          "social_vulnerability": 15.1,
+          "care_access": 30.8
+        },
+        "weight_sd": {
+          "health_need": 1.9,
+          "social_vulnerability": 1.7,
+          "care_access": 1.2
+        }
       },
       "dimension_corr": {
         "health_need": 0.634,
@@ -119,6 +179,21 @@
         "r2": 0.165,
         "n": 3107
       },
+      "cv": {
+        "cv_r2": 0.143,
+        "n_folds": 51,
+        "n": 3107,
+        "weight_mean": {
+          "health_need": 30.4,
+          "social_vulnerability": 5.1,
+          "care_access": 64.6
+        },
+        "weight_sd": {
+          "health_need": 1.7,
+          "social_vulnerability": 0.4,
+          "care_access": 1.8
+        }
+      },
       "dimension_corr": {
         "health_need": 0.329,
         "social_vulnerability": 0.311,
@@ -143,6 +218,21 @@
         "r2": 0.248,
         "n": 3103
       },
+      "cv": {
+        "cv_r2": 0.211,
+        "n_folds": 51,
+        "n": 3103,
+        "weight_mean": {
+          "health_need": 5.3,
+          "social_vulnerability": 30.7,
+          "care_access": 64.1
+        },
+        "weight_sd": {
+          "health_need": 1.2,
+          "social_vulnerability": 1.6,
+          "care_access": 1.8
+        }
+      },
       "dimension_corr": {
         "health_need": 0.363,
         "social_vulnerability": 0.42,
@@ -166,6 +256,21 @@
       "fit": {
         "r2": 0.39,
         "n": 31467
+      },
+      "cv": {
+        "cv_r2": 0.382,
+        "n_folds": 51,
+        "n": 31467,
+        "weight_mean": {
+          "health_need": 59.6,
+          "social_vulnerability": 19.6,
+          "care_access": 20.8
+        },
+        "weight_sd": {
+          "health_need": 0.8,
+          "social_vulnerability": 0.8,
+          "care_access": 0.5
+        }
       },
       "dimension_corr": {
         "health_need": 0.606,

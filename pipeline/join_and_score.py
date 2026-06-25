@@ -215,6 +215,14 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["primary_per_1k"] = (df["providers_primary"] / pop_k).replace([np.inf, -np.inf], np.nan)
     df["population"] = pop.astype("Int64")
     df["low_confidence"] = (pop < config.POPULATION_FLOOR) | pop.isna()
+    # Institutional / non-residential ZCTA: registered providers OUTNUMBER residents (a hospital
+    # campus, med school, or VA complex - 80045 Anschutz, 77030 Houston TMC, Stanford, Yale...).
+    # The provider count reflects a workplace, not the people who live there, so the raw per-capita
+    # supply (primary_per_1k can read 454,000) is meaningless and the area must not rank beside real
+    # communities. A pop-independent flag: the pop floor (low_confidence) misses 80045 (pop 1,615).
+    # Metadata only - does not change any score; kept out of headline rankings + caveated. Audit A2.
+    prov_total = pd.to_numeric(df["providers_total"], errors="coerce")
+    df["institutional"] = (prov_total > pop) & pop.notna() & (pop > 0)
 
     # Safety-net barrier = unmet need: FQHC-desert (distance percentile) x poverty. The raw
     # E2SFCA FQHC-access score is wrong-signed against every outcome (clinics cluster in
@@ -283,6 +291,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["n_dims_scored"] = n_dims.where(df["scoreable"]).astype("Int64")
     df.loc[~df["scoreable"], "access_gap_score"] = np.nan
     df["access_gap_pctile"] = _pct(df["access_gap_score"])  # true rank of the composite
+    # WITHIN-STATE rank (point 5 / decision-context calibration): a national percentile compares a
+    # ZCTA to the whole country, but care is allocated within state programs (Medicaid, state HRSA
+    # offices). This re-ranks the composite WITHIN each state so "worst 10% in my state" is
+    # answerable - the unit a state administrator actually acts on. NaN for non-scoreable (no score
+    # to rank). rank(pct) skips NaN, so each state's rank spans only its scoreable ZCTAs.
+    df["access_gap_pctile_within_state"] = (
+        df.groupby("state", dropna=False)["access_gap_score"].rank(pct=True) * 100.0)
 
     # ---- alternative LENS: multiplicative (geometric) gap ----
     # Weighted GEOMETRIC mean of the same dimension percentiles + weights, renormalized over
@@ -333,6 +348,10 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         "dimension_weights": DIMENSION_WEIGHTS,
         "rows": len(df), "with_score": int(df["access_gap_score"].notna().sum()),
         "low_confidence": int(df["low_confidence"].sum()),
+        "institutional": int(df["institutional"].sum()),
+        # build-over-build drift snapshot: key quantiles of the raw composite. A future build can
+        # diff these against the committed provenance to catch a silent distribution shift (A4).
+        "score_quantiles": _score_quantiles(df),
         "dimension_correlations": corr,
         "effective_dimensions": eff_dims,
         "access_beyond_deprivation": lens,
@@ -363,9 +382,9 @@ RAW_DISPLAY = (
 def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
     # slim payload: geography + composite + dimensions + sub-scores + flags.
     cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
-            "access_gap_score", "access_gap_pctile", "access_gap_rank_lo",
-            "access_gap_rank_hi", "access_gap_mult_pctile", "care_access_resid_pctile",
-            "tier", "low_confidence", "scoreable",
+            "access_gap_score", "access_gap_pctile", "access_gap_pctile_within_state",
+            "access_gap_rank_lo", "access_gap_rank_hi", "care_access_resid_pctile",
+            "tier", "low_confidence", "institutional", "scoreable",
             "n_dims_scored", "life_expectancy", "life_expectancy_pctile",
             *dim_cols, *SUBSCORE_COLS]
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
@@ -395,6 +414,7 @@ def _write_public_meta(df: pd.DataFrame, corr: dict, eff_dims: dict) -> None:
         },
         "n_scored": int(df["access_gap_score"].notna().sum()),
         "low_confidence": int(df["low_confidence"].sum()),
+        "institutional": int(df["institutional"].sum()),
         "dimension_correlations": corr,
         "effective_dimensions": eff_dims,
     }
@@ -480,20 +500,75 @@ def _lens_diag(df: pd.DataFrame) -> dict:
     return out
 
 
+def _score_quantiles(df: pd.DataFrame) -> dict:
+    """Key quantiles of the raw composite among scoreable ZCTAs - a compact distribution fingerprint
+    committed to provenance so a later build can detect drift (A4)."""
+    v = df.loc[df["scoreable"], "access_gap_score"].dropna()
+    if v.empty:
+        return {}
+    return {f"p{q}": round(float(np.percentile(v, q)), 2) for q in (5, 25, 50, 75, 95)}
+
+
 def _validate(df: pd.DataFrame, dim_cols: list[str], dev_state: str | None) -> None:
     assert_zcta(df, stage="join")
     has_data = df[["diabetes_pct", "providers_total", "median_income"]].notna().any(axis=1)
     overlap = has_data.mean()
     if overlap < 0.90:
         die("join", f"only {overlap:.0%} of geometry ZCTAs have data")
-    for col in [*dim_cols, *SUBSCORE_COLS, "access_gap_score", "access_gap_pctile"]:
+    if df["access_gap_score"].isna().all():
+        die("join", "access_gap_score entirely null")
+    _validate_integrity(df, dim_cols)
+    log("join", f"validated: {overlap:.0%} overlap, all percentiles in [0,100], "
+                f"{int(df['access_gap_score'].notna().sum())} scored")
+
+
+# Data-integrity invariants - the audit checks (2026-06-24) that pass TODAY, locked so a future
+# build can't silently regress. Mirrored by tests/test_integrity.py (skip-guarded on a real build).
+# Each is a hard build-time `die`. See docs/BACKLOG.md A3.
+def _validate_integrity(df: pd.DataFrame, dim_cols: list[str]) -> None:
+    # 1. every percentile (dimension, sub-score, per-measure _natpct, composite) in [0,100]
+    pct_cols = ([*dim_cols, *SUBSCORE_COLS, "access_gap_score", "access_gap_pctile"]
+                + [c for c in df.columns if c.endswith(("_pctile", "_natpct"))])
+    for col in dict.fromkeys(pct_cols):
+        if col not in df.columns:
+            continue
         v = df[col].dropna()
         if len(v) and (v.min() < -0.001 or v.max() > 100.001):
             die("join", f"{col} outside [0,100]: min={v.min()} max={v.max()}")
-    if df["access_gap_score"].isna().all():
-        die("join", "access_gap_score entirely null")
-    log("join", f"validated: {overlap:.0%} overlap, all percentiles in [0,100], "
-                f"{int(df['access_gap_score'].notna().sum())} scored")
+    # 2. every rate (a proportion) in [0,1]
+    for col in [c for c in df.columns if c.endswith("_rate")]:
+        v = pd.to_numeric(df[col], errors="coerce").dropna()
+        if len(v) and (v.min() < -0.001 or v.max() > 1.001):
+            die("join", f"{col} not a proportion in [0,1]: min={v.min()} max={v.max()}")
+    # 3. no leftover sentinel (e.g. -999999) masquerading as a real value
+    num = df.select_dtypes("number")
+    sentinel = num.min()[num.min() < -100000]
+    if len(sentinel):
+        die("join", f"sentinel-like values (< -1e5) survived into output: {sentinel.to_dict()}")
+    # 4. a non-positive / missing population can never be scoreable
+    pop = pd.to_numeric(df["population"], errors="coerce")
+    bad = int((~(pop > 0) & df["scoreable"]).sum())
+    if bad:
+        die("join", f"{bad} ZCTA(s) scoreable with population <= 0 / missing")
+    # 5. every absurd-per-capita ZCTA (>1000 primary providers/1k) must be flagged non-residential
+    if "primary_per_1k" in df.columns:
+        extreme = pd.to_numeric(df["primary_per_1k"], errors="coerce") > 1000
+        unflagged = int((extreme & ~(df["low_confidence"] | df["institutional"])).sum())
+        if unflagged:
+            die("join", f"{unflagged} ZCTA(s) with >1000 providers/1k not flagged "
+                        "low_confidence|institutional")
+    # 6. one row per ZCTA (the geometry universe is de-duplicated; a dup would double-serve a ZIP)
+    n_dup = int(df["zcta5"].duplicated().sum())
+    if n_dup:
+        die("join", f"{n_dup} duplicate zcta5 row(s) in output")
+    # 7. county_fips, where joined, is a real 5-digit FIPS (valid state/territory prefix). A bad
+    #    code silently drops the county joins (medical_debt, amenable, geonames) for that ZCTA.
+    if "county_fips" in df.columns:
+        cf = df["county_fips"].dropna().astype(str)
+        valid_st = {f"{i:02d}" for i in range(1, 57)} | {"60", "66", "69", "72", "74", "78"}
+        bad = cf[~cf.str.match(r"^\d{5}$") | ~cf.str[:2].isin(valid_st)]
+        if len(bad):
+            die("join", f"{len(bad)} invalid county_fips (e.g. {sorted(bad.unique())[:5]})")
 
 
 if __name__ == "__main__":

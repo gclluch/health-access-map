@@ -286,6 +286,13 @@ export default function DetailPanel() {
             Low-confidence area - small population ({fmtInt(m.population as number)}), wide margins.
           </div>
         )}
+        {m.institutional && (
+          <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
+            Institutional ZIP - more registered providers than residents (a hospital campus, medical
+            school, or VA complex). The supply reflects a workplace, not the local population, so raw
+            per-capita figures are not meaningful and this area is held out of headline rankings.
+          </div>
+        )}
         {m.n_dims_scored != null && m.n_dims_scored < 3 && (
           <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
             Partial score - built from {m.n_dims_scored} of 3 dimensions (one had no usable data
