@@ -92,6 +92,19 @@ TX_ACSC_CACHE = config.PROCESSED / "tx_acsc_zip_2019.parquet"
 TX_ACSC_PREFIXES = ("E10", "E11", "E12", "E13", "E86", "J13", "J14", "J15", "J16", "J18",
                     "J40", "J41", "J42", "J43", "J44", "J45", "J47", "I10", "I11", "I20",
                     "I50", "N10", "N11", "N12", "N30", "N390")
+# ICD-9-CM ACSC/PQI principal-diagnosis prefixes (stored WITHOUT the decimal in the PUDF), for the
+# pre-Oct-2015 discharges: diabetes (250), dehydration (2765), bacterial pneumonia (481-486),
+# COPD/asthma (491-496, 4660), hypertension (401-402), angina (4111, 413), heart failure (428),
+# urinary (590, 5950, 5959, 5990). Mirrors TX_ACSC_PREFIXES (the ICD-10 set). The two code spaces are
+# disjoint (ICD-9 ACSC = digits only; ICD-10 = letter-prefixed), so matching EITHER set is safe across
+# the Oct-2015 ICD-9->ICD-10 transition with no false positives - no per-quarter coding logic needed.
+TX_ACSC_PREFIXES_ICD9 = ("250", "2765", "481", "482", "483", "485", "486", "491", "492", "493",
+                         "494", "496", "4660", "401", "402", "4111", "413", "428", "590", "5950",
+                         "5959", "5990")
+TX_ACSC_PREFIXES_ALL = TX_ACSC_PREFIXES + TX_ACSC_PREFIXES_ICD9
+TX_PUDF_BASE = ("https://dshs-wcms-internet.s3.dualstack.us-gov-west-1.amazonaws.com/THCIC/"
+                "InpatientFreePUDF/")
+TX_PANEL_YEARS = (2011, 2012, 2013, 2014, 2015)   # ICD-9 era spanning the 2014 ACA expansion
 POOL_YEARS = ("2019", "2020", "2021", "2022", "2023")  # 5-yr pool for small-ZIP stability
 MIN_POP = 1000          # drop ZCTAs below the index's own low-confidence floor
 MIN_YEARS = 4           # require a near-full pool so a single noisy year can't dominate
@@ -136,6 +149,23 @@ def _within(j: pd.DataFrame, col: str) -> np.ndarray:
     return (s - s.groupby(j["county_fips"]).transform("mean")).to_numpy()
 
 
+def _wcorr(a: np.ndarray, b: np.ndarray, w: np.ndarray) -> float:
+    """Precision-weighted Pearson. Small ZCTAs carry the largest sampling error and ATTENUATE the
+    unweighted within-county correlation; weighting by population down-weights that noise and shifts
+    the estimand to where people actually live. A legitimate recovery of attenuated signal (corrects
+    measurement noise, fits nothing) - the biggest free gain at sub-county resolution. VALIDATION §7d."""
+    a, b, w = np.asarray(a, float), np.asarray(b, float), np.asarray(w, float)
+    m = ~(np.isnan(a) | np.isnan(b) | np.isnan(w)) & (w > 0)
+    if m.sum() < 50:
+        return float("nan")
+    a, b, w = a[m], b[m], w[m]
+    W = w.sum()
+    am, bm = (a * w).sum() / W, (b * w).sum() / W
+    cov = (w * (a - am) * (b - bm)).sum()
+    va, vb = (w * (a - am) ** 2).sum(), (w * (b - bm) ** 2).sum()
+    return float(cov / np.sqrt(va * vb)) if va > 0 and vb > 0 else float("nan")
+
+
 def run(extra_csv: str | None = None) -> dict:
     if not METRICS.exists():
         raise SystemExit(f"missing {METRICS}; run the pipeline first")
@@ -173,8 +203,24 @@ def run(extra_csv: str | None = None) -> dict:
         mark = "  <-- 0 sub-county resolution" if abs(wo) < 0.01 else ""
         print(f"  {c:32s} {po:+11.3f} {poe:+11.3f} {wo:+11.3f} {woe:+11.3f}{mark}")
 
+    # precision-weighting: down-weight the noisy small ZCTAs that attenuate the within-county r.
+    # Reported as a before/after for the two headline columns (composite + care access); the same
+    # _wcorr is available to every sub-county ruler below.
+    pw = j["population"].to_numpy(float)
+    report["within_county_popw"] = {}
+    print("\n  === precision-weighting (within-county O/E; weight = ZCTA population) ===")
+    print(f"  {'column':32s} {'unweighted':>11s} {'pop-weighted':>13s} {'recovered':>10s}")
+    for c in ("access_gap_score", "care_access_pctile"):
+        if c not in j.columns:
+            continue
+        uw = _corr(_within(j, c), yoe_w)
+        ww = _wcorr(_within(j, c), yoe_w, pw)
+        report["within_county_popw"][c] = round(ww, 3)
+        print(f"  {c:32s} {uw:+11.3f} {ww:+13.3f} {ww - uw:+10.3f}")
     print("\n  Reading: WITHIN-county is the test county outcomes CANNOT do. A positive WITHIN-O/E "
-          "means\n  the index resolves real sub-county access signal a county-level gate is blind to.")
+          "means\n  the index resolves real sub-county access signal a county-level gate is blind to.\n"
+          "  Pop-weighting recovers the signal the small-area noise was hiding (corrects attenuation,\n"
+          "  fits nothing) - the largest free gain available at this resolution.")
     return report
 
 
@@ -483,6 +529,75 @@ def _fetch_tx_acsc() -> pd.DataFrame:
                       "n_total": [tot[z] for z in tot]})
     g.to_parquet(TX_ACSC_CACHE, index=False)
     return g
+
+
+def _tx_quarter_counts(year: int, q: int):
+    """ZIP-level (ACSC, total) discharge counts for one TX PUDF quarter. Handles the older NESTED-zip
+    layout (outer zip -> inner PUDF_base1_*.zip -> .txt) as well as a flat .txt member; flags ACSC by
+    principal diagnosis against the combined ICD-9+ICD-10 set."""
+    import csv
+    import io
+    import tempfile
+    import zipfile
+    from collections import Counter
+    url = TX_PUDF_BASE + f"PUDF-{q}Q{year}-tab-delimited.zip"
+    acsc: Counter = Counter()
+    tot: Counter = Counter()
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as tmp:
+        subprocess.run(["curl", "-sL", "--max-time", "900", url, "-o", tmp.name], check=True)
+        outer = zipfile.ZipFile(tmp.name)
+        base = next(n for n in outer.namelist() if "base1" in n.lower())
+        raw = outer.read(base)
+        if base.lower().endswith(".zip"):                       # nested (older years)
+            inner = zipfile.ZipFile(io.BytesIO(raw))
+            member = next(n for n in inner.namelist() if n.lower().endswith((".txt", ".tab")))
+            fh = inner.open(member)
+        else:                                                   # flat .txt (2019-style)
+            fh = io.BytesIO(raw)
+        rdr = csv.reader(io.TextIOWrapper(fh, encoding="latin-1"), delimiter="\t")
+        header = next(rdr)
+        zi, di = header.index("PAT_ZIP"), header.index("PRINC_DIAG_CODE")
+        for row in rdr:
+            if len(row) <= max(zi, di):
+                continue
+            z5 = row[zi]
+            if len(z5) != 5 or not z5.isdigit():               # drop masked/out-of-state ZIPs
+                continue
+            tot[z5] += 1
+            if row[di].upper().startswith(TX_ACSC_PREFIXES_ALL):
+                acsc[z5] += 1
+    return acsc, tot
+
+
+def _fetch_tx_year(year: int) -> pd.DataFrame:
+    """Pooled 4-quarter TX ACSC counts by patient ZIP for one year (zcta5, acsc, n_total), cached.
+    The raw quarter zips (~150MB each) are streamed and discarded; only the tiny ZIP aggregate is kept."""
+    from collections import Counter
+    cache = config.PROCESSED / f"tx_acsc_zip_{year}.parquet"
+    if cache.exists():
+        return pd.read_parquet(cache)
+    acsc: Counter = Counter()
+    tot: Counter = Counter()
+    for q in (1, 2, 3, 4):
+        log("subcounty", f"TX PUDF {q}Q{year}: download + stream...")
+        a, t = _tx_quarter_counts(year, q)
+        acsc.update(a)
+        tot.update(t)
+    g = pd.DataFrame({"zcta5": list(tot), "acsc": [acsc[z] for z in tot],
+                      "n_total": [tot[z] for z in tot]})
+    g.to_parquet(cache, index=False)
+    return g
+
+
+def tx_acsc_panel(years=TX_PANEL_YEARS) -> pd.DataFrame:
+    """Long TX ACSC panel (zcta5, year, acsc, n_total) across `years` - the non-expansion control
+    arm for the cross-state ACA-expansion DiD (validate_temporal.run_cross_state)."""
+    frames = []
+    for y in years:
+        g = _fetch_tx_year(y)
+        g = g.assign(year=y)
+        frames.append(g)
+    return pd.concat(frames, ignore_index=True)
 
 
 def run_texas() -> dict:
