@@ -3,7 +3,7 @@
 PY = .venv/bin/python
 UVICORN = .venv/bin/uvicorn
 
-.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable
+.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal
 
 help:
 	@echo "make setup        - create venv + install python/node deps"
@@ -16,6 +16,8 @@ help:
 	@echo "make acceptance   - run the acceptance test suite"
 	@echo "make gate         - diagnostics + bootstrap-CI gate (95% CIs on every margin)"
 	@echo "make amenable     - one-step amenable-mortality re-gate (after a WONDER export)"
+	@echo "make subcounty    - consolidated sub-county validity scorecard (5 states + 2 national)"
+	@echo "make causal       - causal/actionability frontier: negative-control + temporal event study"
 	@echo "make clean-nppes  - delete the 10 GB extracted NPPES CSV"
 
 setup:
@@ -55,6 +57,13 @@ gate:
 
 amenable:
 	$(PY) -m pipeline.regate_amenable
+
+subcounty:
+	$(PY) -m pipeline.validate_subcounty --all
+
+causal:
+	$(PY) -m pipeline.validate_placebo
+	$(PY) -m pipeline.validate_temporal
 
 clean-nppes:
 	$(PY) -m pipeline.run --cleanup

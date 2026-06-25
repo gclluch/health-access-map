@@ -579,3 +579,203 @@ doc (the PUDF is published tab-delimited). The one thing still out of reach is *
 single *national* ACSC panel - paid + DUA, not headless. The free state-by-state panel (now the four
 largest states) is the substitute. (California was initially shelved as age-confounded, then
 *recovered* once age was properly controlled - see §6a.)
+
+## 7. Causal / actionability frontier - is it a lever, or just a better poverty map? (2026-06-25)
+
+Every check in §1-§6 is **cross-sectional**: it correlates the index with outcomes at one point in
+time. The deepest surviving critique accepts all of it and still says: *your index correlates with
+bad outcomes because it is a deprivation gradient - poverty plus disease burden. Correlation at one
+instant cannot tell me access is a LEVER: that putting a clinic or coverage where the index is high
+would move outcomes. You have a better map of where sick poor people live; I already had that.* This
+is a causal/actionability question, and §7 attacks it with the strongest identification strategies
+free data allows. The honest answer, after running them all: **the index is a well-validated
+*descriptive* map of where access is poor; its *actionability* as a lever is not demonstrated.**
+
+**§7 at a glance - the causal evidence ladder (read top to bottom):**
+
+| Rung | Design | Result | What it means |
+|---|---|---|---|
+| §7a | Negative control (placebo outcome) | **null** (diff +0.007, CI crosses 0) | cross-sectionally indistinguishable from a poverty map |
+| §7b | NY-only event study around 2014 | suggestive (-36.5) but **pre-trends imperfect** | a hint, not proof - high-barrier ZIPs may already be converging |
+| §7e | **Cross-state DiD-in-DiD** (NY vs TX control) | **falsified** (triple-diff +10.3, CI crosses 0) | TX never expanded yet declined the same → the §7b hint was secular convergence, not the expansion |
+| §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
+| - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
+
+The discipline is the point: a single-state DiD would have shipped a causal claim (§7b) that the
+falsification control (§7e) shows the data does not support. We report the null, loudly.
+
+### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.validate_placebo`)
+
+A placebo-outcome design splits mortality into two buckets that are **both** deprivation-loaded but
+differ on one axis - whether timely ambulatory care can prevent the death:
+
+- **access-sensitive** (the target): ACSC deaths - diabetes, heart disease, COPD, stroke. Primary
+  care, medication, and disease management prevent these.
+- **placebo / access-insensitive** (the control): external-cause deaths - unintentional injury,
+  homicide, suicide. These track poverty just as hard, but a clinic does not stop a car crash.
+
+If the index were access-specific it would predict the access-sensitive bucket **more** than the
+placebo (a positive *differential* r), and that excess would concentrate in `care_access`. CA
+ZIP-level vital records, age-adjusted within county (injury skews young, ACSC old):
+
+| index column | r vs ACSC | r vs placebo | **differential** | county-bootstrap 95% CI |
+|---|---|---|---|---|
+| `access_gap_score` | +0.493 | +0.494 | **-0.001** | [-0.143, +0.097] |
+| `care_access` | +0.364 | +0.357 | +0.007 | [-0.126, +0.115] |
+| `care_access_resid` (access net of deprivation) | -0.264 | -0.258 | -0.006 | [-0.073, +0.064] |
+| `health_need` | +0.469 | +0.508 | -0.039 | [-0.152, +0.051] |
+
+**The differential is a clean null everywhere** - raw care-access, the residualized
+access-beyond-deprivation lens, and the composite all predict preventable and non-preventable deaths
+*equally*. At ZCTA cross-section the index behaves like a general deprivation/mortality gradient: it
+does not flag the deaths timely care could have prevented over the ones it could not. The placebo is
+*conservative* (injury includes drug-poisoning, suicide carries a mental-health-access component), so
+contamination biases this test **toward** finding access signal - and it still finds none. This does
+not overturn the county amenable-mortality partial-r (§4): that is a partial association net of need
+at county scale with a curated treatable-mortality list, a different and weaker claim than *differential
+prediction*. But it **bounds** the cross-sectional access claim honestly, and it is exactly why the
+temporal test below is the better question.
+
+### 7b. Temporal quasi-experiment - the access barrier behaves like a lever over time (`pipeline.validate_temporal`)
+
+Cross-sectional differential prediction is an extremely hard bar (everything bad loads on the same
+gradient). A within-unit fixed-effects **event study** around a real access shock escapes it. NY
+publishes ACSC hospitalizations (AHRQ PQI_90) by patient ZIP every year 2009-2023; in 2014 the ACA
+coverage expansion sharply cut the uninsured rate, **most where it was highest**. The model is two-way
+fixed effects:
+
+`PQI_zt = α_z + γ_t + Σ_k β_k·(barrier_z × 1[year=k]) + ε`  (base year 2013)
+
+- `α_z` (ZIP FE) absorbs **all time-invariant deprivation** - the exact confound that sank §7a. Each
+  ZIP is its own control.
+- `γ_t` (year FE) absorbs the statewide secular ACSC trend.
+- `barrier_z` is the ZIP's standardized **pre-treatment** uninsured rate (ACS 2008-2012, *before* the
+  shock). The shipped ACS-2023 rate is post-expansion and endogenous - it correlates only ~0.42 with
+  the 2012 rate, because expansion compressed it - so using the true pre-period barrier is essential
+  (the contemporary proxy badly mismeasures who faced a high barrier).
+
+Result (1,265 NY ZIPs × 15 years): the pre-period interaction coefficients are roughly flat
+(≈ +35/100k, a 2009 spike aside) and the **post-2014 coefficients shift negative** (mean -6.8). The
+average post-expansion DiD is **-36.5/100k per +1 SD baseline barrier, ZIP-cluster bootstrap CI
+[-60.3, -11.3]** (excludes 0), and it survives dropping the one non-flat pre-year (2009): **-30.6**.
+In words: **ACSC fell more, after coverage expanded, in the ZIPs that had been most uninsured** -
+the access barrier moving the outcome over time, with deprivation differenced out.
+
+**Honesty about what this is and is not.** The pre-period coefficients are *not perfectly flat* (RMS
+38.8, comparable to the DiD itself), so pre-existing convergence inflates the estimate somewhat -
+`parallel_trends_clean = False`. It is **one state**, and NY's pre-ACA childless-adult waiver made its
+2014 shock milder than a non-expansion state's would be (conservative). So this is **suggestive, not
+proof**: a genuine step from correlational toward quasi-causal, not a randomized trial. The strongest
+honest claim free data supports is *"the access components respond to an access shock in the predicted
+direction"* - which is materially more than the cross-section can say, and the right ceiling to state.
+
+### 7c. What §7 changes
+
+Cross-sectionally the index cannot be distinguished from a poverty map (§7a). The NY-only event study
+(§7b) *appeared* to show the barrier behaving like a lever - but it carried imperfect parallel trends,
+and **the cross-state falsification test (§7e) overturns that optimistic read**: Texas, which never
+expanded Medicaid, shows the *same* post-2014 high-barrier ACSC decline as New York, so the NY drop was
+secular convergence, not the expansion. The honest, control-disciplined conclusion is therefore the
+conservative one: **free-data causal identification does not establish an actionable access lever.** The
+index is a deprivation-dominated *structural-access* map that is well-validated descriptively (§3-§6)
+but whose *actionability* is not demonstrated - and the project says so rather than resting on the
+single-state hint. This is the value of building the control: the naive single-state DiD would have
+shipped a causal claim the data does not support. Both temporal validators are standing, read-only, and
+never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP re-zoning
+check) are in [BACKLOG.md](BACKLOG.md).
+
+### 7d. Precision-weighting + disattenuation - the "modest" correlations are partly a noisy-ruler artifact
+
+A statistician's audit of *what would actually raise explanatory power* found that most of the levers
+either overfit (outcome-tuned weights), lower resolution (coarser aggregation), or hit the collinearity
+ceiling (more predictors). The two that legitimately recover signal both **reduce measurement noise**
+rather than fit it - so they are near-guaranteed and change no scores. Both are now reported by the
+validators (`validate._wcorr`/`_index_reliability`/`_parallel_forms_reliability`; `validate_subcounty._wcorr`).
+
+**Precision-weighting (WLS).** The unweighted correlation lets a tiny, high-variance area count as much
+as a large, precisely-measured one - classic errors-in-variables attenuation. Weighting each unit by
+population down-weights the noise and shifts the estimand to *where people actually live*. It corrects
+attenuation; it fits nothing. The recovery is real and largest at the resolution the tool runs at:
+
+| ruler | unweighted r | pop-weighted r | recovered |
+|---|---|---|---|
+| county: amenable mortality | +0.753 | +0.789 | +0.036 |
+| county: premature death | +0.710 | +0.778 | +0.068 |
+| **NY sub-county: composite (within-county O/E)** | +0.504 | **+0.623** | **+0.119** |
+| **NY sub-county: care_access (within-county O/E)** | +0.302 | **+0.442** | **+0.140** |
+
+**Disattenuation - the reliability ceiling.** With index reliability (split-half, Spearman-Brown)
+**0.882** and each ruler's reliability estimated by the single-factor triangulation
+`rel_i = r(i,j)·r(i,k)/r(j,k)` over the three access-sensitive county rulers, the disattenuated
+composite-outcome correlation `r / √(rel_x·rel_y)` shows how much of the gap to 1.0 is recoverable noise:
+
+| ruler | reliability | observed (pop-w) r | disattenuated r |
+|---|---|---|---|
+| amenable mortality | 0.97 | +0.789 | +0.852 (near ceiling) |
+| **preventable_hosp** | **0.25** | +0.435 | **+0.926** |
+| premature death | 0.74 | +0.778 | +0.961 |
+
+The headline: **`preventable_hosp` - the "textbook ambulatory-access outcome" - has reliability ~0.25**,
+so its weak observed correlation (0.435) is overwhelmingly measurement error in the *ruler*, not a weak
+index. (Honest caveat: the triangulation attributes all low inter-correlation to noise; a ruler that
+measures a genuinely *distinct* construct - preventable_hosp is Medicare-65+ *hospitalization*, not
+death - would also read low. So 0.25 is "reliable variance shared with the mortality factor", a
+conservative reliability. Either way, its low r is not evidence against the index.) This relocates the
+long-standing "care access reads modest" finding (§2) from *weak index* toward *noisy outcome* - the
+modesty is real but smaller than the naked correlations imply.
+
+**What this does and does not change.** The per-ZCTA composite scores never change - precision-weighting
+and disattenuation only alter how the index's association with outcomes is *measured*. The anchored
+*presets* now use the pop-weighted dimension correlations (the better, attenuation-corrected estimator),
+with the prior unweighted weights retained beside them as `weights_unweighted` for transparency. The
+preset shift is modest and mixed at county resolution (pop-weighting nudges the mortality anchors toward
+health_need, e.g. amenable care_access 31.2→28.5; infant mortality moves the other way, 31.5→34.1) - the
+large care_access recovery is a *sub-county* phenomenon, not a county-preset one, and the docs say so.
+The CV-optimal supervised reweighting at sub-score level was measured and **declined**: it buys only
++0.02 to +0.085 out-of-sample R² and costs the conceptual-weight interpretability the index protects
+(`validate._cv_regression` shows the 3-dimension weights are near-optimal, optimism ≤0.03).
+
+**The pruning lever is exhausted (checked, 2026-06-25).** Removing a component only raises clean-r if
+the component was adding noise - which is how `safetynet_access` and `preventive_use` were dropped
+historically. Re-running the per-sub-score gate (`bootstrap_gate.amenable_subscores`, BH-FDR q≤0.05)
+shows **every** scored care sub-score now HOLDS a positive partial r against amenable mortality:
+provider_supply +0.214, shortage_designation +0.185, insurance +0.042, medical_debt +0.441 (all
+q≤0.05); and every need/vulnerability sub-score has a solidly positive, correctly-signed mean|r|
+(0.20-0.46). There is no failing or wrong-signed component left to prune for a free gain. Combined with
+the collinearity ceiling (§1b), the noisy-ruler disattenuation above, and the cross-sectional placebo
+null (§7a), the conclusion is that the **internal** levers (pruning, reweighting, noise-correction in
+reporting) are now worked to completion; the remaining real gains are **external** - new data
+(BACKLOG B5: a non-expansion control state, a provider-entry panel) - not another pass over the same
+33k rows.
+
+### 7e. Cross-state falsification - the temporal lever does NOT survive a control (`validate_temporal.run_cross_state`)
+
+The NY-only event study (§7b) had no never-treated comparison, so it could not separate the 2014
+expansion from a secular trend in which high-uninsured ZIPs were already converging. The fix is a
+**DiD-in-DiD** with a falsification control: **Texas never expanded Medicaid**, so if the high-barrier
+post-2014 ACSC decline were the expansion, it should appear in NY (treated) and **not** in TX (control).
+We built the TX patient-ZIP ACSC panel from the free DSHS PUDF (2011-2015, ICD-9 era spanning 2014;
+1.46M ACSC of 13.4M discharges), used the same pre-2012 uninsured barrier, and estimated a two-way-FE
+(ZIP + state×year) event study per state plus the triple interaction `barrier × post × treated`:
+
+| year | NY (treated) β | TX (control) β |
+|---|---|---|
+| 2011 | +24.7 | +19.2 |
+| 2012 | +23.3 | +8.6 |
+| 2013 | 0 (base) | 0 (base) |
+| 2014 | +0.2 | -1.2 |
+| 2015 | -2.4 | -35.2 |
+
+**Triple-diff (barrier × post × NY) = +10.3, ZIP-cluster bootstrap CI [-14.3, +33.8] - null and
+wrong-signed.** TX shows the same (in 2015, larger) post-2014 high-barrier decline as NY. So the §7b
+"suggestive lever" was the secular convergence common to both states, **not** the Medicaid expansion.
+The falsification control did exactly its job: it caught a confound the single-state design could not.
+
+The honest verdict: **free-data causal identification does not support an actionable access lever.** The
+optimistic single-state reading is retracted. (Caveats, none of which rescue the claim: TX's 2015 Q4
+crosses into ICD-10 and could inflate its decline, but even the pre-transition 2014 shows no NY-vs-TX
+divergence; and ACSC is FFS/all-payer-mixed across the two sources, absorbed by the state×year FE.) This
+is the strongest free design available and it returns a clean, disciplined null - which, paired with the
+descriptive validity of §3-§6, is the accurate place to leave the index: a well-validated map of *where*
+access is poor, not a demonstrated lever for *fixing* it. The estimator is unit-tested with a planted
+treated-only effect against a common pre-trend (`tests/test_causal_validation.py`).

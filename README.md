@@ -182,8 +182,16 @@ rather than silently producing a wrong column.
   2016-2020; committed at `data/manual/wonder_amenable_county.txt`): care_access partial r vs
   treatable mortality is **+0.395 [0.368, 0.43]** - strong and net of the deprivation gradient,
   vs only +0.125 against all-cause LE. This is the gold-standard validation the field uses and it
-  confirms the care-access dimension was sound (see `docs/VALIDATION.md` §4). Re-run any time with
-  `make amenable`; refresh the export via the recipe in `pipeline/build_amenable.py`.
+  confirms the care-access dimension is **descriptively** sound (see `docs/VALIDATION.md` §4). Re-run
+  any time with `make amenable`; refresh the export via the recipe in `pipeline/build_amenable.py`.
+- **Descriptive, not (yet) prescriptive - the honest causal ceiling** (`docs/VALIDATION.md` §7). The
+  partial-r above says the access dimension *correlates* with treatable mortality net of deprivation;
+  it does not say access is an actionable *lever*. We tested that directly: a cross-sectional
+  negative-control (§7a) is null, and a cross-state difference-in-differences around the 2014 ACA
+  expansion - New York (expanded) vs Texas (never expanded, the falsification control) - **does not
+  support a causal lever** (the high-barrier ACSC decline appears in both states, so it was secular
+  convergence, not the expansion; §7e). So this is a well-validated map of *where* access is poor, not
+  a demonstrated tool for *fixing* it - stated here because integrity hidden is integrity absent.
 - **Observability**: `lib/observability.ts` - env-gated, dependency-free error + usage hooks
   (`VITE_SENTRY_DSN`, `VITE_ANALYTICS_URL`); no-ops when unset.
 - **Freshness**: the pipeline emits `frontend/public/meta.json`; the UI shows a "data as of" badge.
