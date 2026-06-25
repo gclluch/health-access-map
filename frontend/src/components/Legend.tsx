@@ -35,10 +35,10 @@ export default function Legend() {
   }, [metrics, metric, weights, selectedZcta]);
 
   return (
-    <div className="panel rounded-md px-3 py-2.5 w-full">
+    <div className="panel rounded-md px-3 py-2.5 w-full max-[520px]:py-2">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[11px] uppercase tracking-wide text-graphite">Color by</span>
-        <div className="relative max-w-[200px]">
+        <div className="relative max-w-[200px] max-[520px]:max-w-[210px]">
           <select
             aria-label="Color the map by metric"
             className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
@@ -82,7 +82,7 @@ export default function Legend() {
         </p>
       )}
 
-      <svg viewBox={`0 0 ${BINS} 30`} preserveAspectRatio="none" className="w-full h-[42px]">
+      <svg viewBox={`0 0 ${BINS} 30`} preserveAspectRatio="none" className="w-full h-[42px] max-[520px]:h-[32px]">
         {hist.map((c, i) => (
           <rect
             key={i}
@@ -120,10 +120,10 @@ export default function Legend() {
       <button
         onClick={toggleWeights}
         aria-expanded={showWeights}
-        className="mt-2 pt-2 w-full flex items-center justify-between border-t border-hairline text-[12px] font-medium text-accent hover:text-accent-soft"
+        className="mt-2 pt-2 w-full flex items-center justify-between border-t border-hairline text-[12px] font-medium text-accent hover:text-accent-soft max-[520px]:mt-1.5 max-[520px]:pt-1.5"
       >
         <span>
-          <span aria-hidden>⚖ </span>Adjust weighting
+          Adjust weighting
           <span className="num text-graphite font-normal">
             {' · '}{weights.health_need}/{weights.social_vulnerability}/{weights.care_access}
           </span>

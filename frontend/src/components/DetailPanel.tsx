@@ -80,20 +80,22 @@ function SubScoreRow({
   scored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const tip =
+    `${label}${SUBSCORE_BLURB[subKey] ? ` - ${SUBSCORE_BLURB[subKey]}` : ''}` +
+    (scored ? '' : ' Shown for context, not scored (wrong-signed within counties).');
   return (
     <div className="border-t border-hairline/60">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-paper"
         aria-expanded={open}
+        aria-label={`${label}. ${tip}`}
       >
         <Caret open={open} size={12} className="text-graphite" />
         <Tip
           className="flex-1 min-w-0 cursor-help"
-          tip={
-            `${label}${SUBSCORE_BLURB[subKey] ? ` — ${SUBSCORE_BLURB[subKey]}` : ''}` +
-            (scored ? '' : ' Shown for context, not scored (wrong-signed within counties).')
-          }
+          tip={tip}
+          focusable={false}
         >
           <span className="block text-[12px] text-ink truncate">
             {label}
