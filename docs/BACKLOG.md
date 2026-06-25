@@ -125,12 +125,14 @@ log; consider committing it as `pipeline/audit.py`.)
   specifically*). Integrated: **Colorado CDPHE tract diabetes ACSC** as a second sub-county
   validation state (`validate_subcounty --colorado`) - composite within-county r **+0.507**,
   care_access **+0.417**, generalizing the NY finding to independent geography + an independent
-  outcome (VALIDATION §6a). Verified-live additional sources for further expansion: **TX DSHS PUDF**
-  (true 5-digit patient-ZIP discharge microdata, free 2006-2019), **CDC `4day-mt2f`** (NATIONAL
-  census-tract overdose mortality, Socrata, observed - the one *national* sub-county outcome found),
-  **CA ZIP Death Profiles** (ZIP cause-specific deaths, 1989-2024), **AZ Community Profiles** (sub-
-  county PQI). The residual ceiling: no *national ACSC* sub-county panel is free (HCUP SID is paid),
-  so national sub-county validity is corroborated **state-by-state**, not in one panel.
+  outcome (VALIDATION §6a). Also integrated **CDC `4day-mt2f`** (NATIONAL census-tract overdose
+  mortality, `validate_subcounty --overdose`): 21,366 ZCTAs / 2,210 counties, composite within-county
+  r **+0.202** ≈ pooled +0.201 - the first *national* sub-county validation (modest, as overdose is a
+  construct-specific ruler). Further verified-live sources for expansion: **TX DSHS PUDF** (true
+  5-digit patient-ZIP discharge microdata, free 2006-2019), **CA ZIP Death Profiles** (ZIP cause-
+  specific deaths), **AZ Community Profiles** (sub-county PQI). Residual ceiling: no *national ACSC*
+  sub-county panel is free (HCUP SID is paid), so access-specific sub-county evidence is state-by-
+  state while the national check rides on overdose mortality.
 
 ### B2 (P2) - Thin sub-score margins not individually replicated out-of-outcome
 - **Problem.** Only the *dimension-level* care-access claim got the clean out-of-outcome replication

@@ -398,10 +398,35 @@ trained it, and so does the novel `care_access` construct (+0.417). The structur
 and `medical_debt` show ~0 within-county resolution because they are **county-constant** - which
 independently corroborates the §4a caveat that medical_debt's strong *between*-county signal
 (+0.441) buys **zero** sub-county discrimination. (Caveats: area-weighted crosswalk; one ACSC
-condition; CO + NY ≠ national.) The exhaustive data hunt also converted B1 from "blocked" to a
-verified recipe: free, headless-fetchable sub-county sources now in hand include **TX DSHS PUDF**
-(true 5-digit patient-ZIP discharge microdata, 2006-2019) and the CO tract feed used here;
-HCUP SID remains the paid national gold standard. See [BACKLOG.md](BACKLOG.md) B1.
+condition; CO + NY ≠ national.)
+
+**And a NATIONAL sub-county ruler** (`validate_subcounty --overdose`). The data hunt also turned up
+the one national, free, observed, sub-county outcome that exists: **CDC NCHS census-tract
+drug-overdose mortality** (`4day-mt2f`, pooled 2022-2024, death records, independent of every input),
+crosswalked tract→ZCTA. **21,366 ZCTAs across 2,210 counties** - real national coverage:
+
+| Column | pooled r | **WITHIN-county r** |
+|---|---|---|
+| `access_gap_score` | +0.201 | **+0.202** |
+| `health_need` | +0.226 | +0.211 |
+| `behavioral_risk` | +0.171 | +0.192 |
+| `care_access` | +0.124 | +0.146 |
+| `provider_supply` | +0.035 | +0.046 |
+| `medical_debt` | +0.121 | ~0.000 |
+
+The within-county r (**+0.202**) ≈ the pooled r (+0.201): the index resolves genuine sub-county
+structure, confirmed **nationally** against an independent death-records outcome - not just a county
+aggregate. The magnitude is modest *and honestly so*: overdose is a specific construct (SUD/harm-
+reduction access + deaths of despair), so the **behavioral/mental/need** sub-scores correctly lead,
+and the county-constant pieces (`medical_debt`, `shortage_designation`) show ~0 within-county a
+**third** independent time. This is the strongest available answer to "does it discriminate within
+counties": yes, in two states on ACSC and nationally on overdose mortality.
+
+The exhaustive data hunt converted B1 from "blocked" to a verified recipe - other free, headless-
+fetchable sub-county sources now in hand: **TX DSHS PUDF** (true 5-digit patient-ZIP discharge
+microdata, 2006-2019), **CA ZIP Death Profiles** (ZIP cause-specific mortality), **AZ Community
+Profiles** (sub-county PQI). HCUP SID (national ACSC) remains the paid gold standard. See
+[BACKLOG.md](BACKLOG.md) B1.
 
 ### 6b. Spatially-honest CIs - the claim survives state blocking (`bootstrap_gate.spatial_sensitivity`)
 
@@ -460,8 +485,11 @@ the national rank - different enough to matter: a ZCTA can be middling nationall
 state, which is the unit a state administrator acts on. (Within-commuting-zone is the natural next
 refinement.)
 
-**Net:** the sub-county claim now holds in two states on independent outcomes; the headline survives
-spatially-honest CIs; the weights survive cross-validation; the one genuine selection effect
-(2-of-3 scores) is quantified and already flagged. The remaining ceiling is unchanged and structural:
-no *national* independent sub-county outcome is free (HCUP SID is paid), so national sub-county
-validity is corroborated state-by-state, not in one national panel.
+**Net:** the sub-county claim now holds in two states on ACSC outcomes **and nationally on overdose
+mortality** (21k ZCTAs, within-county +0.202); the headline survives spatially-honest CIs; the
+weights survive cross-validation; the one genuine selection effect (2-of-3 scores) is quantified and
+already flagged. The residual ceiling is narrower than before: no *national ACSC* sub-county panel is
+free (HCUP SID is paid), so the strongest access-specific sub-county evidence is state-by-state (NY,
+CO), while the national sub-county check rides on overdose mortality - a real but construct-specific
+ruler. The deepest unfixable item stays B4 (PLACES is SES-conditioned, so need↔vulnerability share
+some modeled variance).
