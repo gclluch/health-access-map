@@ -26,7 +26,7 @@ export default function SearchBox() {
   return (
     <form onSubmit={submit} className="relative">
       <input
-        className="num w-[150px] bg-surface/90 border border-hairline rounded px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent/30"
+        className="num w-[150px] max-[520px]:w-[118px] bg-surface/90 border border-hairline rounded px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent/30"
         placeholder="Search ZIP"
         inputMode="numeric"
         maxLength={5}

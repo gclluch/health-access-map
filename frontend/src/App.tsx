@@ -1,23 +1,25 @@
-import { Component, useEffect, useState, type ReactNode } from 'react';
-import { useStore } from './store';
-import { reportError } from './lib/observability';
-import MapView from './components/MapView';
-import Legend from './components/Legend';
-import SearchBox from './components/SearchBox';
-import RankingsList from './components/RankingsList';
-import DetailPanel from './components/DetailPanel';
-import WeightSliders from './components/WeightSliders';
-import MethodologyPanel from './components/MethodologyPanel';
-import TopControls from './components/TopControls';
-import CompareTray from './components/CompareTray';
-import Caret from './components/Caret';
+import { Component, useEffect, useState, type ReactNode } from "react";
+import { useStore } from "./store";
+import { reportError } from "./lib/observability";
+import MapView from "./components/MapView";
+import Legend from "./components/Legend";
+import SearchBox from "./components/SearchBox";
+import RankingsList from "./components/RankingsList";
+import DetailPanel from "./components/DetailPanel";
+import WeightSliders from "./components/WeightSliders";
+import MethodologyPanel from "./components/MethodologyPanel";
+import TopControls from "./components/TopControls";
+import CompareTray from "./components/CompareTray";
+import Caret from "./components/Caret";
 
 function Loading() {
   return (
     <div className="absolute inset-0 z-40 grid place-items-center bg-paper">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-hairline border-t-accent rounded-full animate-spin mx-auto" />
-        <div className="text-[13px] text-graphite mt-3">Loading ~33,000 ZIP areas…</div>
+        <div className="text-[13px] text-graphite mt-3">
+          Loading ~33,000 ZIP areas…
+        </div>
       </div>
     </div>
   );
@@ -27,7 +29,9 @@ function ErrorState({ msg }: { msg: string }) {
   return (
     <div className="absolute inset-0 z-40 grid place-items-center bg-paper">
       <div className="panel rounded-md px-5 py-4 max-w-sm text-center">
-        <div className="text-[14px] font-medium text-ink">Could not load map data</div>
+        <div className="text-[14px] font-medium text-ink">
+          Could not load map data
+        </div>
         <div className="text-[12px] text-graphite mt-1">{msg}</div>
         <button
           className="mt-3 text-[12px] text-accent hover:underline"
@@ -43,11 +47,17 @@ function ErrorState({ msg }: { msg: string }) {
 // Top-level error boundary: a render-time throw anywhere in the tree would otherwise white-screen
 // the whole app (ErrorState only covers the data-load promise). Catch it, report it, and show a
 // recoverable fallback instead of a blank page.
-class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; msg: string }> {
-  state = { crashed: false, msg: '' };
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { crashed: boolean; msg: string }
+> {
+  state = { crashed: false, msg: "" };
 
   static getDerivedStateFromError(err: unknown) {
-    return { crashed: true, msg: err instanceof Error ? err.message : String(err) };
+    return {
+      crashed: true,
+      msg: err instanceof Error ? err.message : String(err),
+    };
   }
 
   componentDidCatch(err: unknown, info: { componentStack?: string | null }) {
@@ -62,8 +72,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolea
       return (
         <div className="absolute inset-0 z-50 grid place-items-center bg-paper">
           <div className="panel rounded-md px-5 py-4 max-w-sm text-center">
-            <div className="text-[14px] font-medium text-ink">Something went wrong</div>
-            <div className="text-[12px] text-graphite mt-1">{this.state.msg || 'unexpected error'}</div>
+            <div className="text-[14px] font-medium text-ink">
+              Something went wrong
+            </div>
+            <div className="text-[12px] text-graphite mt-1">
+              {this.state.msg || "unexpected error"}
+            </div>
             <button
               className="mt-3 text-[12px] text-accent hover:underline"
               onClick={() => location.reload()}
@@ -93,35 +107,50 @@ function AppInner() {
   const compareCount = useStore((s) => s.compareZctas.length);
   const showWeights = useStore((s) => s.showWeights);
   const toggleMethodology = useStore((s) => s.toggleMethodology);
-  const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 640);
+  const [isCompactHeight, setCompactHeight] = useState(
+    () => window.innerHeight < 520,
+  );
+  const [railOpen, setRailOpen] = useState(false);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const onResize = () => {
+      const compact = window.innerHeight < 520;
+      setCompactHeight(compact);
+      if (compact) setRailOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* map (the hero, full-bleed) */}
-      <div className="absolute inset-0">{status === 'ready' && <MapView />}</div>
+      <div className="absolute inset-0">
+        {status === "ready" && <MapView />}
+      </div>
 
-      {status === 'loading' && <Loading />}
-      {status === 'error' && <ErrorState msg={error ?? 'unknown error'} />}
+      {status === "loading" && <Loading />}
+      {status === "error" && <ErrorState msg={error ?? "unknown error"} />}
 
       {/* top bar (transparent over map) */}
-      <header className="absolute top-0 left-0 right-0 z-30 flex items-start gap-2 px-3 py-2.5 pointer-events-none flex-wrap">
+      <header className="absolute top-0 left-0 right-0 z-30 flex items-start gap-2 px-3 py-2.5 pointer-events-none flex-wrap max-[520px]:px-2 max-[520px]:py-2">
         <div className="pointer-events-auto flex items-center gap-2">
-          <span className="font-serif text-[16px] text-ink bg-surface/85 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline">
+          <span className="font-serif text-[16px] text-ink bg-surface/90 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline max-[520px]:text-[15px]">
             Health Access Map
           </span>
           <FreshnessBadge />
         </div>
         <div className="flex-1 min-w-[8px]" />
-        <div className="pointer-events-auto flex items-center gap-1.5 flex-wrap justify-end">
-          {status === 'ready' && <TopControls />}
+        <div className="pointer-events-auto flex items-center gap-1.5 flex-wrap justify-end max-[520px]:gap-1 max-[520px]:max-w-[270px]">
+          {status === "ready" && <TopControls />}
           <SearchBox />
           <button
             onClick={() => toggleMethodology(true)}
-            className="text-[12px] text-graphite hover:text-accent bg-surface/85 border border-hairline rounded px-2.5 py-1.5 whitespace-nowrap"
+            className="text-[12px] text-graphite hover:text-accent bg-surface/90 border border-hairline rounded px-2.5 py-1.5 whitespace-nowrap max-[520px]:px-2"
           >
             How to read this
           </button>
@@ -129,18 +158,18 @@ function AppInner() {
       </header>
 
       {/* left rail (desktop) / bottom sheet (mobile): rankings + customize */}
-      {status === 'ready' && (
-        <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[270px]">
-          <div className="panel rounded-md overflow-hidden flex flex-col max-h-[42vh] sm:max-h-[calc(100vh-150px)]">
+      {status === "ready" && (
+        <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[270px] max-[520px]:bottom-1">
+          <div className="panel rounded-md overflow-hidden flex flex-col max-h-[38vh] sm:max-h-[calc(100vh-150px)] max-[520px]:max-h-[34px]">
             <button
               onClick={() => setRailOpen((v) => !v)}
               aria-expanded={railOpen}
-              className="px-3 py-2 flex items-center justify-between text-[12px] font-medium text-ink border-b border-hairline"
+              className="px-3 py-2 flex items-center justify-between text-[12px] font-medium text-ink border-b border-hairline max-[520px]:py-1.5"
             >
               Rankings
               <Caret open={railOpen} size={14} className="text-graphite" />
             </button>
-            {railOpen && (
+            {railOpen && !isCompactHeight && (
               <div className="flex-1 min-h-0 overflow-hidden">
                 <RankingsList />
               </div>
@@ -150,8 +179,8 @@ function AppInner() {
       )}
 
       {/* detail panel (on selection): right rail desktop / bottom sheet mobile */}
-      {status === 'ready' && selectedZcta && (
-        <div className="absolute z-30 left-2 right-2 bottom-2 sm:left-auto sm:right-3 sm:top-14 sm:bottom-auto">
+      {status === "ready" && selectedZcta && (
+        <div className="absolute z-30 left-2 right-2 bottom-2 sm:left-auto sm:right-3 sm:top-14 sm:bottom-auto max-[520px]:bottom-1">
           <DetailPanel />
         </div>
       )}
@@ -160,8 +189,8 @@ function AppInner() {
           histogram) and the weighting control are siblings - both govern what the map
           shows - so they live together here. Weights expand UPWARD above the legend.
           Sits below the sheet z-layer on mobile so an open sheet covers it. */}
-      {status === 'ready' && (
-        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5">
+      {status === "ready" && (
+        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5 max-[520px]:bottom-[40px] max-[520px]:w-[calc(100vw-16px)]">
           {showWeights && (
             <div className="panel rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
               <WeightSliders />
@@ -172,8 +201,8 @@ function AppInner() {
       )}
 
       {/* comparison tray (when 1+ ZIPs are pinned): top-center, above the map */}
-      {status === 'ready' && compareCount > 0 && (
-        <div className="absolute z-30 left-2 right-2 top-[52px] sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[540px] max-w-[96vw]">
+      {status === "ready" && compareCount > 0 && (
+        <div className="absolute z-30 left-2 right-2 top-[52px] sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[540px] max-w-[96vw] max-[520px]:top-[126px]">
           <CompareTray />
         </div>
       )}
@@ -190,12 +219,14 @@ function FreshnessBadge() {
   const meta = useStore((s) => s.meta);
   if (!meta?.generated) return null;
   const v = meta.vintages ?? {};
-  const nppes = v.nppes?.replace(/^NPPES_Data_Dissemination_|\.zip$/g, '').replace(/_/g, ' ');
+  const nppes = v.nppes
+    ?.replace(/^NPPES_Data_Dissemination_|\.zip$/g, "")
+    .replace(/_/g, " ");
   const tip =
-    `Built ${meta.generated} from: CDC PLACES (${v.places ?? '?'}), ` +
-    `Census ACS 5-yr ${v.acs_year ?? '?'}, TIGER ${v.tiger_year ?? '?'}` +
-    (nppes ? `, NPPES ${nppes}` : '') +
-    `. ${meta.n_scored?.toLocaleString() ?? '?'} ZIPs scored.`;
+    `Built ${meta.generated} from: CDC PLACES (${v.places ?? "?"}), ` +
+    `Census ACS 5-yr ${v.acs_year ?? "?"}, TIGER ${v.tiger_year ?? "?"}` +
+    (nppes ? `, NPPES ${nppes}` : "") +
+    `. ${meta.n_scored?.toLocaleString() ?? "?"} ZIPs scored.`;
   return (
     <span
       title={tip}

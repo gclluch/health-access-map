@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../store';
 
 // Limitations made first-class (§15.9): integrity hidden is integrity absent.
@@ -160,6 +160,7 @@ export default function MethodologyPanel() {
   const show = useStore((s) => s.showMethodology);
   const toggle = useStore((s) => s.toggleMethodology);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const restoreRef = useRef<Element | null>(null);
 
   useEffect(() => {
@@ -177,23 +178,43 @@ export default function MethodologyPanel() {
   }, [show, toggle]);
 
   if (!show) return null;
+
+  const onDialogKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusables?.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-ink/30 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-ink/30 flex items-center justify-center p-4 max-[520px]:p-2"
       onClick={() => toggle(false)}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="methodology-title"
-        className="panel rounded-md max-w-[560px] w-full max-h-[85vh] overflow-y-auto"
+        className="panel rounded-md max-w-[620px] w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onDialogKeyDown}
       >
-        <div className="px-5 pt-4 pb-3 border-b border-hairline flex justify-between items-start">
+        <div className="px-5 pt-4 pb-3 border-b border-hairline flex justify-between items-start sticky top-0 bg-surface z-10">
           <div>
             <h2 id="methodology-title" className="font-serif text-[20px] text-ink leading-tight">How to read this</h2>
             <p className="text-[12px] text-graphite mt-0.5">
-              What the Access Gap Score is - and why it could mislead.
+              Start here: what the score means, when to trust it, and when to slow down.
             </p>
           </div>
           <button
@@ -213,6 +234,27 @@ export default function MethodologyPanel() {
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
           </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+            <div className="rounded border border-hairline bg-paper/70 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wide text-graphite">Read as</div>
+              <div className="text-[12px] text-ink mt-0.5 leading-snug">
+                A relative screening lens: worse than X% of U.S. ZIPs, not an absolute verdict.
+              </div>
+            </div>
+            <div className="rounded border border-hairline bg-paper/70 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wide text-graphite">Trust most</div>
+              <div className="text-[12px] text-ink mt-0.5 leading-snug">
+                Large rank gaps, broad geography, and the dimension pattern behind the headline.
+              </div>
+            </div>
+            <div className="rounded border border-hairline bg-paper/70 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wide text-graphite">Slow down when</div>
+              <div className="text-[12px] text-ink mt-0.5 leading-snug">
+                Low-population ZIPs, overlapping reliable ranges, or tiny rank differences drive a claim.
+              </div>
+            </div>
+          </div>
 
           {/* Exact formulas, in-product, so the score is never a black box. */}
           <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
@@ -289,10 +331,13 @@ export default function MethodologyPanel() {
           </div>
           <ValidationTable />
           {POINTS.map(([title, body]) => (
-            <div key={title} className="mb-3">
-              <div className="text-[13px] font-medium text-ink">{title}</div>
-              <div className="text-[12px] text-graphite leading-snug mt-0.5">{body}</div>
-            </div>
+            <details key={title} className="group border-t border-hairline/70 py-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-medium text-ink">
+                <span>{title}</span>
+                <span className="text-[12px] text-graphite transition-transform group-open:rotate-90">›</span>
+              </summary>
+              <div className="text-[12px] text-graphite leading-snug mt-1.5 pr-5">{body}</div>
+            </details>
           ))}
           <div className="border-t border-hairline pt-3">
             <div className="text-[11px] uppercase tracking-wide text-graphite mb-1">

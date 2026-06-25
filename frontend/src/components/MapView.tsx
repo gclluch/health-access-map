@@ -66,7 +66,14 @@ export default function MapView() {
         width: window.innerWidth || 1280,
         height: window.innerHeight || 800,
       }).fitBounds(bounds, { padding: 60 });
-      return { longitude: vp.longitude, latitude: vp.latitude, zoom: vp.zoom };
+      const narrow = window.innerWidth < 640;
+      return {
+        longitude: vp.longitude,
+        latitude: vp.latitude,
+        // A literal fit makes the country feel tiny on tall phones. Keep the
+        // national context, but start closer so the map remains the hero.
+        zoom: narrow ? Math.min(vp.zoom + 0.65, 4.2) : vp.zoom,
+      };
     } catch {
       return fallback;
     }
@@ -78,7 +85,7 @@ export default function MapView() {
       mapRef.current.flyTo({
         center: [flyTarget.longitude, flyTarget.latitude],
         zoom: flyTarget.zoom,
-        duration: REDUCE_MOTION ? 0 : 1200,
+        duration: REDUCE_MOTION ? 0 : 650,
       });
     }
   }, [flyTarget]);
@@ -86,7 +93,7 @@ export default function MapView() {
   // Fit to a region (state quick-jump / clear-to-national).
   useEffect(() => {
     if (fitTarget && mapRef.current) {
-      mapRef.current.fitBounds(fitTarget.bounds, { padding: 50, duration: REDUCE_MOTION ? 0 : 1100 });
+      mapRef.current.fitBounds(fitTarget.bounds, { padding: 50, duration: REDUCE_MOTION ? 0 : 700 });
     }
   }, [fitTarget]);
 
