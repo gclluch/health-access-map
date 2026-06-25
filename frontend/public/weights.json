@@ -10,6 +10,11 @@
       "scope": "county",
       "caveat": "Medicare 65+ FFS; the textbook ambulatory-access outcome",
       "weights": {
+        "health_need": 39.1,
+        "social_vulnerability": 32.0,
+        "care_access": 28.9
+      },
+      "weights_unweighted": {
         "health_need": 38.4,
         "social_vulnerability": 31.9,
         "care_access": 29.6
@@ -42,6 +47,11 @@
         "health_need": 0.424,
         "social_vulnerability": 0.342,
         "care_access": 0.312
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.451,
+        "social_vulnerability": 0.357,
+        "care_access": 0.316
       }
     },
     "amenable_mortality": {
@@ -49,6 +59,11 @@
       "scope": "county",
       "caveat": "deaths avoidable with timely care (IHME HAQ gold standard)",
       "weights": {
+        "health_need": 39.7,
+        "social_vulnerability": 31.8,
+        "care_access": 28.5
+      },
+      "weights_unweighted": {
         "health_need": 36.7,
         "social_vulnerability": 32.1,
         "care_access": 31.2
@@ -81,6 +96,11 @@
         "health_need": 0.758,
         "social_vulnerability": 0.648,
         "care_access": 0.625
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.834,
+        "social_vulnerability": 0.643,
+        "care_access": 0.565
       }
     },
     "premature_death": {
@@ -88,6 +108,11 @@
       "scope": "county",
       "caveat": "broad mortality burden; partly need-driven",
       "weights": {
+        "health_need": 39.4,
+        "social_vulnerability": 30.6,
+        "care_access": 30.0
+      },
+      "weights_unweighted": {
         "health_need": 35.3,
         "social_vulnerability": 33.1,
         "care_access": 31.6
@@ -120,6 +145,11 @@
         "health_need": 0.685,
         "social_vulnerability": 0.634,
         "care_access": 0.6
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.807,
+        "social_vulnerability": 0.602,
+        "care_access": 0.587
       }
     },
     "infant_mortality": {
@@ -127,6 +157,11 @@
       "scope": "county",
       "caveat": "natural validator for maternity (OB-GYN) supply; sparse at county",
       "weights": {
+        "health_need": 39.2,
+        "social_vulnerability": 26.7,
+        "care_access": 34.1
+      },
+      "weights_unweighted": {
         "health_need": 35.4,
         "social_vulnerability": 33.1,
         "care_access": 31.5
@@ -159,6 +194,11 @@
         "health_need": 0.634,
         "social_vulnerability": 0.586,
         "care_access": 0.551
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.641,
+        "social_vulnerability": 0.406,
+        "care_access": 0.545
       }
     },
     "flu_vaccination": {
@@ -166,6 +206,11 @@
       "scope": "county",
       "caveat": "proximal: did people actually receive care? Closer to access than mortality",
       "weights": {
+        "health_need": 31.7,
+        "social_vulnerability": 37.8,
+        "care_access": 30.5
+      },
+      "weights_unweighted": {
         "health_need": 32.1,
         "social_vulnerability": 30.6,
         "care_access": 37.3
@@ -198,6 +243,11 @@
         "health_need": 0.329,
         "social_vulnerability": 0.311,
         "care_access": 0.393
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.46,
+        "social_vulnerability": 0.565,
+        "care_access": 0.44
       }
     },
     "mammography": {
@@ -205,6 +255,11 @@
       "scope": "county",
       "caveat": "proximal access/utilization; claims-based, independent of the PLACES model",
       "weights": {
+        "health_need": 20.2,
+        "social_vulnerability": 47.8,
+        "care_access": 32.0
+      },
+      "weights_unweighted": {
         "health_need": 29.4,
         "social_vulnerability": 33.2,
         "care_access": 37.5
@@ -237,6 +292,11 @@
         "health_need": 0.363,
         "social_vulnerability": 0.42,
         "care_access": 0.484
+      },
+      "dimension_corr_popw": {
+        "health_need": 0.167,
+        "social_vulnerability": 0.468,
+        "care_access": 0.295
       }
     },
     "life_expectancy": {
@@ -244,6 +304,11 @@
       "scope": "zcta",
       "caveat": "all-cause -> a NEED outcome; starves care-access by construction. Validity check only, not a recommended weighting.",
       "weights": {
+        "health_need": 37.6,
+        "social_vulnerability": 32.9,
+        "care_access": 29.5
+      },
+      "weights_unweighted": {
         "health_need": 37.6,
         "social_vulnerability": 32.9,
         "care_access": 29.5
@@ -273,6 +338,11 @@
         }
       },
       "dimension_corr": {
+        "health_need": 0.606,
+        "social_vulnerability": 0.52,
+        "care_access": 0.457
+      },
+      "dimension_corr_popw": {
         "health_need": 0.606,
         "social_vulnerability": 0.52,
         "care_access": 0.457

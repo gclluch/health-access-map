@@ -89,6 +89,71 @@ def _corr(a: np.ndarray, b: np.ndarray) -> float | None:
     return float(a @ b / denom) if denom > 0 else None
 
 
+def _wcorr(a: np.ndarray, b: np.ndarray, w: np.ndarray) -> float | None:
+    """Precision-weighted Pearson. The unweighted `_corr` lets a tiny, noisy county count as much
+    as a large, precisely-measured one, which ATTENUATES the association (classifical errors-in-
+    variables). Weighting by population down-weights the high-variance small areas and shifts the
+    estimand to 'the correlation where people actually live' - the decision-relevant one. A near-
+    guaranteed, legitimate recovery of attenuated signal (it corrects measurement noise, fits
+    nothing). See docs/VALIDATION.md §7d."""
+    a, b, w = np.asarray(a, float), np.asarray(b, float), np.asarray(w, float)
+    m = ~(np.isnan(a) | np.isnan(b) | np.isnan(w)) & (w > 0)
+    if m.sum() < 100:
+        return None
+    a, b, w = a[m], b[m], w[m]
+    W = w.sum()
+    am, bm = (a * w).sum() / W, (b * w).sum() / W
+    cov = (w * (a - am) * (b - bm)).sum()
+    va, vb = (w * (a - am) ** 2).sum(), (w * (b - bm) ** 2).sum()
+    return float(cov / np.sqrt(va * vb)) if va > 0 and vb > 0 else None
+
+
+def _index_reliability(cty: pd.DataFrame, sub_cols: list[str], n_splits: int = 200) -> float | None:
+    """Split-half reliability of the composite as a measurement instrument: randomly halve the
+    scored sub-scores, build two half-composites, correlate across counties, Spearman-Brown up to
+    full length. Averaged over many random splits. This is the rel_x in the disattenuation."""
+    sub = cty[sub_cols].to_numpy(float)
+    if sub.shape[1] < 4:
+        return None
+    rng = np.random.default_rng(7)
+    halves = []
+    for _ in range(n_splits):
+        idx = rng.permutation(sub.shape[1])
+        a, b = idx[: len(idx) // 2], idx[len(idx) // 2:]
+        ca, cb = np.nanmean(sub[:, a], 1), np.nanmean(sub[:, b], 1)
+        r = _corr(ca, cb)
+        if r is not None:
+            halves.append(r)
+    if not halves:
+        return None
+    rh = float(np.mean(halves))
+    return 2 * rh / (1 + rh) if rh > -1 else None
+
+
+def _parallel_forms_reliability(cty: pd.DataFrame, anchors: list[str], w: np.ndarray) -> dict:
+    """Reliability of each outcome ruler via the single-factor (Spearman) triangulation:
+    rel_i = r(i,j)*r(i,k)/r(j,k), using the pop-weighted pairwise correlations among >=3 access-
+    sensitive mortality/hospitalization rulers. HONEST CAVEAT: this attributes ALL of a ruler's
+    low inter-correlation to noise; a ruler that measures a genuinely DISTINCT construct will also
+    score low here. So it is 'reliable variance shared with the common mortality factor', a
+    conservative reliability - which is exactly why it must not be read as the index failing."""
+    present = [a for a in anchors if a in cty.columns]
+    if len(present) < 3:
+        return {}
+    rho = {}
+    for i, a in enumerate(present):
+        for b in present[i + 1:]:
+            rho[(a, b)] = rho[(b, a)] = _wcorr(cty[a].to_numpy(float), cty[b].to_numpy(float), w)
+    out = {}
+    for x in present:
+        others = [o for o in present if o != x]
+        j, k = others[0], others[1]
+        rij, rik, rjk = rho.get((x, j)), rho.get((x, k)), rho.get((j, k))
+        if None not in (rij, rik, rjk) and rjk and rjk > 0:
+            out[x] = max(0.0, min(1.0, rij * rik / rjk))
+    return out
+
+
 def _floor_weights(vals: list[float], floor: float = 5.0) -> dict:
     """Map non-negative dimension scores to weights summing to 100 with a hard `floor`
     per dimension: each gets `floor` points, the rest is split proportionally. Used for
@@ -203,8 +268,14 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
     # county-aggregated frame (pop-weighted dims + sub-scores + county outcomes)
     county_anchor_cols = [a for a in avail if ANCHORS[a][1] == "county"]
-    cval_cols = DIM_COLS + sub_cols + county_anchor_cols
-    cty = _wmean(df.dropna(subset=["county_fips"]), cval_cols, by="county_fips", w="population")
+    comp_col = ["access_gap_score"] if "access_gap_score" in df.columns else []
+    cval_cols = DIM_COLS + sub_cols + county_anchor_cols + comp_col
+    cdf_src = df.dropna(subset=["county_fips"])
+    cty = _wmean(cdf_src, cval_cols, by="county_fips", w="population")
+    # county population = the precision weight for the disattenuating WLS (a county estimated from
+    # more people is measured with less error and should count more).
+    cpop = cdf_src.groupby("county_fips")["population"].sum().rename("_cpop")
+    cty = cty.merge(cpop, on="county_fips", how="left")
 
     anchors_out: dict = {}
     sub_diag: dict = {a: {} for a in avail}
@@ -218,6 +289,16 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         dim_corr = {d: _corr(frame[f"{d}_pctile"].to_numpy(float), y) for d in DIMENSIONS}
         if any(r is None for r in dim_corr.values()):
             continue
+        # PRECISION-WEIGHTED dimension correlations drive the presets for county anchors: pop-weighting
+        # down-weights the noisy small counties that attenuate the unweighted association, so the preset
+        # weights reflect the better-estimated strength of each dimension (esp. care access, which the
+        # small-area noise hits hardest). Falls back to unweighted for the ZCTA-level LE anchor.
+        wcol = frame["_cpop"].to_numpy(float) if (scope == "county" and "_cpop" in frame.columns) else None
+        dim_corr_pw = ({d: _wcorr(frame[f"{d}_pctile"].to_numpy(float), y, wcol) for d in DIMENSIONS}
+                       if wcol is not None else dict(dim_corr))
+        if any(r is None for r in dim_corr_pw.values()):
+            dim_corr_pw = dict(dim_corr)
+        preset_corr = dim_corr_pw  # the association used for the floor-weighted presets
         Xreg = frame[DIM_COLS].to_numpy(float)
         reg = _regression(Xreg, y)  # diagnostic (may be None)
         # leave-one-state-out CV groups: county_fips prefix for county-aggregated frames, the
@@ -227,13 +308,31 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         else:
             grp = frame["state"].astype(str).to_numpy() if "state" in frame.columns else None
         cv = _cv_regression(Xreg, y, grp) if grp is not None else None
+        # precision-weighted (population) composite + dimension correlations: the same association
+        # with the attenuating small-area noise down-weighted. Reported alongside the unweighted
+        # numbers (the delta is the recoverable signal); does NOT change the shipped preset weights.
+        prec = None
+        if scope == "county" and "_cpop" in frame.columns and comp_col:
+            w = frame["_cpop"].to_numpy(float)
+            comp = frame["access_gap_score"].to_numpy(float)
+            prec = {
+                "composite_r": _corr(comp, y),
+                "composite_r_popw": _wcorr(comp, y, w),
+                "dimension_r_popw": {d: _wcorr(frame[f"{d}_pctile"].to_numpy(float), y, w)
+                                     for d in DIMENSIONS},
+            }
         anchors_out[a] = {
             "label": label, "scope": scope, "caveat": caveat,
-            # PRESET weights: proportional to univariate correlation, 5% floor. Keeps care
-            # access visible at its real association strength instead of letting the
-            # multivariate regression collapse it via collinearity with health need.
-            "weights": _floor_weights([dim_corr[d] for d in DIMENSIONS]),
+            "precision_weighted": prec,
+            # PRESET weights: proportional to the PRECISION-WEIGHTED univariate correlation, 5% floor.
+            # Keeps care access visible at its real (attenuation-corrected) association strength instead
+            # of letting either the multivariate regression collapse it (collinearity) or small-area
+            # noise understate it. `weights_unweighted` retains the prior estimate for transparency.
+            "weights": _floor_weights([preset_corr[d] for d in DIMENSIONS]),
+            "weights_unweighted": _floor_weights([dim_corr[d] for d in DIMENSIONS]),
             "dimension_corr": {d: round(r, 3) for d, r in dim_corr.items()},
+            "dimension_corr_popw": {d: (round(preset_corr[d], 3) if preset_corr[d] is not None else None)
+                                    for d in DIMENSIONS},
             "regression_weights": reg["regression_weights"] if reg else None,
             "fit": reg["fit"] if reg else None,
             "cv": cv,  # point 3: honest out-of-sample fit + weight stability (None if scipy/folds short)
@@ -242,6 +341,28 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
             r = _corr(frame[sc].to_numpy(float), y)
             if r is not None:
                 sub_diag[a][sc[:-7]] = round(r, 3)
+
+    # DISATTENUATION: how much of the gap from the observed composite-outcome r to 1.0 is
+    # recoverable measurement noise vs a real ceiling. disattenuated r = obs / sqrt(rel_x * rel_y).
+    # Reframes "care access reads modest": a chunk of the modesty is a NOISY RULER, not a weak index.
+    reliab: dict = {}
+    mort_anchors = [a for a in ("amenable_mortality", "preventable_hosp", "premature_death")
+                    if a in cty.columns]
+    rel_index = _index_reliability(cty, sub_cols)
+    if rel_index is not None and len(mort_anchors) >= 3:
+        w = cty["_cpop"].to_numpy(float)
+        rel_out = _parallel_forms_reliability(cty, mort_anchors, w)
+        disatt = {}
+        for a in mort_anchors:
+            ro = rel_out.get(a)
+            prec = anchors_out.get(a, {}).get("precision_weighted")
+            obs = prec["composite_r_popw"] if prec else None
+            if ro and ro > 0 and obs is not None:
+                d = obs / np.sqrt(rel_index * ro)
+                disatt[a] = {"observed_popw_r": round(obs, 3), "outcome_reliability": round(ro, 3),
+                             "disattenuated_r": round(min(1.0, d), 3),
+                             "recoverable": round(min(1.0, d) - obs, 3)}
+        reliab = {"index_reliability": round(rel_index, 3), "disattenuated": disatt}
 
     # density-stratified provider-supply confound (evidence that spatial supply is
     # entangled with urbanicity), if both columns exist
@@ -259,6 +380,9 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
                     for a, v in anchors_out.items()},
         "subscore_correlations": sub_diag,
         "supply_density_confound": density_diag,
+        "precision_weighting": {a: anchors_out[a]["precision_weighted"] for a in anchors_out
+                                if anchors_out[a].get("precision_weighted")},
+        "disattenuation": reliab,
         "scope": dev_state or "national",
         "note": "Area outcomes (even ACSC) are disease/need-dominated and care access is "
                 "collinear with need, so multivariate regression understates access. The "
@@ -271,6 +395,28 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         cv = v["cv"]
         cvstr = f" | CV R2={cv['cv_r2']} (in-sample {r2}; wSD={cv['weight_sd']})" if cv else ""
         log("validate", f"  {a}: preset(corr)={v['weights']} | regression={v['regression_weights']} R2={r2}{cvstr}")
+
+    # before/after summary: precision-weighting recovers attenuated signal; disattenuation shows
+    # how much of the residual gap is a noisy ruler vs a true ceiling.
+    # preset before/after: how pop-weighting the dimension correlations shifts the anchored presets
+    print("\n  === anchored preset weights: unweighted -> precision-weighted dimension corr ===")
+    for a, vv in anchors_out.items():
+        if vv["weights"] != vv["weights_unweighted"]:
+            old = {d: vv["weights_unweighted"][d] for d in DIMENSIONS}
+            new = {d: vv["weights"][d] for d in DIMENSIONS}
+            print(f"  {a:20s} care_access {old['care_access']:>4.1f} -> {new['care_access']:>4.1f}  "
+                  f"(full: {old} -> {new})")
+
+    if reliab:
+        print("\n  === precision-weighting + disattenuation (composite vs county outcome) ===")
+        print(f"  index reliability (split-half) = {reliab['index_reliability']}")
+        print(f"  {'outcome':22s} {'r (unweighted)':>14s} {'r (pop-weighted)':>16s} "
+              f"{'rel_out':>8s} {'disattenuated':>14s}")
+        for a, d in reliab["disattenuated"].items():
+            uw = anchors_out[a]["precision_weighted"]["composite_r"]
+            print(f"  {a:22s} {uw:>+14.3f} {d['observed_popw_r']:>+16.3f} "
+                  f"{d['outcome_reliability']:>8.3f} {d['disattenuated_r']:>+14.3f}")
+        print("  (scores + shipped preset weights unchanged - these are reported diagnostics)")
     log("validate", f"wrote {WEIGHTS_JSON.name}")
     return str(WEIGHTS_JSON)
 
@@ -304,8 +450,10 @@ def _write_weights(anchors_out: dict, sub_diag: dict) -> None:
     payload = {
         "default": default_pct,
         "anchors": {a: {"label": v["label"], "scope": v["scope"], "caveat": v["caveat"],
-                        "weights": v["weights"], "regression_weights": v["regression_weights"],
-                        "fit": v["fit"], "cv": v["cv"], "dimension_corr": v["dimension_corr"]}
+                        "weights": v["weights"], "weights_unweighted": v["weights_unweighted"],
+                        "regression_weights": v["regression_weights"],
+                        "fit": v["fit"], "cv": v["cv"], "dimension_corr": v["dimension_corr"],
+                        "dimension_corr_popw": v["dimension_corr_popw"]}
                     for a, v in anchors_out.items()},
         "subscore_correlations": sub_diag,
         "note": ("default = conceptual value judgment (theory weights); care access counts "
