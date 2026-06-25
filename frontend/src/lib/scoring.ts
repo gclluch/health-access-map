@@ -46,6 +46,20 @@ export function accessGapMult(m: SlimMetric, w: Weights): number | null {
   return Math.exp(lognum / wsum) * 100;
 }
 
+// Parse a "w=h,s,c" URL param into Weights, rejecting anything malformed: must be exactly 3
+// finite, non-negative numbers that don't all sum to 0. Negatives would invert a dimension and
+// render a misleading map from a crafted link, so they're refused (returns null -> caller keeps
+// defaults). Pure + exported so it can be unit-tested without the store's side effects.
+export function parseWeightParam(w: string | null): Weights | null {
+  if (!w) return null;
+  const parts = w.split(',').map(Number);
+  if (parts.length !== 3) return null;
+  if (!parts.every((n) => Number.isFinite(n) && n >= 0)) return null;
+  if (parts.reduce((a, b) => a + b, 0) <= 0) return null;
+  const [health_need, social_vulnerability, care_access] = parts;
+  return { health_need, social_vulnerability, care_access };
+}
+
 // Value used to color the map / drive rankings for the active metric column.
 export function metricValue(m: SlimMetric, metric: string, w: Weights): number | null {
   if (metric === COMPOSITE_METRIC) return accessGap(m, w);

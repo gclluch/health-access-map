@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { loadData, type FeatureCollection } from './lib/data';
 import { track } from './lib/observability';
+import { parseWeightParam } from './lib/scoring';
 import {
   COMPOSITE_METRIC,
   DEFAULT_WEIGHTS,
@@ -76,12 +77,8 @@ function readUrl(): Partial<Pick<AppState, 'metric' | 'weights' | 'selectedZcta'
   if (m) out.metric = m;
   const z = p.get('zip');
   if (z && /^\d{5}$/.test(z)) out.selectedZcta = z;
-  const w = p.get('w');
-  if (w) {
-    const [h, s, c] = w.split(',').map(Number);
-    if ([h, s, c].every((n) => !Number.isNaN(n)))
-      out.weights = { health_need: h, social_vulnerability: s, care_access: c };
-  }
+  const weights = parseWeightParam(p.get('w'));
+  if (weights) out.weights = weights;
   return out;
 }
 

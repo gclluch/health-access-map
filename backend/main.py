@@ -21,7 +21,18 @@ ZCTA_RE = re.compile(r"^\d{5}$")
 # ALLOWED_ORIGINS = comma-separated list (e.g. "https://healthaccessmap.org"). Default is the
 # Vite dev origin. "*" allows any origin (use only if the API is genuinely public + read-only).
 _DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
-ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
+_origins_env = os.environ.get("ALLOWED_ORIGINS")
+ALLOWED_ORIGINS = [o.strip() for o in (_origins_env or _DEFAULT_ORIGINS).split(",") if o.strip()]
+if not _origins_env:
+    # Loud warning: an unset ALLOWED_ORIGINS in a real deploy means the browser app on its prod
+    # origin gets opaque CORS failures against the localhost-only default. Better a log line at
+    # startup than a silently-broken SPA.
+    import warnings
+    warnings.warn(
+        "ALLOWED_ORIGINS is not set; defaulting to localhost dev origins. Set it to your "
+        "frontend origin(s) for any non-local deploy.",
+        RuntimeWarning, stacklevel=2,
+    )
 
 
 @asynccontextmanager

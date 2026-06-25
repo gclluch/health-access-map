@@ -19,6 +19,11 @@ function report(kind: string, message: string, extra?: Record<string, unknown>) 
   }
 }
 
+// Report a caught error (e.g. from a React error boundary). No-ops unless VITE_SENTRY_DSN is set.
+export function reportError(message: string, extra?: Record<string, unknown>) {
+  report('react-error', message, extra);
+}
+
 // Lightweight product analytics: which features get used (the audit's "you don't know what users do").
 export function track(event: string, props?: Record<string, unknown>) {
   if (!ANALYTICS_URL) return;

@@ -16,6 +16,14 @@ const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 // deck.gl GeoJSON feature shape we read (single definition; used by every layer handler).
 type ZctaFeature = { properties: { zcta5: string } };
 
+// Escape any data-derived string before it enters the tooltip's innerHTML. Place names come
+// from Census today (not user input), but the tooltip is a raw-HTML sink, so this removes the
+// "one untrusted column from XSS" footgun rather than trusting the data source forever.
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ESC[c]);
+}
+
 function DeckOverlay(props: { layers: unknown[]; getTooltip?: (o: unknown) => unknown }) {
   // interleaved: the choropleth is inserted *beneath* the basemap's label/road layers
   // (via each layer's beforeId), so place names and roads stay legible on top of the fill.
@@ -149,10 +157,11 @@ export default function MapView() {
     const m = metrics.get(z);
     const v = m ? metricValue(m, metric, weights) : null;
     const place = m?.city ? `${m.city}, ${m.state ?? ''}` : m?.county_name ?? '';
+    const placeHtml = place ? `<div style="font-weight:600">${esc(place)}</div>` : '';
     return {
       html: `<div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:1.35">
-        ${place ? `<div style="font-weight:600">${place}</div>` : ''}
-        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${z} · ${metricLabel(metric)} <b style="color:#fff">${fmtScore(v)}</b></div></div>`,
+        ${placeHtml}
+        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${esc(z)} · ${esc(metricLabel(metric))} <b style="color:#fff">${esc(fmtScore(v))}</b></div></div>`,
       style: {
         background: CHROME.ink,
         color: '#fff',

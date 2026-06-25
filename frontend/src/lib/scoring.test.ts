@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { accessGap, accessGapMult, dimensionContributions, metricValue } from './scoring';
+import { accessGap, accessGapMult, dimensionContributions, metricValue, parseWeightParam } from './scoring';
 import { makeMetric } from './testFactory';
 import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, type Weights } from './types';
 
@@ -57,6 +57,23 @@ describe('dimensionContributions', () => {
     const c = dimensionContributions(m, W)!;
     const sum = c.health_need + c.social_vulnerability + c.care_access;
     expect(sum).toBeCloseTo(accessGap(m, W)!, 6);
+  });
+});
+
+describe('parseWeightParam', () => {
+  it('accepts three finite non-negative weights', () => {
+    expect(parseWeightParam('35,30,35')).toEqual({ health_need: 35, social_vulnerability: 30, care_access: 35 });
+    expect(parseWeightParam('0,0,1')).toEqual({ health_need: 0, social_vulnerability: 0, care_access: 1 });
+  });
+  it('rejects negatives, non-finite, wrong arity, and all-zero (crafted-URL footgun)', () => {
+    expect(parseWeightParam('-50,100,0')).toBeNull(); // negative would invert a dimension
+    expect(parseWeightParam('0,0,0')).toBeNull(); // sums to 0 -> undefined renorm
+    expect(parseWeightParam('1,2')).toBeNull(); // wrong arity
+    expect(parseWeightParam('1,2,3,4')).toBeNull();
+    expect(parseWeightParam('a,b,c')).toBeNull(); // NaN
+    expect(parseWeightParam('1,1e999,1')).toBeNull(); // Infinity
+    expect(parseWeightParam('')).toBeNull();
+    expect(parseWeightParam(null)).toBeNull();
   });
 });
 

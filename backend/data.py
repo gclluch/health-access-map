@@ -60,6 +60,11 @@ def _clean(value):
     return value
 
 
+# The metrics table is loaded once at startup and never mutated, so per-ZIP records and the
+# (full-sort) rankings responses are pure functions of their args - cache them. This turns the
+# hot rankings path from an O(n log n) sort on every request into a dict lookup. If a reload
+# path is ever added, call record.cache_clear() / rankings.cache_clear() after load().
+@lru_cache(maxsize=4096)
 def record(zcta5: str) -> dict | None:
     df = load()
     if zcta5 not in df.index:
@@ -70,6 +75,7 @@ def record(zcta5: str) -> dict | None:
     return {k: _clean(v) for k, v in row.to_dict().items()}
 
 
+@lru_cache(maxsize=2048)
 def rankings(metric: str, state: str | None, limit: int, order: str,
              include_low_confidence: bool) -> list[dict]:
     df = load()

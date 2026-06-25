@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import { useStore } from './store';
+import { reportError } from './lib/observability';
 import MapView from './components/MapView';
 import Legend from './components/Legend';
 import SearchBox from './components/SearchBox';
@@ -38,7 +39,53 @@ function ErrorState({ msg }: { msg: string }) {
   );
 }
 
+// Top-level error boundary: a render-time throw anywhere in the tree would otherwise white-screen
+// the whole app (ErrorState only covers the data-load promise). Catch it, report it, and show a
+// recoverable fallback instead of a blank page.
+class ErrorBoundary extends Component<{ children: ReactNode }, { crashed: boolean; msg: string }> {
+  state = { crashed: false, msg: '' };
+
+  static getDerivedStateFromError(err: unknown) {
+    return { crashed: true, msg: err instanceof Error ? err.message : String(err) };
+  }
+
+  componentDidCatch(err: unknown, info: { componentStack?: string | null }) {
+    reportError(err instanceof Error ? err.message : String(err), {
+      stack: err instanceof Error ? err.stack : undefined,
+      componentStack: info.componentStack ?? undefined,
+    });
+  }
+
+  render() {
+    if (this.state.crashed) {
+      return (
+        <div className="absolute inset-0 z-50 grid place-items-center bg-paper">
+          <div className="panel rounded-md px-5 py-4 max-w-sm text-center">
+            <div className="text-[14px] font-medium text-ink">Something went wrong</div>
+            <div className="text-[12px] text-graphite mt-1">{this.state.msg || 'unexpected error'}</div>
+            <button
+              className="mt-3 text-[12px] text-accent hover:underline"
+              onClick={() => location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppInner />
+    </ErrorBoundary>
+  );
+}
+
+function AppInner() {
   const { status, error } = useStore();
   const load = useStore((s) => s.load);
   const selectedZcta = useStore((s) => s.selectedZcta);

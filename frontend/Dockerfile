@@ -10,8 +10,12 @@ COPY frontend/ ./
 # Empty default = same-origin /api (nginx proxies it). Set to an API origin for split deploys.
 ARG VITE_API_BASE=""
 ENV VITE_API_BASE=$VITE_API_BASE
-RUN npm run build \
- && gzip -k -9 dist/metrics.json dist/zcta.geojson 2>/dev/null || true
+# Build must succeed, and the data payloads must be present and pre-compressible. The old
+# `npm run build && gzip ... || true` swallowed BOTH a failed build and a missing/failed gzip,
+# so a broken image (empty map, or nginx CPU-gzipping 29 MB per request) could ship silently.
+RUN npm run build
+RUN test -s dist/metrics.json && test -s dist/zcta.geojson \
+ && gzip -k -9 dist/metrics.json dist/zcta.geojson
 
 FROM nginx:alpine
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
