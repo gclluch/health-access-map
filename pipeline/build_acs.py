@@ -241,6 +241,18 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     return str(OUT)
 
 
+# B03002 (Hispanic origin by race) member suffixes -> the five context buckets the detail
+# panel shows. Non-Hispanic single-race for white/black/asian; 012 = Hispanic/Latino (any
+# race); "other" = AIAN(005) + NHPI(007) + some-other-race(008) + two-or-more(009), all NH.
+_RACE_BUCKETS = {
+    "pct_white": ["003"],
+    "pct_black": ["004"],
+    "pct_asian": ["006"],
+    "pct_hispanic": ["012"],
+    "pct_other_race": ["005", "007", "008", "009"],
+}
+
+
 def _fetch_svi_rates() -> pd.DataFrame | None:
     """One group() call per ACS table -> a fraction rate + its SE (from the table's
     margins). Failures are skipped (the hierarchical score averages over whichever
@@ -253,10 +265,18 @@ def _fetch_svi_rates() -> pd.DataFrame | None:
             grp["zcta5"] = norm_zcta(grp[GEO])
             den = scrub_sentinels(grp[f"{table}_{denom}E"])
             moe_den = _moe(grp[f"{table}_{denom}M"])
+            extra: dict[str, pd.Series] = {}
             if name == "pct_minority":
                 white = scrub_sentinels(grp[f"{table}_003E"])
                 rate = ((den - white) / den).where(den > 0)
                 moe_num = np.sqrt(moe_den ** 2 + _moe(grp[f"{table}_003M"]) ** 2)  # complement
+                # Race/ethnicity composition (context only, never scored) from the same B03002
+                # group already fetched here. Non-Hispanic single-race buckets + Hispanic (any
+                # race); "other" rolls up AIAN/NHPI/some-other/two-or-more so the five sum to ~1.
+                for col, mems in _RACE_BUCKETS.items():
+                    rnum = (grp[[f"{table}_{s}E" for s in mems]].apply(scrub_sentinels)
+                            .sum(axis=1, min_count=1))
+                    extra[col] = (rnum / den).where(den > 0).clip(0, 1)
             else:
                 num = grp[[f"{table}_{s}E" for s in nums]].apply(scrub_sentinels).sum(axis=1, min_count=1)
                 moe_num = np.sqrt((grp[[f"{table}_{s}M" for s in nums]].apply(_moe) ** 2)
@@ -264,7 +284,7 @@ def _fetch_svi_rates() -> pd.DataFrame | None:
                 rate = (num / den).where(den > 0)
             rate = rate.clip(0, 1)
             se = _proportion_se(moe_num, moe_den, rate, den)
-            frames.append(pd.DataFrame({"zcta5": grp["zcta5"], name: rate, f"{name}_se": se}))
+            frames.append(pd.DataFrame({"zcta5": grp["zcta5"], name: rate, f"{name}_se": se, **extra}))
             log("acs", f"  svi {name}: median {rate.median():.3f}")
         except Exception as e:  # noqa: BLE001
             log("acs", f"  svi {name}: FAILED ({type(e).__name__}); skipping")

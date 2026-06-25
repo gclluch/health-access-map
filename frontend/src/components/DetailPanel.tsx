@@ -157,6 +157,142 @@ function Dimension({
   );
 }
 
+// Demographics shown purely as context for "who lives here" - independent of the
+// access-gap score. Every value comes from the full API record (Census ACS 5-year),
+// except population which is already in the slim metric. Cells with no data are dropped.
+function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> | null }) {
+  const [open, setOpen] = useState(true);
+  const num = (v: unknown) => (typeof v === 'number' && !Number.isNaN(v) ? v : null);
+  const pct = (v: unknown) => {
+    const n = num(v);
+    return n == null ? null : `${Math.round(n * 100)}%`;
+  };
+  const cells: Array<{ label: string; value: string; tip?: string; scored?: boolean }> = [];
+  const pop = num(m.population);
+  if (pop != null) cells.push({ label: 'Population', value: fmtInt(pop) });
+  const age = num(rec?.median_age);
+  if (age != null) cells.push({ label: 'Median age', value: String(Math.round(age)) });
+  const under18 = pct(rec?.age17_rate);
+  if (under18) cells.push({ label: 'Under 18', value: under18 });
+  const over65 = pct(rec?.age65_rate);
+  if (over65) cells.push({ label: '65 and older', value: over65 });
+  const income = num(rec?.median_income);
+  if (income != null)
+    cells.push({
+      label: 'Median income',
+      value: `$${Math.round(income).toLocaleString('en-US')}`,
+      scored: true,
+      tip: 'Median household income. Census ACS 5-year (B19013). This is the one field here that also feeds the access-gap score (socioeconomic sub-score) - everything else is context only.',
+    });
+  const medicaid = pct(rec?.medicaid_rate);
+  if (medicaid)
+    cells.push({
+      label: 'Medicaid',
+      value: medicaid,
+      tip: 'Share on Medicaid/CHIP. Census ACS 5-year (C27007). Context only - not scored.',
+    });
+  const lep = pct(rec?.limited_english_rate);
+  if (lep)
+    cells.push({
+      label: 'Limited English',
+      value: lep,
+      tip: 'Households where no one 14+ speaks English "very well." Census ACS 5-year (C16002).',
+    });
+  // Minority = 1 - non-Hispanic White. Placed last (bottom-right) so it sits directly above the
+  // race breakdown it summarizes. Derived from the RAW White share when available so it ties out
+  // with that breakdown; falls back to the (shrunk) pct_minority otherwise.
+  const white = num(rec?.pct_white);
+  const minority = white != null ? `${Math.round((1 - white) * 100)}%` : pct(rec?.pct_minority);
+  if (minority)
+    cells.push({
+      label: 'Minority',
+      value: minority,
+      tip: 'Share who are not non-Hispanic White (the total of the race breakdown below). Census ACS 5-year (B03002).',
+    });
+
+  // Race & ethnicity composition (Census ACS B03002) - non-Hispanic single-race buckets plus
+  // Hispanic (any race); "Other" rolls up AIAN/NHPI/some-other/two-or-more. Sorted by share.
+  const raceCols: Array<[string, string]> = [
+    ['pct_white', 'White'],
+    ['pct_black', 'Black'],
+    ['pct_hispanic', 'Hispanic'],
+    ['pct_asian', 'Asian'],
+    ['pct_other_race', 'Other'],
+  ];
+  const race: Array<{ label: string; share: number }> = [];
+  for (const [col, label] of raceCols) {
+    const share = num(rec?.[col]);
+    if (share != null && share > 0) race.push({ label, share });
+  }
+  race.sort((a, b) => b.share - a.share);
+
+  if (cells.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-md border border-hairline bg-paper/60 px-3 py-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-graphite/60"
+      >
+        <span className="text-graphite/50 text-[8px] w-2">{open ? '▾' : '▸'}</span>
+        <span>Who lives here</span>
+        <span className="text-graphite/45 normal-case">· context · only income (†) feeds the score</span>
+      </button>
+      {open && (
+        <>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1.5">
+        {cells.map((c) =>
+          c.tip ? (
+            <Tip
+              key={c.label}
+              tip={c.tip}
+              className="flex justify-between items-baseline text-[11px] cursor-help"
+            >
+              <span className="text-graphite">
+                {c.label}
+                {c.scored ? <span className="text-graphite/70"> †</span> : null}
+                <span className="text-graphite/60"> ⓘ</span>
+              </span>
+              <span className="num text-ink">{c.value}</span>
+            </Tip>
+          ) : (
+            <div key={c.label} className="flex justify-between items-baseline text-[11px]">
+              <span className="text-graphite">{c.label}</span>
+              <span className="num text-ink">{c.value}</span>
+            </div>
+          ),
+        )}
+      </div>
+      {race.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-hairline/60">
+          <Tip
+            className="text-[9px] uppercase tracking-wide text-graphite/55 mb-1 cursor-help inline-block"
+            tip='Race & ethnicity. Non-Hispanic single-race for White/Black/Asian; Hispanic is any race; "Other" combines American Indian/Alaska Native, Native Hawaiian/Pacific Islander, some-other-race and two-or-more. Census ACS 5-year (B03002). Context only - not scored.'
+          >
+            Race &amp; ethnicity<span className="text-graphite/60"> ⓘ</span>
+          </Tip>
+          <div className="space-y-0.5">
+            {race.map((r) => (
+              <div key={r.label} className="flex items-center gap-2 text-[11px]">
+                <span className="text-graphite w-16 shrink-0">{r.label}</span>
+                <span className="flex-1 h-1.5 bg-hairline rounded-full overflow-hidden">
+                  <span
+                    className="block h-full bg-accent/70 rounded-full"
+                    style={{ width: `${Math.round(r.share * 100)}%` }}
+                  />
+                </span>
+                <span className="num text-ink w-8 text-right">{Math.round(r.share * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DetailPanel() {
   const { metrics, weights, selectedZcta } = useStore();
   const select = useStore((s) => s.select);
@@ -300,6 +436,8 @@ export default function DetailPanel() {
           </div>
         )}
 
+        <WhoLivesHere m={m} rec={rec} />
+
         <div className="flex items-baseline gap-2">
           <span className="num text-[34px] font-semibold text-ink leading-none">{fmtScore(scorePercentile)}</span>
           <span className="text-[11px] text-graphite">/ 100 · national access-gap rank</span>
@@ -377,22 +515,10 @@ export default function DetailPanel() {
                 )}
               </div>
             )}
-            <div className="mt-1">
-              Population <span className="num text-ink">{fmtInt(m.population as number)}</span>
-              {typeof rec.median_age === 'number'
-                ? ` · median age ${Math.round(rec.median_age as number)}`
-                : ''}
-              {typeof rec.pct_minority === 'number'
-                ? ` · ${Math.round((rec.pct_minority as number) * 100)}% minority`
-                : ''}
-              {typeof rec.medicaid_rate === 'number'
-                ? ` · ${Math.round((rec.medicaid_rate as number) * 100)}% Medicaid`
-                : ''}
-            </div>
             {typeof rec.medicaid_rate === 'number' && (
               <div className="mt-1 text-graphite/80">
-                Medicaid share is shown as <i>acceptability</i> context - the population that can
-                face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
+                Medicaid share (shown above) is <i>acceptability</i> context - the population that
+                can face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
                 tracks poverty, already counted).
               </div>
             )}
