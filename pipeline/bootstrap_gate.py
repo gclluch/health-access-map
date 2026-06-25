@@ -173,6 +173,100 @@ def amenable_focus(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict |
     }
 
 
+def _bh_fdr(pvals: dict[str, float], q: float = 0.05) -> dict[str, dict]:
+    """Benjamini-Hochberg FDR across a candidate set. Returns per-key the raw p, the BH-adjusted
+    p (q-value), and whether it survives at the given q. Quantifies the multiplicity the
+    input-selection ledger never corrected (docs/VALIDATION.md §1c, BACKLOG B3)."""
+    items = [(k, v) for k, v in pvals.items() if v is not None and not np.isnan(v)]
+    m = len(items)
+    if not m:
+        return {}
+    items.sort(key=lambda kv: kv[1])
+    # step-up adjusted p: q_(i) = min_{j>=i} ( p_(j) * m / j ), monotone
+    adj = [0.0] * m
+    running = 1.0
+    for i in range(m - 1, -1, -1):
+        running = min(running, items[i][1] * m / (i + 1))
+        adj[i] = min(running, 1.0)
+    return {k: {"p": round(p, 4), "q_value": round(adj[i], 4), "survives_fdr": adj[i] <= q}
+            for i, (k, p) in enumerate(items)}
+
+
+def amenable_subscores(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> dict | None:
+    """B2: re-test each *scored* care sub-score against amenable mortality - the INDEPENDENT,
+    access-sensitive outcome - net of the deprivation gradient. Only the dimension-level care
+    claim got the clean out-of-outcome replication (amenable_focus); individual barriers selected
+    on thin margins vs the standard 6 outcomes (e.g. medical_debt) were never re-tested on the
+    independent ruler, so they remain 'selection-soft' (winner's curse, VALIDATION §1c).
+
+    For each scored care sub-score s: partial r(amenable, s | health_need, social_vulnerability)
+    with cluster-bootstrap (county) 95% CIs + a one-sided bootstrap p (share of replicates where
+    the partial is <= 0). Applies Benjamini-Hochberg FDR across the candidate set so the multiple
+    comparisons are finally corrected (BACKLOG B3). A sub-score that holds a positive partial r
+    here is corroborated on an outcome it was NOT selected against; one whose CI/FDR collapses gets
+    a documented caveat. Returns None until a WONDER export exists."""
+    if "amenable_mortality" not in d.columns:
+        return None
+    y = d["amenable_mortality"].to_numpy(float)
+    if np.isfinite(y).sum() < 100:
+        return None
+
+    # scored care sub-scores only (safetynet_access, preventive_use are scored=False)
+    care_subs = [s for s in subscore_specs()
+                 if s["dim"] == "care_access" and s.get("scored", True)
+                 and f"{s['key']}_pctile" in d.columns]
+    keys = [s["key"] for s in care_subs]
+    C = d[[f"{k}_pctile" for k in keys]].to_numpy(float)   # sub-score percentiles
+    Z = d[["health_need_pctile", "social_vulnerability_pctile"]].to_numpy(float)  # controls
+
+    groups = _cluster_groups(d)
+    n_clusters = len(groups)
+    rng = np.random.default_rng(seed)
+
+    def partials(ridx: np.ndarray) -> list[float]:
+        return [_partial_corr(y[ridx], C[ridx, j], Z[ridx]) for j in range(len(keys))]
+
+    base = np.arange(len(d))
+    p_partial = partials(base)
+    p_raw = [_corr(C[:, j], y) for j in range(len(keys))]
+
+    boot = [[] for _ in keys]
+    for _ in range(n_boot):
+        pick = rng.integers(0, n_clusters, n_clusters)
+        ridx = np.concatenate([groups[i] for i in pick])
+        for j, val in enumerate(partials(ridx)):
+            boot[j].append(val)
+
+    def summarize(j: int) -> dict:
+        a = np.asarray(boot[j], float)
+        a = a[~np.isnan(a)]
+        ci = [round(float(np.percentile(a, 2.5)), 3), round(float(np.percentile(a, 97.5)), 3)]
+        # one-sided bootstrap p: share of replicates where the partial is <= 0 (no positive effect)
+        p_one = float(np.mean(a <= 0)) if len(a) else np.nan
+        return {"raw_r": round(float(p_raw[j]), 3),
+                "partial_r": round(float(p_partial[j]), 3), "ci95": ci, "p_one_sided": p_one}
+
+    res = {keys[j]: summarize(j) for j in range(len(keys))}
+    fdr = _bh_fdr({k: res[k]["p_one_sided"] for k in keys})
+    for k in keys:
+        res[k]["p_one_sided"] = round(res[k]["p_one_sided"], 4)
+        if k in fdr:
+            res[k]["q_value"] = fdr[k]["q_value"]
+            res[k]["survives_fdr"] = fdr[k]["survives_fdr"]
+
+    return {
+        "outcome": "amenable_mortality (treatable, OECD 0-74; CDC WONDER)",
+        "controls": ["health_need", "social_vulnerability"],
+        "method": "partial r per scored care sub-score, cluster-bootstrap (county) 95% CI; one-sided "
+                  "bootstrap p; Benjamini-Hochberg FDR across the sub-score set (q<=0.05)",
+        "n_candidates": len(keys),
+        "subscores": res,
+        "reading": "A care sub-score with partial_r > 0, a CI excluding 0, AND survives_fdr is "
+                   "corroborated on the independent outcome it was NOT selected against. One that "
+                   "collapses here was a winner's-curse artifact of selection on the standard 6.",
+    }
+
+
 def run(n_boot: int = 1000, seed: int = 0) -> dict:
     df = pd.read_parquet(METRICS)
     d = df[df["scoreable"] == True].reset_index(drop=True)  # noqa: E712
@@ -248,6 +342,9 @@ def run(n_boot: int = 1000, seed: int = 0) -> dict:
     af = amenable_focus(d, n_boot, seed)  # None until a WONDER export is built
     if af:
         report["amenable_focus"] = af
+    asub = amenable_subscores(d, n_boot, seed)  # B2: thin care sub-scores vs the independent outcome
+    if asub:
+        report["amenable_subscores"] = asub
     OUT_JSON.write_text(json.dumps(report, indent=2))
     _print(report)
     return report
@@ -279,6 +376,18 @@ def _print(r: dict) -> None:
         print(f"    care_access PARTIAL r | need,vuln   {p['point']:+.3f}  CI{p['ci95']}{sig}")
     else:
         print("\n  (amenable-mortality focus: no WONDER export yet - see pipeline/build_amenable.py)")
+    asub = r.get("amenable_subscores")
+    if asub:
+        print("\n  --- B2: SCORED CARE SUB-SCORES vs amenable | need,vuln (winner's-curse re-test) ---")
+        print(f"    candidates={asub['n_candidates']}  (BH-FDR q<=0.05 across the set)")
+        print(f"    {'sub-score':22s} {'raw_r':>7s} {'partial_r':>10s} {'95% CI':>16s} {'q':>7s}  verdict")
+        for k, s in asub["subscores"].items():
+            ci = s["ci95"]
+            ci_excl0 = ci[0] > 0 or ci[1] < 0
+            verdict = "holds" if (s.get("survives_fdr") and ci_excl0 and s["partial_r"] > 0) \
+                else "COLLAPSES"
+            print(f"    {k:22s} {s['raw_r']:+7.3f} {s['partial_r']:+10.3f} "
+                  f"  [{ci[0]:+.3f},{ci[1]:+.3f}] {s.get('q_value', float('nan')):7.3f}  {verdict}")
     print(f"\n  wrote {OUT_JSON.relative_to(config.ROOT)}")
 
 

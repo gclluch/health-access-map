@@ -109,8 +109,16 @@ statistics do not correct for it:
   six outcomes the inputs were selected on. **This test has now been run (§4): care_access replicates
   on treatable mortality at partial r +0.395 - an outcome no input was ever selected against.** So the
   central care-access claim is no longer a within-selection margin; it survives the cleanest available
-  out-of-outcome check. (The thinnest individual *sub-score* margins remain selection-soft; it is the
-  dimension-level care-access claim that is now externally corroborated.)
+  out-of-outcome check.
+- **The individual sub-scores have now been re-tested too (§4a, BACKLOG B2).** Each *scored* care
+  sub-score was put through the same out-of-outcome ruler - partial r vs amenable mortality net of
+  need + vulnerability, with a **Benjamini-Hochberg FDR correction across the four candidates** (the
+  multiplicity fix §1c had been missing). **All four survive** at q<=0.05 with a CI excluding 0.
+  Decisively, `medical_debt` - the margin §1c singled out as possibly a multiple-comparisons artifact
+  (partial-r ~+0.27 vs the standard six) - posts the **strongest** independent partial r of the set
+  (**+0.441**, q=0.000); `insurance` is the thinnest (**+0.042**, CI [+0.004,+0.082], q=0.014) but
+  still clears. So the "thinnest sub-score margins remain selection-soft" caveat is now **retired by
+  evidence**, not just asserted: the inputs corroborate on a ruler they were never selected against.
 
 ## 2. Why care access reads modest - a category error, not a bug
 
@@ -300,6 +308,35 @@ outcome and the partial-r **triples** (+0.125 → +0.395).
 *not* headlessly fetchable - the WONDER county API is national-only - so it lives in version control,
 not `data/raw/`). `build_amenable` prefers it; **`make amenable`** re-runs the whole gate. For a fresher
 vintage or the full OECD code set, follow the recipe in `pipeline/build_amenable.py` and overwrite it.
+
+### 4a. Each scored care sub-score, re-tested on the independent ruler (BACKLOG B2)
+
+§4 corroborated the *dimension*. The open edge §1c flagged was the *individual* care sub-scores -
+several selected on thin margins against the standard six, never re-checked on an outcome they
+weren't fitted to. `bootstrap_gate.amenable_subscores()` closes it: for each **scored** care
+sub-score, partial r vs amenable mortality net of need + vulnerability, cluster-bootstrapped over
+county, with a **Benjamini-Hochberg FDR correction across the four** (the multiplicity fix §1c said
+was missing). 3,066 counties / 32,879 ZCTAs.
+
+| Scored care sub-score | raw r | partial r \| need,vuln | 95% CI (cluster) | BH q | verdict |
+|---|---|---|---|---|---|
+| `provider_supply` (2SFCA) | +0.402 | **+0.214** | [+0.181, +0.245] | 0.000 | holds |
+| `shortage_designation` (HPSA) | +0.227 | **+0.185** | [+0.145, +0.222] | 0.000 | holds |
+| `insurance` (uninsured) | +0.343 | **+0.042** | [+0.004, +0.082] | 0.014 | holds (thinnest) |
+| `medical_debt` (Urban Inst.) | +0.612 | **+0.441** | [+0.409, +0.474] | 0.000 | holds (strongest) |
+
+**All four survive** FDR at q<=0.05 with CIs excluding 0 - so every scored barrier independently
+tracks treatable death net of the deprivation gradient. The headline reversal: **`medical_debt`,
+the margin §1c singled out as the likely winner's-curse artifact (partial-r ~+0.27 vs the standard
+six), posts the strongest independent signal of the set (+0.441)** - it is corroborated, not
+collapsed. `insurance` is genuinely thin (+0.042) yet still clears. `safetynet_access` and
+`preventive_use` are excluded here because they are `scored=False` (not in the composite; the
+former is wrong-signed within-county, the latter is utilization not a barrier).
+
+Caveats inherit from §4: this is a **between-county** test (amenable is county-level), so it does not
+speak to sub-county separation (§3); and `medical_debt` is itself county-level, so its strong showing
+is a clean county-scale result, not a sub-county one. FDR here corrects only this 4-candidate care
+set, not the whole historical selection ledger (B3 remains open for the full reconstruction).
 
 ## 5. Comparability and resolution - it's a gradient, not a 33k-rank leaderboard
 
