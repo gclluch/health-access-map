@@ -31,6 +31,7 @@ import argparse
 import io
 import json
 import os
+import subprocess
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -66,6 +67,16 @@ HUD_USPS_API = "https://www.huduser.gov/hudapi/public/usps?type=1&query=All&year
 # (its `name` field lists member tract FIPS) for small-count stability.
 CDC_OVERDOSE_SOCRATA = "https://data.cdc.gov/resource/4day-mt2f.json"
 OD_YEARS = ("2022", "2023", "2024")
+# California CHHS deaths by ZIP (all-cause + 14 causes, observed vital records, no DUA). A 4th
+# sub-county state. Crude cause-specific rates are AGE-confounded - and in CA age is a SUPPRESSOR
+# (older ZIPs are wealthier coastal/retirement areas), so the index signal only emerges after age
+# adjustment. We control for age65_rate (already on the index frame) within county. ACSC causes:
+# DIA diabetes, HTD heart disease, CLD chronic lower respiratory (COPD), STK stroke.
+CA_DEATHS_URL = ("https://data.chhs.ca.gov/dataset/590aeff1-b022-4240-9a46-3fe90bf3ad91/resource/"
+                 "d4711b8e-6eb4-417c-91f5-ee075558adbe/download/"
+                 "20260319_deaths_final_2019-2024_zip_year_sup.csv")
+CA_DEATHS_CACHE = config.PROCESSED / "ca_deaths_2019_2024.csv"
+CA_ACSC_CAUSES = ("DIA", "HTD", "CLD", "STK")
 POOL_YEARS = ("2019", "2020", "2021", "2022", "2023")  # 5-yr pool for small-ZIP stability
 MIN_POP = 1000          # drop ZCTAs below the index's own low-confidence floor
 MIN_YEARS = 4           # require a near-full pool so a single noisy year can't dominate
@@ -340,6 +351,76 @@ def run_overdose_national() -> dict:
     return rep
 
 
+def _fetch_ca_acsc() -> pd.DataFrame:
+    """CA ACSC-cause death counts (pooled 2019-2024, Total Population strata) per ZIP. Cached via
+    curl (the CKAN download 302-redirects to a signed S3 URL that urllib mishandles)."""
+    if not CA_DEATHS_CACHE.exists():
+        log("subcounty", "downloading CA CHHS deaths-by-ZIP (one-time, ~48MB)...")
+        subprocess.run(["curl", "-sL", "--max-time", "180", CA_DEATHS_URL,
+                        "-o", str(CA_DEATHS_CACHE)], check=True)
+    df = pd.read_csv(CA_DEATHS_CACHE, dtype=str)
+    df = df[df["Strata"] == "Total Population"]
+    df = df[df["Cause"].isin(CA_ACSC_CAUSES)].copy()
+    df["Count"] = pd.to_numeric(df["Count"], errors="coerce")  # suppressed cells -> NaN
+    df["zcta5"] = df["ZIP_Code"].astype(str).str.zfill(5)
+    return df.groupby("zcta5")["Count"].sum().rename("acsc_deaths").reset_index()
+
+
+def run_california() -> dict:
+    """4th-state sub-county validation: the index vs CA ACSC-cause mortality (diabetes/heart/COPD/
+    stroke deaths), AGE-ADJUSTED. Crude rates are age-confounded; we residualize both the index and
+    the rate on age65_rate WITHIN county, then correlate. Reports crude vs age-adjusted so the
+    suppression (age is wealth-correlated in CA) is visible and honest."""
+    if not METRICS.exists():
+        raise SystemExit(f"missing {METRICS}; run the pipeline first")
+    log("subcounty", "validating vs CA ACSC mortality (age-adjusted)...")
+    ca = _fetch_ca_acsc()
+    m = pd.read_parquet(METRICS)
+    m = m[m["scoreable"] == True].copy()  # noqa: E712
+    m["zcta5"] = m["zcta5"].astype(str)
+    j = ca.merge(m, on="zcta5", how="inner")
+    j["pop"] = pd.to_numeric(j["population"], errors="coerce")
+    j = j[(j["pop"] >= MIN_POP) & (j["acsc_deaths"] > 0)].copy()
+    if "age65_rate" not in j.columns:
+        raise SystemExit("age65_rate missing; CA needs it for age adjustment")
+    j["rate"] = j["acsc_deaths"] / j["pop"]
+    vc = j["county_fips"].value_counts()
+    j = j[j["county_fips"].isin(vc[vc >= 3].index)].copy()
+    log("subcounty", f"CA: {len(j)} ZCTAs / {j['county_fips'].nunique()} counties")
+
+    def resid_age(col: str) -> np.ndarray:
+        """within-county residual of `col`, then linearly residualized on age65_rate."""
+        y, a = _within(j, col), _within(j, "age65_rate")
+        mk = ~(np.isnan(y) | np.isnan(a))
+        out = np.full(len(y), np.nan)
+        if mk.sum() > 50:
+            b = np.polyfit(a[mk], y[mk], 1)
+            out[mk] = y[mk] - np.polyval(b, a[mk])
+        return out
+
+    yw_adj = resid_age("rate")
+    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
+    cols = [c for c in cols if c in j.columns]
+    conf = _corr(_within(j, "rate"), _within(j, "age65_rate"))
+    rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
+           "outcome": "CA ACSC-cause mortality (diabetes/heart/COPD/stroke, 2019-2024), age-adjusted",
+           "age_confound_r": round(conf, 3), "within_county_crude": {}, "within_county_age_adj": {}}
+    print("\n=== SUB-COUNTY validation vs CALIFORNIA ACSC mortality (4th state, age-adjusted) ===")
+    print(f"  {len(j)} ZCTAs / {j['county_fips'].nunique()} counties; "
+          f"age confound corr(rate, %65+) within-cty = {conf:+.3f} (age is a suppressor in CA)\n")
+    print(f"  {'column':32s} {'crude-within':>12s} {'AGE-ADJ within':>15s}")
+    for c in cols:
+        wc = _corr(_within(j, c), _within(j, "rate"))
+        wa = _corr(resid_age(c), yw_adj)
+        rep["within_county_crude"][c] = round(wc, 3)
+        rep["within_county_age_adj"][c] = round(wa, 3)
+        print(f"  {c:32s} {wc:+12.3f} {wa:+15.3f}")
+    print("\n  Reading: crude within-county is muted because in CA older ZIPs are WEALTHIER (age "
+          "negatively\n  confounds deprivation); age-adjusted, the index resolves real sub-county "
+          "ACSC-mortality signal.")
+    return rep
+
+
 def run_national() -> dict:
     """National sub-county check using USALEEP life expectancy (tract→ZCTA, already in metrics).
     LE is a *need* outcome so it understates care access, BUT it is national (all ~2,200 multi-
@@ -384,13 +465,16 @@ if __name__ == "__main__":
     ap.add_argument("--national", action="store_true", help="run the national USALEEP within-county check too")
     ap.add_argument("--colorado", action="store_true", help="run the CO tract-ACSC 2nd-state check")
     ap.add_argument("--overdose", action="store_true", help="run the NATIONAL CDC tract-overdose check")
+    ap.add_argument("--california", action="store_true", help="run the CA ACSC-mortality 4th-state check")
     ap.add_argument("--ny", action="store_true", help="run the NY SPARCS PQI check (default if no flags)")
     a = ap.parse_args()
     # default to NY if nothing specified (preserves prior behavior)
-    if not (a.colorado or a.national or a.overdose) or a.ny:
+    if not (a.colorado or a.national or a.overdose or a.california) or a.ny:
         run(a.extra_csv)
     if a.colorado:
         run_colorado()
+    if a.california:
+        run_california()
     if a.overdose:
         run_overdose_national()
     if a.national:

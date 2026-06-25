@@ -420,11 +420,26 @@ and the county-constant pieces (`medical_debt`, `shortage_designation`) show ~0 
 **third** independent time. This is the strongest available answer to "does it discriminate within
 counties": yes, in two states on ACSC and nationally on overdose mortality.
 
-The exhaustive data hunt converted B1 from "blocked" to a verified recipe - other free, headless-
-fetchable sub-county sources now in hand: **TX DSHS PUDF** (true 5-digit patient-ZIP discharge
-microdata, 2006-2019), **CA ZIP Death Profiles** (ZIP cause-specific mortality), **AZ Community
-Profiles** (sub-county PQI). HCUP SID (national ACSC) remains the paid gold standard. See
-[BACKLOG.md](BACKLOG.md) B1.
+**And a 4th state - California** (`validate_subcounty --california`). CA CHHS publishes observed
+ACSC-cause mortality (diabetes/heart/COPD/stroke deaths) by ZIP. Crude rates are age-confounded -
+and in CA age is a *suppressor* (older ZIPs are wealthier coastal/retirement areas), so the signal
+only emerges after age adjustment (residualize index + rate on `age65_rate` within county). 1,170
+CA ZCTAs / 46 counties:
+
+| within-county r | crude | **age-adjusted** |
+|---|---|---|
+| `access_gap_score` | +0.100 | **+0.440** |
+| `social_vulnerability` | +0.138 | +0.485 |
+| `care_access` | -0.001 | **+0.324** |
+| `insurance` | -0.025 | +0.352 |
+| `shortage_designation` / `medical_debt` | ~0 | **~0** (county-constant, a 4th time) |
+
+So the sub-county claim now holds in **four states / sources** - NY + CO + CA on ACSC(-mortality)
+and nationally on overdose - and the structural negatives (`medical_debt`/`shortage` county-constant,
+`safetynet` wrong-signed) replicate in every one. The data hunt also leaves a verified recipe for
+the remaining expansion: **TX DSHS PUDF** (true 5-digit patient-ZIP discharge microdata) - blocked
+only by a fixed-length layout doc, not a key. HCUP SID (national ACSC) stays the paid gold standard.
+See [BACKLOG.md](BACKLOG.md) B1.
 
 ### 6b. Spatially-honest CIs - the claim survives state blocking (`bootstrap_gate.spatial_sensitivity`)
 
@@ -507,8 +522,9 @@ tracks independent death records nearly as well with PLACES removed. B4 is there
 disclosed limitation, not a hidden dependency. (The PLACES anchor r=0.865 is reported elsewhere only
 to *contrast* with these independent rulers, never as validation.)
 
-**Net:** the sub-county claim now holds in two states on ACSC outcomes **and nationally on overdose
-mortality** (21k ZCTAs, within-county +0.202); the headline survives spatially-honest CIs; the
+**Net:** the sub-county claim now holds in **three states** on ACSC(-mortality) - NY, CO, CA -
+**and nationally on overdose mortality** (21k ZCTAs, within-county +0.224); the headline survives
+spatially-honest CIs; the
 weights survive cross-validation; the one genuine selection effect (2-of-3 scores) is quantified and
 already flagged. The residual ceiling is narrower than before: no *national ACSC* sub-county panel is
 free (HCUP SID is paid), so the strongest access-specific sub-county evidence is state-by-state (NY,
@@ -524,9 +540,7 @@ by mis-assigning sparsely-populated rural tracts. The findings are not just robu
 choice; they were understated by the cruder one. (Falls back to area weighting when no HUD token is
 present; `validate_subcounty._load_hud_xwalk`.)
 
-**Still logged, not done.** (1) A **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single
-expansion) needs the fixed-length record layout and S3 listing is disabled - a credential/file gap, a
-real recipe for later. (2) **California ZIP mortality** was fetched and tested but *rejected*: crude
-cause-specific death rates are age-confounded (the ACSC-death *fraction* even reads slightly
-wrong-signed), so it is a noisier validator than the age-adjusted ACSC/overdose rulers already in
-hand - a tested negative, not an improvement (a Census-key age-standardization could salvage it).
+**Still logged, not done.** A **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single expansion)
+needs the fixed-length record layout doc and the S3 listing is disabled - a file gap, not a key gap;
+a real recipe for later. (California was initially shelved as age-confounded, then *recovered* once
+age was properly controlled - see the 4th-state result in §6a.)
