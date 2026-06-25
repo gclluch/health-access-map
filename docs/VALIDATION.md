@@ -19,7 +19,7 @@ realized-utilization negative ([DECISIONS](DECISIONS.md)).
 
 **Gate harness:** `pipeline.diagnostics` (north star: composite mean-r FULL vs drop-each-
 dimension; sub-score mean\|r\|; split-half) + `pipeline.verify_bands` (rank-band gates).
-Current: FULL **0.510**, drop_care_access **0.467**, composite **0.514**, split-half **0.954**.
+Current: FULL **0.498**, drop_care_access **0.452**, composite **0.503**, split-half **0.953**.
 
 ### 1a. Error bars on the gate (`pipeline.bootstrap_gate`) - the margins are no longer naked points
 
@@ -40,24 +40,24 @@ Live result (1,000 replicates, `data/processed/gate_ci.json`):
 
 | margin (FULL − drop) | point | 95% CI | reading |
 |---|---|---|---|
-| drop **care_access** | **+0.042** | **[0.038, 0.048]** | adds signal in **100%** of resamples - robustly real |
-| drop health_need | +0.020 | [0.016, 0.025] | adds signal, robust |
-| drop **social_vulnerability** | **−0.008** | **[−0.011, −0.004]** | **mildly redundant** - dropping it *raises* agreement (its variance is largely re-counted by need/access; CI excludes 0) |
+| drop **care_access** | **+0.046** | **[0.041, 0.052]** | adds signal in **100%** of resamples - robustly real |
+| drop health_need | +0.025 | [0.02, 0.03] | adds signal, robust |
+| drop **social_vulnerability** | **−0.016** | **[−0.02, −0.012]** | **mildly redundant** - dropping it *raises* agreement (its variance is largely re-counted by need/access; CI excludes 0) |
 
 So the headline care-access decision survives the stricter ruler (the lever the whole project
 chased is not noise). The new finding the point estimate hid: social vulnerability is slightly
 *net-negative* on the county-outcome gate - consistent with it being the most collinear
-dimension (need↔vulnerability 0.74). It is kept in the composite by construct choice (the 5 A's
-enabling axis; it carries real *within-county* signal, +0.524, §3) - but the gate no longer
+dimension (need↔vulnerability 0.73). It is kept in the composite by construct choice (the 5 A's
+enabling axis; it carries real *within-county* signal, +0.568, §3) - but the gate no longer
 pretends it adds county-level outcome agreement. **Run `python -m pipeline.bootstrap_gate` after
 any scoring change and ship only if the relevant margin CI excludes 0.**
 
 **The headline point r itself is a ZCTA-broadcast number - read its precision, not its decimals.**
-The `diagnostics` mean-r (composite **0.514**, etc.) correlates ~33k ZCTAs against outcomes that
+The `diagnostics` mean-r (composite **0.503**, etc.) correlates ~33k ZCTAs against outcomes that
 are county-level for 5 of 6, broadcast to every ZCTA - so the **effective N is the county count
 (~3,225), not the row count**. This does *not* inflate the point magnitude (within-county composite
 variance has no outcome to track, so the row-level r is if anything mildly *attenuated*: the
-matched-resolution **county-collapsed mean-r is 0.546**, now reported alongside it by
+matched-resolution **county-collapsed mean-r is 0.547**, now reported alongside it by
 `diagnostics`). What it inflates is **precision** - which is exactly why every ship/kill margin is
 gated on the **cluster bootstrap** above (effective N ≈ county count), never on the naked row-level
 point. Treat the headline r as good to ~one decimal, with the honest interval coming from
@@ -66,7 +66,7 @@ point. Treat the headline r as good to ~one decimal, with the honest interval co
 ### 1b. The index is ~1.6 effective dimensions
 
 At the dimension level the correlation matrix (need/vulnerability/access) has eigenvalues
-[2.30, 0.44, 0.26]: **PC1 = 77%** of the joint variance, **participation ratio ≈ 1.6 effective
+[2.30, 0.44, 0.26]: **PC1 = 76%** of the joint variance, **participation ratio ≈ 1.6 effective
 dimensions**. The three-dimension framing is a *construct* decomposition (the 5 A's), not a claim
 of three statistically independent axes - which is exactly why re-weighting them barely moves
 ranks (Spearman ~0.999, ~±6 pts) and why the sliders are framed in-product as a sensitivity
@@ -76,10 +76,12 @@ probe, not a control that rewrites the map. Reported live in `provenance.json`
 **The actionable response** is the **access-beyond-deprivation lens** (`care_access_resid_pctile`):
 care_access residualized on need + social_vulnerability and re-ranked, so the map can show the
 *structural* access disadvantage **net of** the deprivation gradient. It is near-orthogonal to its
-predictors (0.05) by construction, yet the residual still tracks low life expectancy at **+0.137**
-(vs +0.47 for raw care_access) - i.e. the part of barriers-to-care *not* explained by poverty is
-still independently outcome-relevant. A selectable lens (Color-by / Rankings), not in the
-composite; recorded in `provenance.json` `score.access_beyond_deprivation`.
+predictors (0.05) by construction, yet the residual still tracks low life expectancy at **+0.135**
+(vs +0.476 for raw care_access) - and, against the access-sensitive ruler, tracks **treatable
+(amenable) mortality at +0.331** (§4) - i.e. the part of barriers-to-care *not* explained by poverty
+is independently outcome-relevant, and markedly more so for the deaths care can actually prevent. A
+selectable lens (Color-by / Rankings), not in the composite; recorded in `provenance.json`
+`score.access_beyond_deprivation`.
 
 ### 1c. Selection bias - the margins are not corrected for multiple comparisons
 
@@ -92,7 +94,7 @@ statistics do not correct for it:
   *not* selection-adjusted - they say nothing about the fact that the winning input was picked from
   many tried against the same outcomes.
 - So the surviving effect sizes are **upward-biased** (winner's curse) and the thinnest margins
-  (e.g. care-access's **+0.042**, or `medical_debt` clearing partial-r where ~a dozen others did
+  (e.g. care-access's **+0.046**, or `medical_debt` clearing partial-r where ~a dozen others did
   not) sit within the noise of the *selection* process, not just the *sampling* process. A +0.04
   margin that "excludes 0" in a paired cluster bootstrap can still be a multiple-comparisons
   artifact.
@@ -102,9 +104,13 @@ statistics do not correct for it:
   re-tried. None of these is a multiplicity correction.
 - **How to read it:** treat the *direction and rough magnitude* of a surviving input as the
   reliable claim, and the *exact decimal margin* as soft. The honest test for any thin winner is
-  **out-of-sample / out-of-outcome replication** - which is precisely what the amenable-mortality
-  anchor (§4) and the sub-county gate (§3) provide, since they change the *ruler* rather than
-  re-fitting against the same six outcomes the inputs were selected on.
+  **out-of-sample / out-of-outcome replication** - which the amenable-mortality anchor (§4) and the
+  sub-county gate (§3) provide, since they change the *ruler* rather than re-fitting against the same
+  six outcomes the inputs were selected on. **This test has now been run (§4): care_access replicates
+  on treatable mortality at partial r +0.395 - an outcome no input was ever selected against.** So the
+  central care-access claim is no longer a within-selection margin; it survives the cleanest available
+  out-of-outcome check. (The thinnest individual *sub-score* margins remain selection-soft; it is the
+  dimension-level care-access claim that is now externally corroborated.)
 
 ## 2. Why care access reads modest - a category error, not a bug
 
@@ -113,20 +119,27 @@ Tuning a *gap* against an *all-cause* outcome starves care access by constructio
 | Score form vs (−life expectancy) | r |
 |---|---|
 | health_need alone | **+0.606** |
-| additive 35/30/35 composite | +0.531 |
-| partial r(−LE, care_access \| need, vuln) | **−0.074** (~zero) |
+| additive 35/30/35 composite | +0.603 |
+| partial r(−LE, care_access \| need, vuln) | **+0.125** (small) |
 
-Need alone beats every composite; ridge/regularization cannot recover a predictor whose
-*partial* correlation is ~0. This is definitional: area all-cause mortality is overwhelmingly
-disease/behavior burden; the ~10-20% attributable to clinical care is swamped. The field's
-outcome-anchored access indices therefore validate against **amenable/treatable mortality**
-(IHME HAQ) and **ACSC hospitalizations** (Robert Graham Center SDI), not all-cause mortality.
-Care access is kept in the composite by deliberate construct choice (it is the actionable
-lever, as County Health Rankings weights clinical care 20%), not because it predicts mortality.
+Need alone nearly matches the full composite; care access's *partial* correlation is **small
+(+0.125)** - it carries a modest independent signal even net of need + vulnerability (consistent
+with the access-beyond-deprivation lens, §1b, +0.135), but it is **swamped**, not zero. This is
+definitional: area all-cause mortality is overwhelmingly disease/behavior burden; the ~10-20%
+attributable to clinical care is a small slice. The field's outcome-anchored access indices
+therefore validate against **amenable/treatable mortality** (IHME HAQ) and **ACSC
+hospitalizations** (Robert Graham Center SDI), not all-cause mortality.
+Care access is kept in the composite by deliberate construct choice (it is the actionable lever, as
+County Health Rankings weights clinical care 20%) - and, **against the right outcome, it does predict
+mortality**: see §4, where care_access's partial r jumps from **+0.125 (all-cause) to +0.395
+(treatable)**. The "+0.125 small" above is not care access being weak; it is all-cause LE being the
+wrong ruler - precisely the category error this section names.
 
 **Implication:** the standard gate is need-dominated, so it can only ever show care access as
-marginal. The two fixes are the **amenable-mortality** anchor (§4) and **sub-county** validation
-(§3) - both change what the ruler can see, rather than adding inputs.
+marginal. The two fixes - the **amenable-mortality** anchor (§4) and **sub-county** validation (§3) -
+change what the ruler can see rather than adding inputs. **Both have now been run, and the
+amenable anchor confirms it**: on the access-sensitive ruler care access is far from marginal
+(partial +0.395; §4).
 
 ## 3. Sub-county validation - the county-resolution blind spot (`pipeline.validate_subcounty`)
 
@@ -142,8 +155,8 @@ outcomes cannot do; **O/E** = observed/expected is the risk-adjusted (age/sex) f
 
 | within-county O/E | result | reading |
 |---|---|---|
-| `access_gap_score` | **+0.48** | the composite resolves real sub-county signal - the ZCTA tool is validated, not a county tool in disguise |
-| `care_access` | **+0.31** | its best showing anywhere (vs ~0.27 on any county outcome) - but need still dominates |
+| `access_gap_score` | **+0.50** | the composite resolves real sub-county signal - the ZCTA tool is validated, not a county tool in disguise |
+| `care_access` | **+0.30** | its best showing anywhere (vs ~0.27 on any county outcome) - but need still dominates |
 | `health_need` | +0.48 | dominates even at sub-county ACSC resolution → the care-access ceiling is **largely real** |
 | `shortage_designation` | **−0.00** | county-max HPSA has zero sub-county resolution (reopens the sub-county-HPSA negative) |
 | `safetynet_access` | **−0.11** | **wrong-signed within-county** - the FQHC desert×poverty form isn't confound-free at sub-county scale |
@@ -156,7 +169,7 @@ partial** within-county (small, below ship bar, but nonzero where county-max giv
 **National confirmation (USALEEP, `--national`):** NY's ACSC is one state, so the findings are
 re-tested nationally against USALEEP life expectancy (tract→ZCTA, all states, independent death
 records - need-dominated, but the only *national* sub-county outcome). **21,244 ZCTAs / 2,208
-counties**, within-county: `access_gap_score` **+0.583**, `care_access` +0.393, `shortage_
+counties**, within-county: `access_gap_score` **+0.608**, `care_access` +0.409, `shortage_
 designation` **+0.000**, `safetynet_access` **−0.072**. So the composite resolves sub-county
 signal *nationally*, and both structural negatives hold beyond NY. The `safetynet_access`
 wrong-sign is wrong-signed within-county in **85% of states** (median −0.084) - a national
@@ -172,7 +185,9 @@ signed *between* counties (+0.126 pooled; FQHC deserts genuinely flag underserve
 but wrong-signed *within* counties (FQHC-distance tracks suburban-ness, not need). Removing it
 from the composite is a clean tradeoff: composite within-county +0.583→**+0.601** (national) and
 care_access NY within-O/E +0.305→**+0.388**, at the cost of a tiny county-level loss (care_access
-mean-r 0.380→0.370; composite 0.504→0.503). Because the tool is **ZCTA-native**, the sub-county
+mean-r 0.380→0.370; composite 0.504→0.503). *(These are the historical deltas measured when the
+removal was decided, on the pre-Fay-Herriot-upgrade build; safetynet is already unscored in the
+shipped model - the live national composite within-county is +0.608, above.)* Because the tool is **ZCTA-native**, the sub-county
 gain arguably outweighs the county loss - but it touches shipped scoring and slightly regresses
 the historical county gate, so it is a **judgment call left to the maintainer**, not auto-applied.
 Do *not* re-tune the desert×poverty form against the within-county metric (overfitting); the
@@ -187,14 +202,14 @@ sub-county (within-county, national USALEEP) signal:
 |---|---|---|---|
 | provider_supply (2SFCA, spatial) | Availability | 0.263 | **0.076** |
 | shortage_designation (HPSA) | Availability | 0.206 | **0.000** |
-| insurance | Affordability | 0.313 | **0.474** |
+| insurance | Affordability | 0.322 | **0.477** |
 | **medical_debt** (Urban Institute, **county-level**) | Affordability | **0.40** | **0.000** |
 | preventive_use (checkups/screens) | realized access (net of all A's) | 0.200 | **0.464** |
 | safetynet (FQHC, **unscored**) | Acceptability proxy | 0.201 | −0.072 |
 
 **Finding: the two *spatial* Availability sub-scores carry ~zero sub-county signal
 (provider_supply 0.076, HPSA 0.000), while the *non-spatial* ones carry nearly all of it
-(insurance 0.474, preventive_use 0.464).** The most-engineered piece (spatial supply) is the
+(insurance 0.477, preventive_use 0.464).** The most-engineered piece (spatial supply) is the
 least productive at the resolution the tool runs.
 
 **County-level scored barriers add only county-resolution signal - an honest asymmetry.** Two
@@ -209,7 +224,7 @@ county-flat is **signal-less within county, not wrong-signed** - harmless to car
 safetynet actively mis-ranked sub-county. A reader comparing two ZCTAs in the same county should
 know HPSA and medical_debt give them the *same* value: the sub-county separation comes entirely
 from insurance, the spatial supply terms, and the need/vulnerability dimensions. (Enabling A's in social_vulnerability behave
-the same: socioeconomic/Affordability within-county +0.524, digital/telehealth +0.356.)
+the same: socioeconomic/Affordability within-county +0.562, digital/telehealth +0.356.)
 
 **5 A's coverage (updated):** Availability over-built + weak (spatial); **Affordability strong and
 now deepened** - uninsured (coverage) **+ medical-debt burden** (the under-insured / cost-burden
@@ -224,39 +239,67 @@ mediator *raised* clean-r (0.501→0.516); adding the medical-debt barrier raise
 realized-use proxies (mediators) - it was a genuine upstream **affordability** barrier (medical
 debt). Spatial supply stays the weakest, least-productive piece.*
 
-## 4. Amenable mortality - the gold-standard anchor (wired, **NOT YET RUN**)
+## 4. Amenable mortality - the gold-standard anchor (**RUN - care access validated**)
 
-> **STATUS: NOT VALIDATED against treatable mortality.** The `amenable_mortality` column is
-> **absent** from the live build (`metrics.parquet` has no such column; no
-> `data/raw/wonder_amenable_county.txt` export exists). Everything below describes *wired
-> infrastructure that has never executed on real data*. **Every care-access claim in this repo
-> therefore rests on the all-cause / county outcomes that §2 says cannot fairly weight care
-> access.** The single most access-relevant validation the field uses has **not** been done here.
-> Do not read the wired pipeline as a completed result.
+> **STATUS: VALIDATED against treatable mortality (2026-06-24).** A CDC WONDER county export
+> (OECD treatable causes, ages 0-74, **age-adjusted**, pooled 2016-2020; committed at
+> `data/manual/wonder_amenable_county.txt`, 3,088 counties) is now built into `metrics.parquet`
+> as `amenable_mortality` and gated. **Headline: care_access partial r(amenable | health_need,
+> social_vulnerability) = +0.395, 95% CI [0.368, 0.43]** (cluster bootstrap over county). Against
+> the access-sensitive ruler the field actually validates on, care access carries strong, robust
+> signal *net of the entire deprivation gradient* - it was never marginal, just measured against
+> the wrong outcome.
 
 All-cause mortality is a *need* outcome, so the standard gate can only ever show care access as
 marginal (§2). **Amenable (treatable) mortality** - deaths timely effective care should prevent
-(OECD/Eurostat, ages 0-74) - is the access-sensitive ruler the field validates against, and the
-one outcome that can legitimately weight care access.
+(OECD/Eurostat, ages 0-74) - is the access-sensitive ruler the field validates against. The result
+(`bootstrap_gate.amenable_focus()`, 3,066 counties / 32,879 ZCTAs):
 
-**The entire pipeline is now wired end to end for it:**
-- `build_amenable.py` encodes the OECD treatable ICD-10 set + a fully-specified WONDER recipe and
-  parses a dropped-in county export into `amenable_mortality_county.csv`.
-- `build_outcomes.py` merges it (county→ZCTA); `join_and_score` carries `amenable_mortality`;
-  `validate.py` produces an `amenable_mortality` anchor (the UI already renders it); and it is now
-  an (optional) outcome in `diagnostics` + `bootstrap_gate` - present-only, a no-op until pulled.
-- **The frontier analysis** lives in `bootstrap_gate.amenable_focus()`: when the column is present
-  it reports, with cluster-bootstrap CIs, the care-access **marginal value** and - the key number -
-  the **partial r(amenable, care_access | health_need, social_vulnerability)**. That partial r is
-  the legitimate test: does care access track *treatable* mortality *beyond* the deprivation
-  gradient it is collinear with? (Proven correct on synthetic data in `tests/test_amenable.py`.)
+| care_access vs ... | partial r (\| need, vuln) | reading |
+|---|---|---|
+| all-cause life expectancy (§2) | **+0.125** | small - "swamped"; the category error |
+| **amenable (treatable) mortality** | **+0.395**  CI [0.368, 0.43] | **strong** - tracks treatable death net of deprivation |
 
-**Blocked only on the manual WONDER pull** - county treatable-mortality is not headlessly fetchable
-(the WONDER API is national-only). Once the export is saved to `data/raw/wonder_amenable_county.txt`,
-the whole re-gate is one command: **`make amenable`** (`python -m pipeline.regate_amenable`). Expected
-impact is tempered by §3 (even a clean sub-county access outcome left care access modest), so the
-honest hypothesis is a *cleaner validation anchor*, not a care-access rescue - but the partial-r
-harness will now say so quantitatively, with error bars, either way.
+Every supporting number moves the same way:
+- composite **FULL r vs amenable +0.660** (vs ~0.52 against the all-cause mix - the index tracks
+  treatable death far better); care_access **raw r +0.612**; **marginal value +0.062** CI [0.055, 0.072]
+  (vs +0.046 on the standard mix).
+- the access-beyond-deprivation **residual lens** (care access net of need+vuln, §1b) tracks amenable
+  at **+0.331** (vs +0.135 against LE) - the *structural* access signal is independently treatable-death-relevant.
+- the **amenable-anchored empirical weights** (`weights.json`) give care_access **~29-31%** (NNLS 28.7%
+  / corr-preset 31.2%, R²=0.607) vs ~21% against all-cause LE (R²=0.39): anchoring the data-driven
+  weights to the *right* outcome restores care access to ≈ its conceptual default, and fits far better.
+
+**This resolves the project's central question and confirms §2 was right** - care access wasn't
+marginal, it was judged by a ruler that structurally can't see it. Swap to the access-sensitive
+outcome and the partial-r **triples** (+0.125 → +0.395).
+
+**Why this is among the strongest claims in the repo, not the weakest:**
+- **Out-of-outcome replication.** Amenable mortality was **never** part of the input-selection search
+  (§1c) - no measure was kept or killed against it. So it is a genuine out-of-sample test of the
+  winner's-curse concern, *exactly* the honest check §1c asked for: the thin all-cause margins are
+  corroborated by an outcome the inputs were never fitted to.
+- **Not circular.** Amenable mortality is a death-records outcome; care_access is *barriers* (supply,
+  insurance, debt), not engagement/utilization - the anti-circularity rule (§1) does not apply.
+
+**Honest caveats (read before quoting the decimal):**
+- **County resolution.** Treatable mortality is county-level (broadcast to ZCTA), so this validates
+  the index *between* counties; it adds nothing at sub-county scale (§3 stays the only sub-county
+  check). Effective N is the county count (~3,066) - which is why the focus uses the cluster bootstrap,
+  not the 33k-row point.
+- **Cause-set composition.** The export uses the OECD-treatable ICD-10 approximation actually selected
+  in WONDER (a few ranges slightly broader than the strict list, as `build_amenable.py` documents); a
+  +0.395 partial with a [0.368, 0.43] CI is robust to that.
+- **Amenable is still partly deprivation-driven** - but the +0.395 is *after* removing need +
+  vulnerability, which is the entire point.
+- **Kept OUT of the main 6-outcome gate on purpose** (`diagnostics.OUTCOMES`): the standard gate stays
+  the conservative all-cause ruler; amenable is reported only here via the focus, so it neither dilutes
+  the headline mean-r nor mixes another county-broadcast outcome into it.
+
+**Reproduce / refresh:** the export is committed at `data/manual/wonder_amenable_county.txt` (it is
+*not* headlessly fetchable - the WONDER county API is national-only - so it lives in version control,
+not `data/raw/`). `build_amenable` prefers it; **`make amenable`** re-runs the whole gate. For a fresher
+vintage or the full OECD code set, follow the recipe in `pipeline/build_amenable.py` and overwrite it.
 
 ## 5. Comparability and resolution - it's a gradient, not a 33k-rank leaderboard
 

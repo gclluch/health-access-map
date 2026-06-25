@@ -7,8 +7,9 @@ A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
 > [`docs/PRIMER.md`](docs/PRIMER.md) (dataset/field dictionary),
 > [`docs/RATIONALE.md`](docs/RATIONALE.md) (per-formula math + precedent),
 > [`docs/DECISIONS.md`](docs/DECISIONS.md) (the ledger of what we tried, kept, and rejected -
-> don't re-run these), and [`docs/VALIDATION.md`](docs/VALIDATION.md) (outcomes, the sub-county
-> gate, comparability, and uncertainty).
+> don't re-run these), [`docs/VALIDATION.md`](docs/VALIDATION.md) (outcomes, the sub-county
+> gate, comparability, and uncertainty), and [`docs/BACKLOG.md`](docs/BACKLOG.md) (open edges &
+> known limitations as pick-up-ready tickets - start here if you're extending the project).
 
 The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
 11 sub-scores → ~50 measures, all drill-downable in the detail panel.
@@ -109,9 +110,9 @@ a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.
 5. A ZCTA is **scoreable** only with population present and ≥ 2 of 3 dimensions; otherwise it
    renders gray. Low-population ZCTAs are flagged `low_confidence` and kept out of headline rankings.
 
-The three dimensions are **strongly collinear** (need↔vulnerability **0.74**, need↔access
-0.58, vulnerability↔access 0.63; reported in `provenance.json` and the methodology panel).
-At the dimension level PC1 explains **77%** of the joint variance and the participation ratio
+The three dimensions are **strongly collinear** (need↔vulnerability **0.73**, need↔access
+0.59, vulnerability↔access 0.61; reported in `provenance.json` and the methodology panel).
+At the dimension level PC1 explains **76%** of the joint variance and the participation ratio
 is **~1.6 effective dimensions** - the index is closer to one "general deprivation" gradient
 than to three independent axes. Two consequences, both stated in-product: (a) the weighted sum
 double-counts shared variance, which is why the weights are user-tunable rather than presented
@@ -175,12 +176,14 @@ rather than silently producing a wrong column.
   `gzip_static` + cache headers, same-origin `/api` proxy to FastAPI). CORS and the SPA's API
   base are env-driven (`ALLOWED_ORIGINS`, `VITE_API_BASE`) so prod works without code changes.
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
-  over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. When
-  a CDC WONDER treatable-mortality export is present it also runs the **amenable-mortality focus**
-  (care-access partial r vs the access-sensitive outcome). **This export has not been pulled, so the
-  amenable-mortality validation has never run** - all current care-access numbers come from the
-  all-cause/county outcomes (see `docs/VALIDATION.md` §4). Finish that anchor in one step with
-  `make amenable` after the manual pull (recipe in `pipeline/build_amenable.py`).
+  over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. It also
+  runs the **amenable-mortality focus** (care-access partial r vs the access-sensitive outcome).
+  **This anchor has now been pulled and run** (CDC WONDER treatable mortality, age-adjusted, 0-74,
+  2016-2020; committed at `data/manual/wonder_amenable_county.txt`): care_access partial r vs
+  treatable mortality is **+0.395 [0.368, 0.43]** - strong and net of the deprivation gradient,
+  vs only +0.125 against all-cause LE. This is the gold-standard validation the field uses and it
+  confirms the care-access dimension was sound (see `docs/VALIDATION.md` §4). Re-run any time with
+  `make amenable`; refresh the export via the recipe in `pipeline/build_amenable.py`.
 - **Observability**: `lib/observability.ts` - env-gated, dependency-free error + usage hooks
   (`VITE_SENTRY_DSN`, `VITE_ANALYTICS_URL`); no-ops when unset.
 - **Freshness**: the pipeline emits `frontend/public/meta.json`; the UI shows a "data as of" badge.

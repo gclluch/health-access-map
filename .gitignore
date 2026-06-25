@@ -33,3 +33,6 @@ frontend/public/meta.json
 # Playwright artifacts
 frontend/test-results/
 frontend/playwright-report/
+
+# Personal learning aid (not project documentation)
+docs/STATS_PRIMER.md

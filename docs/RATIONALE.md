@@ -292,13 +292,20 @@ exactly the stance County Health Rankings takes. The reasoning:
 - **Empirical alternative (shipped - the "Data-driven" preset).** Following the Healthy
   Places Index, we derive weights by **non-negative least-squares regression of the three
   dimensions on CDC USALEEP life expectancy** (5% floor, normalized to 100). The result:
-  **~76% health need / 20% social vulnerability / 5% care access** (R²≈0.38, n≈31k). This is
-  itself a finding: at the *area* level, disease burden predicts mortality far more than
-  provider supply does (consistent with County Health Rankings weighting clinical care only
-  20%) - and it's partly tautological (PLACES disease ≈ death). Because it nearly zeroes out
-  access, it actually *justifies* keeping access in the score by deliberate construct choice.
-  Both weightings are offered; the conceptual default stands, the data-driven preset is one
-  click away, and the honest takeaway is that "what predicts mortality" ≠ "the access gap."
+  **~60% health need / 20% social vulnerability / 21% care access** (R²≈0.39, n≈31k). This is
+  itself a finding: at the *area* level, disease burden predicts mortality far more than the
+  other axes (~3x health need over care access) - and it's partly tautological (PLACES disease
+  ≈ death). Notably the data-driven care-access weight lands at **~21%, almost exactly County
+  Health Rankings' 20% clinical-care weight** - independent corroboration of that expert choice.
+  Both weightings are offered; the conceptual near-equal default stands as a value judgment, the
+  data-driven preset is one click away, and the honest takeaway is that "what predicts
+  (all-cause) mortality" ≠ "the access gap."
+- **Anchored to the *right* outcome, the data-driven weight rises.** Re-deriving the same NNLS
+  against **treatable (amenable) mortality** instead of all-cause LE gives **~66% need / 5% / 29%
+  care access at R²≈0.61** (`weights.json`) - care access nearly **+50% heavier** than the LE-anchored
+  ~21%, and the fit jumps 0.39 → 0.61. The "data nearly zeros access" intuition was an artifact of the
+  all-cause ruler; against the access-sensitive outcome the empirical weight lands close to the
+  conceptual default. See [VALIDATION](VALIDATION.md) §4.
 
 ## 11. Supply, enhanced - E2SFCA, and the "need-adjusted?" question
 

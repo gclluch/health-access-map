@@ -128,7 +128,7 @@ trade-off rather than hiding it.**
 
 `pipeline/validate.py` also derives **outcome-anchored** weight presets: each weights the
 dimensions by how strongly they correlate with an independent outcome. Across every outcome and
-method, **care access lands modest** - it is collinear with need (~0.58), and area outcomes are
+method, **care access lands modest** - it is collinear with need (~0.59), and area outcomes are
 disease-dominated. That is a true finding about outcomes, **not** proof access is irrelevant
 (`VALIDATION.md`: it is a category error to tune a *gap* against an all-cause outcome
 that care access barely moves). Care access is kept meaningful by deliberate choice because it
@@ -154,14 +154,14 @@ never in the composite.
   wrong-sign (correct between counties, wrong within) that the county gate passed. See VALIDATION.md.
 
 **A change ships only if it passes the gate** (north star does not regress, reliability holds,
-coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.510**; `drop_care_access`
-0.467 (**below** FULL, so care access *adds* signal, margin **+0.043**); composite agreement
-**0.514** (ZCTA-broadcast; the matched-resolution **county-collapsed** point is **0.546**, since 5
+coverage holds, no sub-county wrong-sign). Current state: FULL mean-r **0.498**; `drop_care_access`
+0.452 (**below** FULL, so care access *adds* signal, margin **+0.046**); composite agreement
+**0.503** (ZCTA-broadcast; the matched-resolution **county-collapsed** point is **0.547**, since 5
 of 6 outcomes are county-level - see VALIDATION.md §1a; gate margins use the cluster bootstrap, not
-this point); clean (non-circular) composite-r **0.547**; split-half **0.954**; bands ALL PASS;
-composite within-county (national) **0.599**. Care sub-scores: **medical_debt** mean|r| **0.40**
+this point); clean (non-circular) composite-r **0.538**; split-half **0.953**; bands ALL PASS;
+composite within-county (national) **0.608**. Care sub-scores: **medical_debt** mean|r| **0.40**
 (the strongest - affordability barrier, survives partial-r +0.27, **but county-level: within-county
-r = 0.000, scored on construct grounds not sub-county signal - VALIDATION.md §3**), insurance 0.34,
+r = 0.000, scored on construct grounds not sub-county signal - VALIDATION.md §3**), insurance 0.322,
 provider_supply 0.273, **shortage_designation** (HPSA) 0.20. These thin margins are **not
 multiple-comparisons corrected** (VALIDATION.md §1c). Two care items are computed +
 displayed but **unscored**: `safetynet_access` (wrong-signed within counties) and `preventive_use`
@@ -221,8 +221,8 @@ input data - the lever was spatial (catchment shape) and structural, not more da
 ## 9. Honest limitations
 - **Relative, not absolute** - a 95 means "worse than 95% of ZIPs," not "objectively bad."
 - **Modeled disease** (PLACES) is partly SES-conditioned, so need/vulnerability share variance.
-- **Strongly collinear dimensions** (need↔vulnerability **0.74**, need↔access 0.58,
-  vulnerability↔access 0.63; PC1 = 77% of dimension variance, **~1.6 effective dimensions**) -
+- **Strongly collinear dimensions** (need↔vulnerability **0.73**, need↔access 0.59,
+  vulnerability↔access 0.61; PC1 = 76% of dimension variance, **~1.6 effective dimensions**) -
   the weighted sum double-counts shared variance, and because the axes move together,
   re-weighting barely moves ranks (Spearman ~0.999). The sliders are therefore a **sensitivity
   probe**, not a control that meaningfully rewrites the map - stated as such in-product.
