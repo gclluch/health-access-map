@@ -6,8 +6,9 @@ import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
 import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
-import { fmtInt, fmtScore, ordinal } from '../lib/format';
+import { fmtInt, fmtScore, ordinal, severity } from '../lib/format';
 import Tip from './Tip';
+import Caret from './Caret';
 
 // A percentile bar (0-100). Higher = worse (more gap), so more fill = worse.
 function PctBar({ pct }: { pct: number | null | undefined }) {
@@ -28,7 +29,7 @@ function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown
   const anyPct = measures.some((mm) => typeof rec[`${mm.col}_natpct`] === 'number');
   return (
     <div className="px-3 py-1.5 bg-paper/60">
-      <div className="flex justify-between text-[9px] uppercase tracking-wide text-graphite/55 pb-1 border-b border-hairline/60 mb-0.5">
+      <div className="flex justify-between text-[10px] uppercase tracking-wide text-graphite pb-1 border-b border-hairline/60 mb-0.5">
         <span>Measure</span>
         <span>{anyPct ? 'value · natl %ile' : 'value'}</span>
       </div>
@@ -48,12 +49,12 @@ function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown
           >
             <span className="text-graphite truncate pr-2 flex-1">
               {mm.label}
-              {mm.desc ? <span className="text-graphite/60"> ⓘ</span> : null}
+              {mm.desc ? <span className="text-graphite"> ⓘ</span> : null}
             </span>
             <span className="flex items-baseline gap-1.5 shrink-0">
               <span className="num text-ink">{fmtMeasure(rec[mm.col], mm.unit)}</span>
               {hasPct ? (
-                <span className="num text-[10px] text-graphite/80 tabular-nums w-9 text-right">
+                <span className="num text-[10px] text-graphite tabular-nums w-9 text-right">
                   {ordinal(Math.round(natpct as number))}
                 </span>
               ) : null}
@@ -86,7 +87,7 @@ function SubScoreRow({
         className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-paper"
         aria-expanded={open}
       >
-        <span className="text-graphite text-[9px] w-2">{open ? '▾' : '▸'}</span>
+        <Caret open={open} size={12} className="text-graphite" />
         <Tip
           className="flex-1 min-w-0 cursor-help"
           tip={
@@ -96,7 +97,7 @@ function SubScoreRow({
         >
           <span className="block text-[12px] text-ink truncate">
             {label}
-            {!scored && <span className="ml-1 text-[9px] text-graphite font-normal">· not scored</span>}
+            {!scored && <span className="ml-1 text-[10px] text-graphite font-normal">· not scored</span>}
           </span>
         </Tip>
         <span className="num text-[10px] text-graphite w-14 text-right">
@@ -129,8 +130,8 @@ function Dimension({
         className="w-full flex items-center gap-2 px-3 py-2 text-left bg-surface hover:bg-paper"
         aria-expanded={open}
       >
-        <span className="text-graphite text-[10px] w-2">{open ? '▾' : '▸'}</span>
-        <span className="flex-1 text-[12.5px] font-medium text-ink">{dim.label}</span>
+        <Caret open={open} size={13} className="text-graphite" />
+        <span className="flex-1 text-[12px] font-medium text-ink">{dim.label}</span>
         <span className="num text-[13px] font-semibold text-ink w-7 text-right">
           {fmtScore(dimPct)}
         </span>
@@ -152,6 +153,142 @@ function Dimension({
             />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Demographics shown purely as context for "who lives here" - independent of the
+// access-gap score. Every value comes from the full API record (Census ACS 5-year),
+// except population which is already in the slim metric. Cells with no data are dropped.
+function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> | null }) {
+  const [open, setOpen] = useState(true);
+  const num = (v: unknown) => (typeof v === 'number' && !Number.isNaN(v) ? v : null);
+  const pct = (v: unknown) => {
+    const n = num(v);
+    return n == null ? null : `${Math.round(n * 100)}%`;
+  };
+  const cells: Array<{ label: string; value: string; tip?: string; scored?: boolean }> = [];
+  const pop = num(m.population);
+  if (pop != null) cells.push({ label: 'Population', value: fmtInt(pop) });
+  const age = num(rec?.median_age);
+  if (age != null) cells.push({ label: 'Median age', value: String(Math.round(age)) });
+  const under18 = pct(rec?.age17_rate);
+  if (under18) cells.push({ label: 'Under 18', value: under18 });
+  const over65 = pct(rec?.age65_rate);
+  if (over65) cells.push({ label: '65 and older', value: over65 });
+  const income = num(rec?.median_income);
+  if (income != null)
+    cells.push({
+      label: 'Median income',
+      value: `$${Math.round(income).toLocaleString('en-US')}`,
+      scored: true,
+      tip: 'Median household income. Census ACS 5-year (B19013). This is the one field here that also feeds the access-gap score (socioeconomic sub-score) - everything else is context only.',
+    });
+  const medicaid = pct(rec?.medicaid_rate);
+  if (medicaid)
+    cells.push({
+      label: 'Medicaid',
+      value: medicaid,
+      tip: 'Share on Medicaid/CHIP. Census ACS 5-year (C27007). Context only - not scored.',
+    });
+  const lep = pct(rec?.limited_english_rate);
+  if (lep)
+    cells.push({
+      label: 'Limited English',
+      value: lep,
+      tip: 'Households where no one 14+ speaks English "very well." Census ACS 5-year (C16002).',
+    });
+  // Minority = 1 - non-Hispanic White. Placed last (bottom-right) so it sits directly above the
+  // race breakdown it summarizes. Derived from the RAW White share when available so it ties out
+  // with that breakdown; falls back to the (shrunk) pct_minority otherwise.
+  const white = num(rec?.pct_white);
+  const minority = white != null ? `${Math.round((1 - white) * 100)}%` : pct(rec?.pct_minority);
+  if (minority)
+    cells.push({
+      label: 'Minority',
+      value: minority,
+      tip: 'Share who are not non-Hispanic White (the total of the race breakdown below). Census ACS 5-year (B03002).',
+    });
+
+  // Race & ethnicity composition (Census ACS B03002) - non-Hispanic single-race buckets plus
+  // Hispanic (any race); "Other" rolls up AIAN/NHPI/some-other/two-or-more. Sorted by share.
+  const raceCols: Array<[string, string]> = [
+    ['pct_white', 'White'],
+    ['pct_black', 'Black'],
+    ['pct_hispanic', 'Hispanic'],
+    ['pct_asian', 'Asian'],
+    ['pct_other_race', 'Other'],
+  ];
+  const race: Array<{ label: string; share: number }> = [];
+  for (const [col, label] of raceCols) {
+    const share = num(rec?.[col]);
+    if (share != null && share > 0) race.push({ label, share });
+  }
+  race.sort((a, b) => b.share - a.share);
+
+  if (cells.length === 0) return null;
+  return (
+    <div className="mb-3 rounded-md border border-hairline bg-paper/60 px-3 py-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-graphite"
+      >
+        <Caret open={open} size={12} className="text-graphite" />
+        <span>Who lives here</span>
+        <span className="text-graphite normal-case">· context · only income (†) feeds the score</span>
+      </button>
+      {open && (
+        <>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1.5">
+        {cells.map((c) =>
+          c.tip ? (
+            <Tip
+              key={c.label}
+              tip={c.tip}
+              className="flex justify-between items-baseline text-[11px] cursor-help"
+            >
+              <span className="text-graphite">
+                {c.label}
+                {c.scored ? <span className="text-graphite"> †</span> : null}
+                <span className="text-graphite"> ⓘ</span>
+              </span>
+              <span className="num text-ink">{c.value}</span>
+            </Tip>
+          ) : (
+            <div key={c.label} className="flex justify-between items-baseline text-[11px]">
+              <span className="text-graphite">{c.label}</span>
+              <span className="num text-ink">{c.value}</span>
+            </div>
+          ),
+        )}
+      </div>
+      {race.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-hairline/60">
+          <Tip
+            className="text-[10px] uppercase tracking-wide text-graphite mb-1 cursor-help inline-block"
+            tip='Race & ethnicity. Non-Hispanic single-race for White/Black/Asian; Hispanic is any race; "Other" combines American Indian/Alaska Native, Native Hawaiian/Pacific Islander, some-other-race and two-or-more. Census ACS 5-year (B03002). Context only - not scored.'
+          >
+            Race &amp; ethnicity<span className="text-graphite"> ⓘ</span>
+          </Tip>
+          <div className="space-y-0.5">
+            {race.map((r) => (
+              <div key={r.label} className="flex items-center gap-2 text-[11px]">
+                <span className="text-graphite w-16 shrink-0">{r.label}</span>
+                <span className="flex-1 h-1.5 bg-hairline rounded-full overflow-hidden">
+                  <span
+                    className="block h-full bg-accent/70 rounded-full"
+                    style={{ width: `${Math.round(r.share * 100)}%` }}
+                  />
+                </span>
+                <span className="num text-ink w-8 text-right">{Math.round(r.share * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+        </>
       )}
     </div>
   );
@@ -245,7 +382,7 @@ export default function DetailPanel() {
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <div
-              className="font-serif text-[19px] text-ink leading-tight truncate"
+              className="font-serif text-[20px] text-ink leading-tight truncate"
               title={m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
             >
               {m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
@@ -272,7 +409,7 @@ export default function DetailPanel() {
             <button
               onClick={() => select(null)}
               aria-label="Close panel"
-              className="text-graphite hover:text-ink text-[16px] leading-none px-1"
+              className="grid place-items-center w-6 h-6 text-graphite hover:text-ink text-[16px] leading-none"
             >
               ✕
             </button>
@@ -300,28 +437,53 @@ export default function DetailPanel() {
           </div>
         )}
 
-        <div className="flex items-baseline gap-2">
-          <span className="num text-[34px] font-semibold text-ink leading-none">{fmtScore(scorePercentile)}</span>
-          <span className="text-[11px] text-graphite">/ 100 · national access-gap rank</span>
-        </div>
-        <div className="text-[11px] text-graphite mt-0.5">
-          {score == null
-            ? 'Insufficient reliable data to score this area.'
-            : `Worse access than ${fmtScore(scorePercentile)}% of U.S. ZIPs. Built from a weighted index of ${fmtScore(score)} (see "What drives the gap"), then ranked against every ZIP.`}
-        </div>
-        {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
-          <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
-            <span className="text-ink font-medium">Tier {Math.ceil(scorePercentile / 10)} of 10</span>
-            {' · reliable range '}
-            <span className="num text-ink">
-              {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
-            </span>
-            {' pct under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
-          </div>
-        )}
+        <WhoLivesHere m={m} rec={rec} />
+
+        {(() => {
+          const sev = score != null && scorePercentile != null ? severity(scorePercentile) : null;
+          return (
+            <>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span
+                  className="num text-[34px] font-semibold leading-none"
+                  style={{ color: sev ? sev.color : undefined }}
+                >
+                  {fmtScore(scorePercentile)}
+                </span>
+                <span className="text-[11px] text-graphite">/ 100 · access-gap rank</span>
+                {sev && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
+                    style={{ color: sev.color, backgroundColor: `${sev.color}14` }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sev.color }} />
+                    {sev.label}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-graphite mt-0.5">
+                {score == null || scorePercentile == null
+                  ? 'Insufficient reliable data to score this area.'
+                  : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Ranked from a weighted index of need, vulnerability and barriers (see "What drives the gap").`}
+              </div>
+              {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
+                <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
+                  <span className="font-medium" style={{ color: sev ? sev.color : undefined }}>
+                    Tier {Math.ceil(scorePercentile / 10)} of 10
+                  </span>
+                  {' · reliable range '}
+                  <span className="num text-ink">
+                    {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
+                  </span>
+                  {' percentile under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {score != null && (
-          <p className="font-serif text-[13.5px] text-ink leading-snug mt-2.5">
+          <p className="font-serif text-[13px] text-ink leading-snug mt-2.5">
             {synthesize(m, weights)}
           </p>
         )}
@@ -331,7 +493,7 @@ export default function DetailPanel() {
         {/* drill-down: dimensions -> sub-scores -> measures */}
         <div className="mt-3 pt-2.5 border-t border-hairline">
           <div className="text-[11px] uppercase tracking-wide text-graphite">
-            Explore the layers <span className="text-graphite/70">(tap to drill in)</span>
+            Explore the layers <span className="text-graphite">(tap to drill in)</span>
           </div>
           {MODEL.map((dim) => (
             <Dimension key={dim.key} dim={dim} m={m} rec={rec} />
@@ -377,22 +539,10 @@ export default function DetailPanel() {
                 )}
               </div>
             )}
-            <div className="mt-1">
-              Population <span className="num text-ink">{fmtInt(m.population as number)}</span>
-              {typeof rec.median_age === 'number'
-                ? ` · median age ${Math.round(rec.median_age as number)}`
-                : ''}
-              {typeof rec.pct_minority === 'number'
-                ? ` · ${Math.round((rec.pct_minority as number) * 100)}% minority`
-                : ''}
-              {typeof rec.medicaid_rate === 'number'
-                ? ` · ${Math.round((rec.medicaid_rate as number) * 100)}% Medicaid`
-                : ''}
-            </div>
             {typeof rec.medicaid_rate === 'number' && (
-              <div className="mt-1 text-graphite/80">
-                Medicaid share is shown as <i>acceptability</i> context - the population that can
-                face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
+              <div className="mt-1 text-graphite">
+                Medicaid share (shown above) is <i>acceptability</i> context - the population that
+                can face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
                 tracks poverty, already counted).
               </div>
             )}
@@ -407,14 +557,13 @@ export default function DetailPanel() {
             {m.life_expectancy_pctile != null
               ? ` (lower than ${fmtScore(m.life_expectancy_pctile)}% of U.S. ZIPs)`
               : ''}
-            <span className="text-graphite/80"> · CDC USALEEP, independent of the score</span>
+            <span className="text-graphite"> · CDC USALEEP, independent of the score</span>
           </div>
         )}
 
-        <div className="mt-3 text-[10px] text-graphite leading-snug">
+        <div className="mt-3 text-[11px] text-graphite leading-snug">
           Disease/behavior values are modeled CDC PLACES estimates (BRFSS), not counts. Provider
-          access is a 2SFCA catchment metric over registered providers. The headline score is a
-          relative national rank (percentile); higher = worse.
+          access is a 2SFCA catchment metric over registered providers.
         </div>
       </div>
       </div>

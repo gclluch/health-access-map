@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, PRESETS, type Weights } from '../lib/types';
+import Caret from './Caret';
 
 // Weights only change the composite metrics (additive + the geometric lens, both weight-driven).
 // If the user is viewing a sub-score/outcome, snap to the additive composite so the weight change
@@ -63,9 +64,9 @@ export default function WeightSliders() {
           onClick={toggleWeights}
           aria-expanded={true}
           aria-label="Collapse weighting"
-          className="flex items-center gap-1 text-[12px] font-medium text-ink hover:text-accent"
+          className="flex items-center gap-1.5 text-[12px] font-medium text-ink hover:text-accent"
         >
-          <span className="text-graphite text-[11px]" aria-hidden>▾</span>
+          <Caret open size={14} className="text-graphite" />
           Adjust weighting
         </button>
         <button
@@ -114,7 +115,7 @@ export default function WeightSliders() {
                 className={
                   'text-[11px] px-2 py-1 rounded border transition-colors ' +
                   (a.key === 'life_expectancy'
-                    ? 'border-hairline text-graphite/70 hover:border-graphite'
+                    ? 'border-hairline text-graphite hover:border-graphite'
                     : 'border-accent/40 text-accent hover:bg-accent/5')
                 }
               >

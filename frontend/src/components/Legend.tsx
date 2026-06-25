@@ -4,6 +4,7 @@ import { metricValue } from '../lib/scoring';
 import { RAMP, CHROME } from '../lib/colors';
 import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS, WITHIN_STATE_METRIC } from '../lib/types';
 import { fmtScore } from '../lib/format';
+import Caret from './Caret';
 
 const BINS = 44;
 
@@ -37,34 +38,41 @@ export default function Legend() {
     <div className="panel rounded-md px-3 py-2.5 w-full">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[11px] uppercase tracking-wide text-graphite">Color by</span>
-        <select
-          aria-label="Color the map by metric"
-          className="text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded max-w-[200px]"
-          value={metric}
-          onChange={(e) => setMetric(e.target.value)}
-        >
-          <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
-          <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
-          <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
-          <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>
-          {MODEL.map((d) => (
-            <optgroup key={d.key} label={d.label}>
-              <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
-              {d.subs.map((s) => (
-                <option key={s.key} value={`${s.key}_pctile`}>
-                  &nbsp;&nbsp;{s.label}
+        <div className="relative max-w-[200px]">
+          <select
+            aria-label="Color the map by metric"
+            className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
+            value={metric}
+            onChange={(e) => setMetric(e.target.value)}
+          >
+            <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
+            <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
+            <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
+            <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>
+            {MODEL.map((d) => (
+              <optgroup key={d.key} label={d.label}>
+                <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
+                {d.subs.map((s) => (
+                  <option key={s.key} value={`${s.key}_pctile`}>
+                    &nbsp;&nbsp;{s.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+            <optgroup label="Outcomes (not in the score)">
+              {OUTCOME_METRICS.map((o) => (
+                <option key={o.key} value={`${o.key}_pctile`}>
+                  {o.label}
                 </option>
               ))}
             </optgroup>
-          ))}
-          <optgroup label="Outcomes (not in the score)">
-            {OUTCOME_METRICS.map((o) => (
-              <option key={o.key} value={`${o.key}_pctile`}>
-                {o.label}
-              </option>
-            ))}
-          </optgroup>
-        </select>
+          </select>
+          <Caret
+            open
+            size={12}
+            className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-graphite"
+          />
+        </div>
       </div>
 
       {metric === ACCESS_RESID_METRIC && (
@@ -112,15 +120,15 @@ export default function Legend() {
       <button
         onClick={toggleWeights}
         aria-expanded={showWeights}
-        className="mt-2 pt-1.5 w-full flex items-center justify-between border-t border-hairline text-[11px] text-accent hover:text-accent-soft"
+        className="mt-2 pt-2 w-full flex items-center justify-between border-t border-hairline text-[12px] font-medium text-accent hover:text-accent-soft"
       >
         <span>
           <span aria-hidden>⚖ </span>Adjust weighting
-          <span className="num text-graphite">
+          <span className="num text-graphite font-normal">
             {' · '}{weights.health_need}/{weights.social_vulnerability}/{weights.care_access}
           </span>
         </span>
-        <span className="text-graphite">{showWeights ? '▾' : '▸'}</span>
+        <Caret open={showWeights} size={15} className="text-accent" />
       </button>
     </div>
   );

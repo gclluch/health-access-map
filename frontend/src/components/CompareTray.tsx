@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { accessGap, buildScoreIndex, percentileOf } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
 import { apiCompare, type ApiZcta } from '../lib/api';
-import { fmtInt, fmtMoney, ordinal } from '../lib/format';
+import { fmtInt, fmtMoney, ordinal, severity } from '../lib/format';
 
 const DIM_ROWS: Array<[string, 'health_need_pctile' | 'social_vulnerability_pctile' | 'care_access_pctile']> = [
   ['Health need', 'health_need_pctile'],
@@ -109,7 +109,7 @@ export default function CompareTray() {
                   </button>
                   <div className="flex items-center justify-end gap-1">
                     <span className="num text-[10px] text-graphite">{z}</span>
-                    <button onClick={() => removeCompare(z)} aria-label={`Remove ${z}`} className="text-[10px] text-graphite hover:text-rose-500">
+                    <button onClick={() => removeCompare(z)} aria-label={`Remove ${z}`} className="grid place-items-center w-6 h-6 -my-1 text-[11px] text-graphite hover:text-rose-600">
                       ✕
                     </button>
                   </div>
@@ -120,9 +120,14 @@ export default function CompareTray() {
           <tbody className="text-ink">
             <tr className="border-b border-hairline/60 bg-paper/40">
               <td className="px-2 py-1 text-[11px] text-graphite">National access-gap rank</td>
-              {cols.map(({ z, pct }) => (
-                <td key={z} className={cell + ' font-semibold'}>{pct != null ? ordinal(pct) : '--'}</td>
-              ))}
+              {cols.map(({ z, pct }) => {
+                const sev = severity(pct);
+                return (
+                  <td key={z} className={cell + ' font-semibold'} style={{ color: sev ? sev.color : undefined }}>
+                    {pct != null ? ordinal(pct) : '--'}
+                  </td>
+                );
+              })}
             </tr>
             <tr className="border-b border-hairline/60">
               <td className="px-2 py-1 text-[11px] text-graphite">Tier (1-10)</td>
@@ -153,6 +158,9 @@ export default function CompareTray() {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite leading-snug">
+        Rank, tier and the three dimensions are national percentiles - higher = worse access.
       </div>
     </div>
   );

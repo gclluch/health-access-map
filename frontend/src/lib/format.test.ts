@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtScore, ordinal, fmtRatePct, fmtInt, fmtMoney } from './format';
+import { fmtScore, ordinal, fmtRatePct, fmtInt, fmtMoney, severity } from './format';
 
 describe('fmtScore', () => {
   it('rounds to a whole number and dashes on null/NaN', () => {
@@ -21,6 +21,19 @@ describe('ordinal', () => {
     expect(ordinal(21)).toBe('21st');
     expect(ordinal(112)).toBe('112th');
     expect(ordinal(null)).toBe('--');
+  });
+});
+
+describe('severity', () => {
+  it('maps the access-gap percentile to a band (higher = worse), null on no data', () => {
+    expect(severity(95)?.label).toBe('Severe gap');
+    expect(severity(80)?.label).toBe('Severe gap');
+    expect(severity(70)?.label).toBe('High gap');
+    expect(severity(50)?.label).toBe('Moderate gap');
+    expect(severity(25)?.label).toBe('Below average');
+    expect(severity(5)?.label).toBe('Low gap');
+    expect(severity(null)).toBeNull();
+    expect(severity(NaN)).toBeNull();
   });
 });
 
