@@ -77,6 +77,21 @@ CA_DEATHS_URL = ("https://data.chhs.ca.gov/dataset/590aeff1-b022-4240-9a46-3fe90
                  "20260319_deaths_final_2019-2024_zip_year_sup.csv")
 CA_DEATHS_CACHE = config.PROCESSED / "ca_deaths_2019_2024.csv"
 CA_ACSC_CAUSES = ("DIA", "HTD", "CLD", "STK")
+# Texas DSHS THCIC Inpatient PUDF: per-discharge hospital records with the patient's 5-digit ZIP +
+# principal ICD-10 diagnosis - free, no DUA, the TAB-DELIMITED variant (headers, no fixed-length
+# layout needed). 5th sub-county state, the largest population, and a TRUE ACSC outcome (preventable
+# hospitalizations) at patient ZIP, so no crosswalk. We flag a discharge ACSC if its principal
+# diagnosis is in the AHRQ-PQI-style ambulatory-care-sensitive set (Billings simplified, ICD-10-CM
+# prefixes). Pooled over the 4 quarters of 2019; aggregated ZIP counts cached (raw files are ~700MB).
+TX_PUDF_URL = ("https://dshs-wcms-internet.s3.dualstack.us-gov-west-1.amazonaws.com/THCIC/"
+               "InpatientFreePUDF/PUDF{q}Q2019_tab-delimited.zip")
+TX_ACSC_CACHE = config.PROCESSED / "tx_acsc_zip_2019.parquet"
+# ACSC / Prevention Quality Indicator principal-diagnosis ICD-10-CM prefixes: diabetes (E10-E13),
+# dehydration (E86), bacterial pneumonia (J13-J18), COPD/asthma (J40-J47), hypertension (I10-I11),
+# angina (I20), heart failure (I50), urinary (N10-N12, N30, N39.0).
+TX_ACSC_PREFIXES = ("E10", "E11", "E12", "E13", "E86", "J13", "J14", "J15", "J16", "J18",
+                    "J40", "J41", "J42", "J43", "J44", "J45", "J47", "I10", "I11", "I20",
+                    "I50", "N10", "N11", "N12", "N30", "N390")
 POOL_YEARS = ("2019", "2020", "2021", "2022", "2023")  # 5-yr pool for small-ZIP stability
 MIN_POP = 1000          # drop ZCTAs below the index's own low-confidence floor
 MIN_YEARS = 4           # require a near-full pool so a single noisy year can't dominate
@@ -433,6 +448,81 @@ def run_california() -> dict:
     return rep
 
 
+def _fetch_tx_acsc() -> pd.DataFrame:
+    """Pooled 2019 TX ACSC inpatient counts by patient ZIP (zcta5, acsc, n_total). Downloads each
+    quarter's tab-delimited zip, streams the base1 member, flags ACSC by principal diagnosis, and
+    caches the small ZIP-level aggregate (the four raw zips are ~700MB and are deleted after)."""
+    import csv
+    import tempfile
+    import zipfile
+    from collections import Counter
+    if TX_ACSC_CACHE.exists():
+        return pd.read_parquet(TX_ACSC_CACHE)
+    acsc: Counter = Counter()
+    tot: Counter = Counter()
+    for q in (1, 2, 3, 4):
+        log("subcounty", f"TX PUDF {q}Q2019: downloading + parsing (one-time)...")
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as tmp:
+            subprocess.run(["curl", "-sL", "--max-time", "600", TX_PUDF_URL.format(q=q),
+                            "-o", tmp.name], check=True)
+            member = f"PUDF_base1_{q}q2019_tab.txt"
+            with zipfile.ZipFile(tmp.name) as z, z.open(member) as fh:
+                rdr = csv.reader(io.TextIOWrapper(fh, encoding="latin-1"), delimiter="\t")
+                header = next(rdr)
+                zi, di = header.index("PAT_ZIP"), header.index("PRINC_DIAG_CODE")
+                for row in rdr:
+                    if len(row) <= max(zi, di):
+                        continue
+                    z5 = row[zi]
+                    if len(z5) != 5 or not z5.isdigit():  # drop masked (<30 discharge) ZIPs
+                        continue
+                    tot[z5] += 1
+                    if row[di].upper().startswith(TX_ACSC_PREFIXES):
+                        acsc[z5] += 1
+    g = pd.DataFrame({"zcta5": list(tot), "acsc": [acsc[z] for z in tot],
+                      "n_total": [tot[z] for z in tot]})
+    g.to_parquet(TX_ACSC_CACHE, index=False)
+    return g
+
+
+def run_texas() -> dict:
+    """5th-state sub-county validation: the index vs TX ACSC inpatient rate (per 1k residents,
+    pooled 2019), patient-ZIP - a TRUE preventable-hospitalization outcome, no crosswalk, in the
+    largest state. Reports pooled + WITHIN-county r."""
+    if not METRICS.exists():
+        raise SystemExit(f"missing {METRICS}; run the pipeline first")
+    tx = _fetch_tx_acsc()
+    m = pd.read_parquet(METRICS)
+    m = m[m["scoreable"] == True].copy()  # noqa: E712
+    m["zcta5"] = m["zcta5"].astype(str)
+    j = tx.merge(m, on="zcta5", how="inner")
+    j["pop"] = pd.to_numeric(j["population"], errors="coerce")
+    j = j[(j["pop"] >= MIN_POP) & (j["acsc"] > 0)].copy()
+    j["rate"] = j["acsc"] / j["pop"] * 1000.0   # ACSC inpatient per 1k residents
+    vc = j["county_fips"].value_counts()
+    j = j[j["county_fips"].isin(vc[vc >= 3].index)].copy()
+    log("subcounty", f"TX: {len(j)} ZCTAs / {j['county_fips'].nunique()} counties")
+
+    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
+    cols = [c for c in cols if c in j.columns]
+    yw = _within(j, "rate")
+    rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
+           "outcome": "TX DSHS ACSC inpatient rate per 1k (patient ZIP, pooled 2019)",
+           "pooled": {}, "within_county": {}}
+    print("\n=== SUB-COUNTY validation vs TEXAS ACSC inpatient (5th state, patient-ZIP, no crosswalk) ===")
+    print(f"  {len(j)} ZCTAs / {j['county_fips'].nunique()} multi-ZCTA counties\n")
+    print(f"  {'column':32s} {'pooled':>9s} {'WITHIN-county':>14s}")
+    for c in cols:
+        po = _corr(j[c].to_numpy(), j["rate"].to_numpy())
+        wo = _corr(_within(j, c), yw)
+        rep["pooled"][c] = round(po, 3)
+        rep["within_county"][c] = round(wo, 3)
+        print(f"  {c:32s} {po:+9.3f} {wo:+14.3f}")
+    print("\n  A TRUE ACSC (preventable-hospitalization) outcome at patient ZIP - the textbook access "
+          "construct,\n  largest state, no crosswalk. WITHIN-county positive => sub-county resolution confirmed.")
+    return rep
+
+
 def run_all() -> dict:
     """Consolidated sub-county scorecard: run every available independent check and print one table
     of the composite + care_access WITHIN-county correlation per source. The headline evidence that
@@ -449,6 +539,7 @@ def run_all() -> dict:
     for label, fn in (("NY SPARCS PQI (ACSC, O/E)", run),
                       ("CO CDPHE diabetes ACSC", run_colorado),
                       ("CA ACSC mortality (age-adj)", run_california),
+                      ("TX DSHS ACSC inpatient", run_texas),
                       ("US CDC overdose (national)", run_overdose_national),
                       ("US USALEEP life exp (national)", run_national)):
         try:
@@ -474,7 +565,7 @@ def run_all() -> dict:
               f"{(c if c is not None else float('nan')):+10.3f} "
               f"{(ca if ca is not None else float('nan')):+9.3f}")
     print("\n  Every row is an INDEPENDENT outcome (none in the inputs). Positive within-county r "
-          "across\n  4 states + 2 national rulers = the index discriminates sub-county, not just "
+          "across\n  5 states + 2 national rulers = the index discriminates sub-county, not just "
           "between counties.")
     return {"sources": sources}
 
@@ -524,6 +615,7 @@ if __name__ == "__main__":
     ap.add_argument("--colorado", action="store_true", help="run the CO tract-ACSC 2nd-state check")
     ap.add_argument("--overdose", action="store_true", help="run the NATIONAL CDC tract-overdose check")
     ap.add_argument("--california", action="store_true", help="run the CA ACSC-mortality 4th-state check")
+    ap.add_argument("--texas", action="store_true", help="run the TX patient-ZIP ACSC 5th-state check")
     ap.add_argument("--ny", action="store_true", help="run the NY SPARCS PQI check (default if no flags)")
     ap.add_argument("--all", action="store_true", help="consolidated scorecard across every source")
     a = ap.parse_args()
@@ -531,12 +623,14 @@ if __name__ == "__main__":
         run_all()
         raise SystemExit(0)
     # default to NY if nothing specified (preserves prior behavior)
-    if not (a.colorado or a.national or a.overdose or a.california) or a.ny:
+    if not (a.colorado or a.national or a.overdose or a.california or a.texas) or a.ny:
         run(a.extra_csv)
     if a.colorado:
         run_colorado()
     if a.california:
         run_california()
+    if a.texas:
+        run_texas()
     if a.overdose:
         run_overdose_national()
     if a.national:

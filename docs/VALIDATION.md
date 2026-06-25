@@ -372,22 +372,24 @@ A methodologist's review raised five specific weaknesses. Each was implemented a
 honest results are below. Two strengthen the project, two are real-but-bounded, one is the
 known structural ceiling.
 
-### 6a. Sub-county validation across four states + two national rulers (`validate_subcounty --all`)
+### 6a. Sub-county validation across five states + two national rulers (`validate_subcounty --all`)
 
 **The scorecard** - composite + care_access WITHIN-county correlation, each against an INDEPENDENT
 outcome (none in the inputs):
 
 | Source | ZCTAs | counties | composite within-r | care_access within-r |
 |---|---|---|---|---|
-| NY SPARCS PQI (ACSC, O/E) | 1,265 | 61 | **+0.504** | +0.302 |
-| CO CDPHE diabetes ACSC | 293 | 45 | **+0.568** | +0.440 |
-| CA ACSC mortality (age-adj) | 1,170 | 46 | **+0.440** | +0.324 |
-| US CDC overdose (national) | 21,376 | 2,210 | **+0.224** | +0.156 |
+| NY SPARCS PQI (ACSC hospitalizations, O/E) | 1,265 | 61 | **+0.504** | +0.302 |
+| CO CDPHE diabetes ACSC (tract) | 293 | 45 | **+0.568** | +0.440 |
+| CA ACSC mortality (age-adjusted) | 1,170 | 46 | **+0.440** | +0.324 |
+| TX DSHS ACSC inpatient (patient ZIP) | 1,335 | 146 | **+0.264** | +0.157 |
+| US CDC overdose mortality (national) | 21,376 | 2,210 | **+0.224** | +0.156 |
 | US USALEEP life expectancy (national) | 21,244 | 2,208 | **+0.608** | +0.409 |
 
-Positive within-county composite **and** care_access in **every** independent ruler, across four
+Positive within-county composite **and** care_access in **every** independent ruler, across five
 states and two national outcomes - the index discriminates *sub-county*, not just between counties.
-Detail by source below.
+Three of the five state rulers are true ACSC/preventable-hospitalization outcomes (NY, CO, TX - the
+textbook access construct); TX is patient-ZIP so it needs no crosswalk at all. Detail by source below.
 
 The central critique: nearly all validation is county-resolution, so the index's *within-county*
 discrimination - its reason to exist over CHR/SVI - rested on one state (NY ACSC, §3). It now has a
@@ -449,12 +451,28 @@ CA ZCTAs / 46 counties:
 | `insurance` | -0.025 | +0.352 |
 | `shortage_designation` / `medical_debt` | ~0 | **~0** (county-constant, a 4th time) |
 
-So the sub-county claim now holds in **four states / sources** - NY + CO + CA on ACSC(-mortality)
-and nationally on overdose - and the structural negatives (`medical_debt`/`shortage` county-constant,
-`safetynet` wrong-signed) replicate in every one. The data hunt also leaves a verified recipe for
-the remaining expansion: **TX DSHS PUDF** (true 5-digit patient-ZIP discharge microdata) - blocked
-only by a fixed-length layout doc, not a key. HCUP SID (national ACSC) stays the paid gold standard.
-See [BACKLOG.md](BACKLOG.md) B1.
+**And a 5th state - Texas, the cleanest expansion of all** (`validate_subcounty --texas`). The TX
+DSHS THCIC Inpatient PUDF gives per-discharge records with the **patient's 5-digit ZIP + principal
+ICD-10 diagnosis** - so a TRUE ACSC (preventable-hospitalization) outcome at patient ZIP, needing
+**no crosswalk**, in the largest state. (It was thought to need a fixed-length layout doc; in fact
+the PUDF is also published **tab-delimited with headers**, so it is fully headless.) We flag a
+discharge ACSC if its principal diagnosis is in the AHRQ-PQI-style set (diabetes, COPD/asthma,
+pneumonia, CHF, hypertension, UTI, dehydration, angina), pool the 4 quarters of 2019, and rate by
+ZCTA population. 1,335 TX ZCTAs / 146 counties:
+
+| Column | pooled r | **WITHIN-county r** |
+|---|---|---|
+| `access_gap_score` | +0.311 | **+0.264** |
+| `chronic_disease` | +0.354 | +0.281 |
+| `care_access` | +0.140 | +0.157 |
+| `insurance` | +0.217 | +0.162 |
+| `shortage_designation` / `medical_debt` | +0.20/-0.11 | **~0** (county-constant, a 5th time) |
+
+So the sub-county claim holds in **five states** - NY + CO + TX on true ACSC hospitalizations, CA on
+age-adjusted ACSC mortality, plus national overdose - and the structural negatives
+(`medical_debt`/`shortage` county-constant, `safetynet` wrong-signed) replicate in **every one**.
+HCUP SID (a single national ACSC panel) stays the paid gold standard, but the free state-by-state
+panel now spans the four largest states by population. See [BACKLOG.md](BACKLOG.md) B1.
 
 ### 6b. Spatially-honest CIs - the claim survives state blocking (`bootstrap_gate.spatial_sensitivity`)
 
@@ -537,9 +555,9 @@ tracks independent death records nearly as well with PLACES removed. B4 is there
 disclosed limitation, not a hidden dependency. (The PLACES anchor r=0.865 is reported elsewhere only
 to *contrast* with these independent rulers, never as validation.)
 
-**Net:** the sub-county claim now holds in **three states** on ACSC(-mortality) - NY, CO, CA -
-**and nationally on overdose mortality** (21k ZCTAs, within-county +0.224); the headline survives
-spatially-honest CIs; the
+**Net:** the sub-county claim now holds in **five states** - NY, CO, TX on true ACSC hospitalizations,
+CA on age-adjusted ACSC mortality - **and nationally on overdose mortality** (21k ZCTAs, within-county
++0.224); the headline survives spatially-honest CIs; the
 weights survive cross-validation; the one genuine selection effect (2-of-3 scores) is quantified and
 already flagged. The residual ceiling is narrower than before: no *national ACSC* sub-county panel is
 free (HCUP SID is paid), so the strongest access-specific sub-county evidence is state-by-state (NY,
@@ -555,7 +573,9 @@ by mis-assigning sparsely-populated rural tracts. The findings are not just robu
 choice; they were understated by the cruder one. (Falls back to area weighting when no HUD token is
 present; `validate_subcounty._load_hud_xwalk`.)
 
-**Still logged, not done.** A **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single expansion)
-needs the fixed-length record layout doc and the S3 listing is disabled - a file gap, not a key gap;
-a real recipe for later. (California was initially shelved as age-confounded, then *recovered* once
-age was properly controlled - see the 4th-state result in §6a.)
+**Only the paid national panel remains.** Every free expansion identified has now been integrated -
+NY, CO, CA, TX as states and CDC overdose + USALEEP nationally. Texas turned out to need no layout
+doc (the PUDF is published tab-delimited). The one thing still out of reach is **HCUP SID**, a
+single *national* ACSC panel - paid + DUA, not headless. The free state-by-state panel (now the four
+largest states) is the substitute. (California was initially shelved as age-confounded, then
+*recovered* once age was properly controlled - see §6a.)
