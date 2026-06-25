@@ -109,7 +109,7 @@ export default function CompareTray() {
                   </button>
                   <div className="flex items-center justify-end gap-1">
                     <span className="num text-[10px] text-graphite">{z}</span>
-                    <button onClick={() => removeCompare(z)} aria-label={`Remove ${z}`} className="text-[10px] text-graphite hover:text-rose-500">
+                    <button onClick={() => removeCompare(z)} aria-label={`Remove ${z}`} className="grid place-items-center w-6 h-6 -my-1 text-[11px] text-graphite hover:text-rose-600">
                       ✕
                     </button>
                   </div>
@@ -159,7 +159,7 @@ export default function CompareTray() {
           </tbody>
         </table>
       </div>
-      <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite/80 leading-snug">
+      <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite leading-snug">
         Rank, tier and the three dimensions are national percentiles - higher = worse access.
       </div>
     </div>

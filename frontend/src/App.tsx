@@ -10,6 +10,7 @@ import WeightSliders from './components/WeightSliders';
 import MethodologyPanel from './components/MethodologyPanel';
 import TopControls from './components/TopControls';
 import CompareTray from './components/CompareTray';
+import Caret from './components/Caret';
 
 function Loading() {
   return (
@@ -137,7 +138,7 @@ function AppInner() {
               className="px-3 py-2 flex items-center justify-between text-[12px] font-medium text-ink border-b border-hairline"
             >
               Rankings
-              <span className="text-graphite text-[11px]">{railOpen ? '▾' : '▸'}</span>
+              <Caret open={railOpen} size={14} className="text-graphite" />
             </button>
             {railOpen && (
               <div className="flex-1 min-h-0 overflow-hidden">

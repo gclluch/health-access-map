@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
 import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
+import Caret from './Caret';
 
 // access_gap spreads 0-100; the raw-percentile metrics cluster near 100/0 at the
 // ends, so show one decimal there to keep the ordering legible.
@@ -77,33 +78,40 @@ export default function RankingsList() {
       <div className="px-3 py-2 border-b border-hairline">
         {/* metric + direction controls */}
         <div className="flex items-center gap-1.5 mb-1">
-          <select
-            aria-label="Rank by metric"
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-            className="flex-1 min-w-0 text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded"
-          >
-            <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
-            <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
-            <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
-            {MODEL.map((d) => (
-              <optgroup key={d.key} label={d.label}>
-                <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
-                {d.subs.map((s) => (
-                  <option key={s.key} value={`${s.key}_pctile`}>
-                    &nbsp;&nbsp;{s.label}
+          <div className="relative flex-1 min-w-0">
+            <select
+              aria-label="Rank by metric"
+              value={metric}
+              onChange={(e) => setMetric(e.target.value)}
+              className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5"
+            >
+              <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
+              <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
+              <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
+              {MODEL.map((d) => (
+                <optgroup key={d.key} label={d.label}>
+                  <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
+                  {d.subs.map((s) => (
+                    <option key={s.key} value={`${s.key}_pctile`}>
+                      &nbsp;&nbsp;{s.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <optgroup label="Outcomes (not in the score)">
+                {OUTCOME_METRICS.map((o) => (
+                  <option key={o.key} value={`${o.key}_pctile`}>
+                    {o.label}
                   </option>
                 ))}
               </optgroup>
-            ))}
-            <optgroup label="Outcomes (not in the score)">
-              {OUTCOME_METRICS.map((o) => (
-                <option key={o.key} value={`${o.key}_pctile`}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            </select>
+            <Caret
+              open
+              size={12}
+              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-graphite"
+            />
+          </div>
           <div className="flex rounded border border-hairline overflow-hidden shrink-0" role="group" aria-label="Sort direction">
             <button
               onClick={() => setRankOrder('desc')}

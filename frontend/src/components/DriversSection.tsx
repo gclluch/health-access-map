@@ -57,7 +57,7 @@ export default function DriversSection({
     <div className="mt-3 pt-2.5 border-t border-hairline">
       <div className="flex items-baseline justify-between mb-1.5">
         <span className="text-[11px] uppercase tracking-wide text-graphite">What drives the gap</span>
-        <span className="text-[10px] text-graphite/70">share of the score · hover for detail</span>
+        <span className="text-[10px] text-graphite">share of the score · hover for detail</span>
       </div>
 
       {/* attribution: 100%-stacked driver-share bar */}
@@ -83,7 +83,7 @@ export default function DriversSection({
             style={{ width: `${r.share}%` }}
           >
             {r.share >= 13 && (
-              <span className="num text-[9px] text-paper font-medium leading-none">{Math.round(r.share)}%</span>
+              <span className="num text-[10px] text-paper font-medium leading-none">{Math.round(r.share)}%</span>
             )}
           </button>
         ))}

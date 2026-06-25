@@ -8,6 +8,7 @@ import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal, severity } from '../lib/format';
 import Tip from './Tip';
+import Caret from './Caret';
 
 // A percentile bar (0-100). Higher = worse (more gap), so more fill = worse.
 function PctBar({ pct }: { pct: number | null | undefined }) {
@@ -28,7 +29,7 @@ function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown
   const anyPct = measures.some((mm) => typeof rec[`${mm.col}_natpct`] === 'number');
   return (
     <div className="px-3 py-1.5 bg-paper/60">
-      <div className="flex justify-between text-[9px] uppercase tracking-wide text-graphite/55 pb-1 border-b border-hairline/60 mb-0.5">
+      <div className="flex justify-between text-[10px] uppercase tracking-wide text-graphite pb-1 border-b border-hairline/60 mb-0.5">
         <span>Measure</span>
         <span>{anyPct ? 'value · natl %ile' : 'value'}</span>
       </div>
@@ -48,12 +49,12 @@ function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown
           >
             <span className="text-graphite truncate pr-2 flex-1">
               {mm.label}
-              {mm.desc ? <span className="text-graphite/60"> ⓘ</span> : null}
+              {mm.desc ? <span className="text-graphite"> ⓘ</span> : null}
             </span>
             <span className="flex items-baseline gap-1.5 shrink-0">
               <span className="num text-ink">{fmtMeasure(rec[mm.col], mm.unit)}</span>
               {hasPct ? (
-                <span className="num text-[10px] text-graphite/80 tabular-nums w-9 text-right">
+                <span className="num text-[10px] text-graphite tabular-nums w-9 text-right">
                   {ordinal(Math.round(natpct as number))}
                 </span>
               ) : null}
@@ -86,7 +87,7 @@ function SubScoreRow({
         className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-paper"
         aria-expanded={open}
       >
-        <span className="text-graphite text-[9px] w-2">{open ? '▾' : '▸'}</span>
+        <Caret open={open} size={12} className="text-graphite" />
         <Tip
           className="flex-1 min-w-0 cursor-help"
           tip={
@@ -96,7 +97,7 @@ function SubScoreRow({
         >
           <span className="block text-[12px] text-ink truncate">
             {label}
-            {!scored && <span className="ml-1 text-[9px] text-graphite font-normal">· not scored</span>}
+            {!scored && <span className="ml-1 text-[10px] text-graphite font-normal">· not scored</span>}
           </span>
         </Tip>
         <span className="num text-[10px] text-graphite w-14 text-right">
@@ -129,7 +130,7 @@ function Dimension({
         className="w-full flex items-center gap-2 px-3 py-2 text-left bg-surface hover:bg-paper"
         aria-expanded={open}
       >
-        <span className="text-graphite text-[10px] w-2">{open ? '▾' : '▸'}</span>
+        <Caret open={open} size={13} className="text-graphite" />
         <span className="flex-1 text-[12px] font-medium text-ink">{dim.label}</span>
         <span className="num text-[13px] font-semibold text-ink w-7 text-right">
           {fmtScore(dimPct)}
@@ -232,11 +233,11 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-graphite/60"
+        className="w-full flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-graphite"
       >
-        <span className="text-graphite/50 text-[9px] w-2">{open ? '▾' : '▸'}</span>
+        <Caret open={open} size={12} className="text-graphite" />
         <span>Who lives here</span>
-        <span className="text-graphite/45 normal-case">· context · only income (†) feeds the score</span>
+        <span className="text-graphite normal-case">· context · only income (†) feeds the score</span>
       </button>
       {open && (
         <>
@@ -250,8 +251,8 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
             >
               <span className="text-graphite">
                 {c.label}
-                {c.scored ? <span className="text-graphite/70"> †</span> : null}
-                <span className="text-graphite/60"> ⓘ</span>
+                {c.scored ? <span className="text-graphite"> †</span> : null}
+                <span className="text-graphite"> ⓘ</span>
               </span>
               <span className="num text-ink">{c.value}</span>
             </Tip>
@@ -266,10 +267,10 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
       {race.length > 0 && (
         <div className="mt-2 pt-2 border-t border-hairline/60">
           <Tip
-            className="text-[9px] uppercase tracking-wide text-graphite/55 mb-1 cursor-help inline-block"
+            className="text-[10px] uppercase tracking-wide text-graphite mb-1 cursor-help inline-block"
             tip='Race & ethnicity. Non-Hispanic single-race for White/Black/Asian; Hispanic is any race; "Other" combines American Indian/Alaska Native, Native Hawaiian/Pacific Islander, some-other-race and two-or-more. Census ACS 5-year (B03002). Context only - not scored.'
           >
-            Race &amp; ethnicity<span className="text-graphite/60"> ⓘ</span>
+            Race &amp; ethnicity<span className="text-graphite"> ⓘ</span>
           </Tip>
           <div className="space-y-0.5">
             {race.map((r) => (
@@ -381,7 +382,7 @@ export default function DetailPanel() {
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <div
-              className="font-serif text-[19px] text-ink leading-tight truncate"
+              className="font-serif text-[20px] text-ink leading-tight truncate"
               title={m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
             >
               {m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
@@ -408,7 +409,7 @@ export default function DetailPanel() {
             <button
               onClick={() => select(null)}
               aria-label="Close panel"
-              className="text-graphite hover:text-ink text-[16px] leading-none px-1"
+              className="grid place-items-center w-6 h-6 text-graphite hover:text-ink text-[16px] leading-none"
             >
               ✕
             </button>
@@ -492,7 +493,7 @@ export default function DetailPanel() {
         {/* drill-down: dimensions -> sub-scores -> measures */}
         <div className="mt-3 pt-2.5 border-t border-hairline">
           <div className="text-[11px] uppercase tracking-wide text-graphite">
-            Explore the layers <span className="text-graphite/70">(tap to drill in)</span>
+            Explore the layers <span className="text-graphite">(tap to drill in)</span>
           </div>
           {MODEL.map((dim) => (
             <Dimension key={dim.key} dim={dim} m={m} rec={rec} />
@@ -539,7 +540,7 @@ export default function DetailPanel() {
               </div>
             )}
             {typeof rec.medicaid_rate === 'number' && (
-              <div className="mt-1 text-graphite/80">
+              <div className="mt-1 text-graphite">
                 Medicaid share (shown above) is <i>acceptability</i> context - the population that
                 can face provider Medicaid-acceptance barriers. It is not scored (as a barrier it
                 tracks poverty, already counted).
@@ -556,11 +557,11 @@ export default function DetailPanel() {
             {m.life_expectancy_pctile != null
               ? ` (lower than ${fmtScore(m.life_expectancy_pctile)}% of U.S. ZIPs)`
               : ''}
-            <span className="text-graphite/80"> · CDC USALEEP, independent of the score</span>
+            <span className="text-graphite"> · CDC USALEEP, independent of the score</span>
           </div>
         )}
 
-        <div className="mt-3 text-[11px] text-graphite/80 leading-snug">
+        <div className="mt-3 text-[11px] text-graphite leading-snug">
           Disease/behavior values are modeled CDC PLACES estimates (BRFSS), not counts. Provider
           access is a 2SFCA catchment metric over registered providers.
         </div>
