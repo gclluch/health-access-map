@@ -187,6 +187,29 @@ log; consider committing it as `pipeline/audit.py`.)
 - **External.** CDC PLACES methodology (cdc.gov/places). Mitigation would mean a non-modeled disease
   source (e.g. claims-based prevalence) - none free at ZCTA. Document as inherent, not fixable here.
 
+### B5 (causal/actionability) - is the index a lever or just a poverty map?
+- **Status (2026-06-25): two of three strategies DONE** (`pipeline.validate_placebo`,
+  `pipeline.validate_temporal`; [VALIDATION.md](VALIDATION.md) §7). The negative-control test is a
+  clean cross-sectional **null** (index predicts preventable = non-preventable deaths); the NY 2014
+  event study is **suggestive** (ACSC fell more in high-baseline-uninsured ZIPs post-expansion, DiD
+  -36.5/100k·SD, CI excludes 0, survives dropping 2009) but parallel-trends is imperfect, so not proof.
+- **B5a (P2) - cross-state DiD with a non-expansion control.** The NY-only event study has no
+  never-treated comparison and NY's pre-ACA waiver muted its shock. A non-expansion state's ZIP ACSC
+  panel (TX DSHS PUDF is free but ~700MB/year-quarter; only 2019 is cached) would give a proper
+  treated-vs-control DiD. **Where:** extend `validate_temporal._fetch_ny_panel` to a multi-state
+  panel; reuse the TX PUDF fetcher in `validate_subcounty._fetch_tx_acsc` across years. KFF publishes
+  expansion dates (free). Cost is the multi-year TX downloads, not the method.
+- **B5b (P3) - provider-entry within-ZIP panel.** NPPES is monthly; a within-ZIP fixed-effects panel
+  of `provider_supply` vs subsequent ACSC would test the supply lever the same way §7b tests the
+  affordability lever. **Where:** historical NPPES monthly archives (~1 GB each, the heavy part);
+  `pipeline/build_providers.py` for the taxonomy classification to reuse.
+- **B5c (P3) - MAUP re-zoning robustness.** Classic "ZCTAs are arbitrary areal units" attack. A true
+  re-zoning needs the index rebuilt at tract level, but `care_access` (NPPES E2SFCA) has no
+  tract-native form, so only need+vulnerability (PLACES/ACS, both publish at tract) can be re-derived
+  and crosswalked back - a *partial* MAUP check. **Where:** `pipeline/build_places.py`,
+  `pipeline/build_acs.py` (tract geographies), the existing `zcta_tract_xwalk.parquet`. Honestly
+  scope it as partial up front, or it over-promises.
+
 ---
 
 ## C. Coverage / construct gaps (the 5 A's)
