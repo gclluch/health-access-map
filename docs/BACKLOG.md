@@ -125,14 +125,15 @@ log; consider committing it as `pipeline/audit.py`.)
   specifically*). Integrated: **Colorado CDPHE tract diabetes ACSC** as a second sub-county
   validation state (`validate_subcounty --colorado`) - composite within-county r **+0.507**,
   care_access **+0.417**, generalizing the NY finding to independent geography + an independent
-  outcome (VALIDATION §6a). Also integrated **CDC `4day-mt2f`** (NATIONAL census-tract overdose
-  mortality, `validate_subcounty --overdose`): 21,366 ZCTAs / 2,210 counties, composite within-county
-  r **+0.202** ≈ pooled +0.201 - the first *national* sub-county validation (modest, as overdose is a
-  construct-specific ruler). Further verified-live sources for expansion: **TX DSHS PUDF** (true
-  5-digit patient-ZIP discharge microdata, free 2006-2019), **CA ZIP Death Profiles** (ZIP cause-
-  specific deaths), **AZ Community Profiles** (sub-county PQI). Residual ceiling: no *national ACSC*
-  sub-county panel is free (HCUP SID is paid), so access-specific sub-county evidence is state-by-
-  state while the national check rides on overdose mortality.
+  outcome (VALIDATION §6a). **FIVE independent sub-county rulers now integrated** (`--all` scorecard):
+  NY SPARCS PQI (+0.504), CO CDPHE ACSC (+0.568, pop-weighted via HUD res_ratio), CA ACSC mortality
+  age-adjusted (+0.440), **TX DSHS patient-ZIP ACSC inpatient (+0.264)**, CDC national overdose
+  (+0.224), + USALEEP LE national (+0.608) - composite within-county r. care_access positive in all;
+  `medical_debt`/`shortage` county-constant in all. Texas needed no layout doc (the PUDF is published
+  **tab-delimited**) - true preventable-hospitalization at patient ZIP, no crosswalk, largest state.
+  **Residual ceiling: only HCUP SID** (a single *national* ACSC panel) is paid/DUA; the free
+  state-by-state panel now spans the four largest states. Census/HUD keys at ~/.census_api_key,
+  ~/.hud_token (read via env or file; never committed).
 
 ### B2 (P2) - Thin sub-score margins not individually replicated out-of-outcome
 - **Problem.** Only the *dimension-level* care-access claim got the clean out-of-outcome replication
