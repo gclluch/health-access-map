@@ -19,6 +19,7 @@ export function makeMetric(over: Partial<SlimMetric> = {}): SlimMetric {
     care_access_resid_pctile: null,
     tier: null,
     low_confidence: false,
+    institutional: false,
     scoreable: true,
     n_dims_scored: 3,
     health_need_pctile: 50,

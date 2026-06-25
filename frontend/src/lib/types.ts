@@ -17,6 +17,7 @@ export interface SlimMetric {
   care_access_resid_pctile: number | null; // barriers to care net of deprivation (orthogonalized lens)
   tier: number | null;                // decile 1-10 (the resolution the data supports)
   low_confidence: boolean;
+  institutional: boolean;             // providers > residents (hospital campus etc.); held out of rankings
   scoreable: boolean;
   n_dims_scored: number | null;       // 2 or 3 dimensions backed the composite (2 = weaker estimate)
   // dimensions

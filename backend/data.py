@@ -85,6 +85,10 @@ def rankings(metric: str, state: str | None, limit: int, order: str,
         sub = sub[sub["state"] == state.upper()]
     if not include_low_confidence and "low_confidence" in sub.columns:
         sub = sub[~sub["low_confidence"]]
+    # institutional (providers > residents - a hospital campus, not a community) is always held out
+    # of headline rankings; its raw supply reflects a workplace, not the people who live there.
+    if "institutional" in sub.columns:
+        sub = sub[~sub["institutional"].fillna(False)]
     sub = sub.sort_values(metric, ascending=(order == "asc")).head(limit)
     keep = ["zcta5", "state", "city", "county_name", metric, "access_gap_score",
             "health_need_pctile", "social_vulnerability_pctile", "care_access_pctile",

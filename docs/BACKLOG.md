@@ -44,6 +44,13 @@ log; consider committing it as `pipeline/audit.py`.)
   transparency; only change the *display*.
 - **Acceptance.** No detail panel shows a per-capita rate implying >~100 providers/resident without a
   visible caveat; UTMB/Anschutz render sanely.
+- **Status (2026-06-24): RESOLVED (was largely a non-issue in the UI).** Audit of the render path
+  found the DetailPanel shows the *bounded* `primary_2sfca` (E2SFCA reachable value), never the raw
+  `primary_per_1k` - so no user ever saw "454,000". The raw field is still served by the per-ZIP API
+  (`record()` dumps the whole row) and kept in the parquet for transparency. The residual risk - a
+  non-residential campus rendering with no caveat - is now closed by the A2 `institutional` flag,
+  which adds a panel caveat and holds it out of rankings. Locked by the A3 invariant (every
+  `primary_per_1k > 1000` ZCTA must be `low_confidence | institutional`).
 
 ### A2 (P2) - Medical-campus / institutional ZCTAs aren't flagged
 - **Problem.** `low_confidence = population < POPULATION_FLOOR (=1000)` catches 25/26 absurd-per-capita
@@ -60,6 +67,15 @@ log; consider committing it as `pipeline/audit.py`.)
   `metrics.json` slim payload (`_write_slim_json`) and mirror in `frontend/src/lib/types.ts`.
 - **Acceptance.** 80045 (and any provider≫pop ZCTA) is flagged and excluded from headline rankings;
   flag count reported in `provenance.json`.
+- **Status (2026-06-24): DONE.** Added `institutional = providers_total > population` in
+  `join_and_score.py` (a pop-independent bright line - "more registered providers than residents =
+  a workplace, not a community"). Flags **66** ZCTAs (18 residential med campuses: Anschutz 80045,
+  Houston TMC 77030, Stanford, Yale, U-Mich, VA complexes... + 48 tiny-pop). Chose `providers_total`
+  over the suggested `>5 providers/resident` because 80045's ratio is 1.95 - the >5 rule would have
+  *missed the one ZCTA the ticket names*. Emitted to slim `metrics.json`, `provenance.json`, and
+  `meta.json`; mirrored in `types.ts`; excluded from rankings in both `RankingsList.tsx` and backend
+  `data.rankings()`; caveated in `DetailPanel.tsx`. Pure metadata - re-gate confirmed scores
+  byte-identical (0 rows changed), north star + reliability + bands all hold.
 
 ### A3 (P2) - No data-integrity gate/test locking the invariants
 - **Problem.** The audit checks (rates∈[0,1], pctiles∈[0,100], no sentinels, extreme-per-capita ⊆
@@ -76,6 +92,12 @@ log; consider committing it as `pipeline/audit.py`.)
   `die`) **and** a skip-guarded test.
 - **Acceptance.** `pytest tests/test_integrity.py` passes on a real build; a deliberately corrupted
   value makes it fail.
+- **Status (2026-06-24): DONE.** Added `_validate_integrity()` in `join_and_score.py` (build-time
+  `die`) asserting: all `*_pctile`/`*_natpct` in [0,100]; all `*_rate` in [0,1]; no numeric < -1e5
+  (sentinel); `population <= 0 => not scoreable`; every `primary_per_1k > 1000` is
+  `low_confidence | institutional`. Mirrored by `tests/test_integrity.py` (7 tests, skip-guarded on
+  `metrics.parquet`), including a corruption test that proves the guard raises `SystemExit`. All 18
+  integrity+backend tests pass; the live build runs the gate clean.
 
 ### A4 (P3) - Other audits not yet run
 - Duplicate ZCTAs in `metrics.parquet` (backend has a dup-guard in `data.record()`, but the source
@@ -113,6 +135,15 @@ log; consider committing it as `pipeline/audit.py`.)
   candidate set to quantify the multiplicity the project currently doesn't correct.
 - **Acceptance.** A table of each thin sub-score's amenable partial-r + CI; any that collapse get a
   documented caveat (or are reconsidered).
+- **Status (2026-06-24): DONE - all four survive.** Added `bootstrap_gate.amenable_subscores()`:
+  partial r(amenable | need, vuln) per *scored* care sub-score, cluster-bootstrap (county) CIs, plus
+  a **Benjamini-Hochberg FDR** across the four (also lands the B3 multiplicity fix *for this set*).
+  Result: `provider_supply` +0.214, `shortage_designation` +0.185, `insurance` +0.042 (thinnest, CI
+  [+0.004,+0.082]), `medical_debt` **+0.441 (strongest)** - all q<=0.05, all CIs exclude 0. The
+  §1c "selection-soft" caveat on medical_debt is *retired by evidence* (it was the likely artifact;
+  it's the strongest replicator). Written to `gate_ci.json` under `amenable_subscores`; documented
+  in VALIDATION §4a + §1c; tested in `test_bootstrap_gate.py`. Between-county only (amenable is
+  county-level), so it does not speak to sub-county separation - §3 stays that ruler.
 
 ### B3 (P3) - Multiple comparisons never formally corrected
 - **Problem.** The input-selection ledger ran dozens of candidates against the same 6 outcomes; no
@@ -121,6 +152,17 @@ log; consider committing it as `pipeline/audit.py`.)
 - **Suggested approach.** Reconstruct the candidate-test set from [DECISIONS.md](DECISIONS.md), apply
   BH-FDR, and report which survivors hold at a corrected threshold. Mostly a documentation/honesty
   upgrade; pairs with B2.
+- **Status (2026-06-24): PARTIALLY DONE; full reconstruction deemed not faithfully reproducible.**
+  B2 shipped a real, reproducible **Benjamini-Hochberg FDR** (`bootstrap_gate._bh_fdr` +
+  `amenable_subscores`) across the coherent care-sub-score family vs the independent amenable
+  outcome - all four survive q<=0.05. That is the part of B3 that can be done honestly from live
+  resamples. Reconstructing the *entire historical* candidate ledger (the dozens of rejected probes
+  in DECISIONS.md) and FDR-correcting it is **not faithfully reproducible**: the rejected candidates
+  did not all record comparable bootstrap test statistics, so any retro-fitted p-values would be
+  invented, not measured - which would be less honest than the current explicit §1c disclosure.
+  Recommendation: keep §1c's qualitative disclosure + the B2 corrected family; do NOT manufacture a
+  full-ledger p-value table. The reusable `_bh_fdr` helper is in place if a future coherent family
+  (e.g. a leave-one-sub-score-out gate) is built with real statistics to correct.
 
 ### B4 (inherent) - PLACES disease estimates are SES-conditioned
 - **Problem.** CDC PLACES is a small-area *model* partly conditioned on socioeconomic structure, so
@@ -183,6 +225,19 @@ well-covered; two are genuine holes, both hard to fill from free data.
   deck.gl tile layers.
 - **Acceptance.** Cold-load transfer for geometry drops from ~16 MB blob to range-requested tiles;
   mobile memory stays bounded.
+- **Status (2026-06-24): quick-win DONE; structural still open.** Measured the slim payload before
+  cutting: 31.3 MB raw is spread *evenly* across ~30 `_pctile` columns (~3% each, no single hog),
+  and **gzip_static already ships it at 3.9 MB over the wire** - so the live concern is parsed-object
+  memory, not transfer. Audited every slim column against the frontend's dynamic metric keys
+  (`metricValue` reads `m[metric]`; selectable set = composite, recomputed coincidence lens,
+  `care_access_resid_pctile`, every dimension/sub-score/outcome `_pctile`). Only **one column was
+  genuinely dead**: `access_gap_mult_pctile` - the coincidence lens recomputes client-side in
+  `scoring.accessGapMult()` from the 3 dimension percentiles, so the precomputed rank was never
+  read. Dropped it from `_write_slim_json` (kept in the parquet for the API/CSV): 36→35 cols, 31.3→
+  30.3 MB raw, 3.9→3.75 MB gzip, one fewer field per parsed record. tsc + scoring tests green.
+  **The remaining columns are load-bearing** (map-coloring by any dimension/sub-score/outcome +
+  client reweighting), so further trimming needs the *structural* split (slim coloring payload +
+  on-demand sub-scores) or PMTiles for the 16 MB geometry - that is the real lever and stays open.
 
 ### D2 (P3) - CSP needs a real-browser verification
 - **Problem.** The Content-Security-Policy added to `frontend/nginx.conf` is scoped to the known
@@ -195,6 +250,9 @@ well-covered; two are genuine holes, both hard to fill from free data.
   `img-src` / `worker-src` as needed. If `VITE_SENTRY_DSN` / `VITE_ANALYTICS_URL` point off-origin,
   add them to `connect-src`.
 - **Acceptance.** Map renders fully under the CSP with zero console violations.
+- **Status (2026-06-24): still BLOCKED headless.** Needs a headed browser loading the prod nginx
+  build to read console CSP violations; no browser automation is available in this agent session
+  (same constraint as the original build session). Carry forward to a session with a live browser.
 
 ---
 

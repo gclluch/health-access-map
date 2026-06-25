@@ -23,7 +23,7 @@ export default function RankingsList() {
   const rows = useMemo(() => {
     const out: Array<{ z: string; v: number; label: string }> = [];
     for (const m of metrics.values()) {
-      if (!m.scoreable || m.low_confidence) continue;
+      if (!m.scoreable || m.low_confidence || m.institutional) continue;
       if (stateFilter && m.state !== stateFilter) continue;
       const v = metricValue(m, metric, weights);
       if (v != null && !Number.isNaN(v)) {
@@ -47,7 +47,7 @@ export default function RankingsList() {
     let rank = 0;
     const all: Array<{ m: ReturnType<typeof metrics.get>; v: number }> = [];
     for (const m of metrics.values()) {
-      if (!m.scoreable || m.low_confidence) continue;
+      if (!m.scoreable || m.low_confidence || m.institutional) continue;
       if (stateFilter && m.state !== stateFilter) continue;
       const v = metricValue(m, metric, weights);
       if (v != null && !Number.isNaN(v)) all.push({ m, v });
