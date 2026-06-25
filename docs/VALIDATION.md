@@ -378,27 +378,26 @@ The central critique: nearly all validation is county-resolution, so the index's
 discrimination - its reason to exist over CHR/SVI - rests on one state (NY ACSC, §3). It now has a
 **second, geographically independent state against an independent outcome**: Colorado CDPHE
 age-adjusted **diabetes ACSC hospitalizations by census tract** (a core AHRQ PQI; in none of the
-inputs), crosswalked tract→ZCTA (Census 2020 relationship file, land-area weighted). 295 CO ZCTAs
-across 45 multi-ZCTA counties:
+inputs), crosswalked tract→ZCTA with the **HUD `res_ratio` population weight** (each tract weighted by
+the share of the ZIP's residential addresses it holds). 293 CO ZCTAs across 45 multi-ZCTA counties:
 
 | Column | pooled r | **WITHIN-county r** |
 |---|---|---|
-| `access_gap_score` | +0.513 | **+0.507** |
-| `social_vulnerability` | +0.550 | +0.494 |
-| `care_access` | +0.365 | **+0.417** |
-| `insurance` | +0.416 | +0.396 |
-| `provider_supply` | +0.048 | +0.175 |
-| `shortage_designation` | +0.120 | ~0.000 |
-| `medical_debt` | +0.419 | **~0.000** |
-| `safetynet_access` | -0.149 | -0.150 |
+| `access_gap_score` | +0.565 | **+0.568** |
+| `social_vulnerability` | +0.587 | +0.536 |
+| `care_access` | +0.399 | **+0.440** |
+| `insurance` | +0.443 | +0.437 |
+| `provider_supply` | +0.056 | +0.154 |
+| `shortage_designation` | +0.148 | ~0.000 |
+| `medical_debt` | +0.451 | **~0.000** |
+| `safetynet_access` | -0.111 | -0.150 |
 
 The composite resolves real **sub-county** ACSC variance (+0.507) in a state whose data never
-trained it, and so does the novel `care_access` construct (+0.417). The structural negatives
+trained it, and so does the novel `care_access` construct (+0.440). The structural negatives
 **replicate** the NY/national findings: `safetynet_access` is wrong-signed; `shortage_designation`
 and `medical_debt` show ~0 within-county resolution because they are **county-constant** - which
 independently corroborates the §4a caveat that medical_debt's strong *between*-county signal
-(+0.441) buys **zero** sub-county discrimination. (Caveats: area-weighted crosswalk; one ACSC
-condition; CO + NY ≠ national.)
+(+0.441) buys **zero** sub-county discrimination. (Caveats: one ACSC condition; CO + NY ≠ national.)
 
 **And a NATIONAL sub-county ruler** (`validate_subcounty --overdose`). The data hunt also turned up
 the one national, free, observed, sub-county outcome that exists: **CDC NCHS census-tract
@@ -407,14 +406,13 @@ crosswalked tract→ZCTA. **21,366 ZCTAs across 2,210 counties** - real national
 
 | Column | pooled r | **WITHIN-county r** |
 |---|---|---|
-| `access_gap_score` | +0.201 | **+0.202** |
-| `health_need` | +0.226 | +0.211 |
-| `behavioral_risk` | +0.171 | +0.192 |
-| `care_access` | +0.124 | +0.146 |
-| `provider_supply` | +0.035 | +0.046 |
-| `medical_debt` | +0.121 | ~0.000 |
+| `access_gap_score` | +0.206 | **+0.224** |
+| `health_need` | +0.233 | +0.232 |
+| `behavioral_risk` | +0.178 | +0.210 |
+| `care_access` | +0.119 | +0.156 |
+| `medical_debt` | +0.116 | ~0.000 |
 
-The within-county r (**+0.202**) ≈ the pooled r (+0.201): the index resolves genuine sub-county
+The within-county r (**+0.224**) ≈ the pooled r (+0.206): the index resolves genuine sub-county
 structure, confirmed **nationally** against an independent death-records outcome - not just a county
 aggregate. The magnitude is modest *and honestly so*: overdose is a specific construct (SUD/harm-
 reduction access + deaths of despair), so the **behavioral/mental/need** sub-scores correctly lead,
@@ -518,14 +516,17 @@ CO), while the national sub-county check rides on overdose mortality - a real bu
 ruler. B4 (PLACES SES-conditioning) is structurally unfixable but now **bounded** (§6f): ≤10% of
 external validity depends on the circular dimension.
 
-**Access-blocked refinements (logged, not done).** Two improvements were attempted and hit headless
-data walls, not logic walls: (1) **population-weighted** tract→ZCTA crosswalk (vs the current
-area-weighted) needs tract population - the Census API now requires a registered key and HUD's
-crosswalk sits behind a bot-wall; (2) a **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single
-expansion) needs the fixed-length record layout and S3 listing is disabled. Both are real recipes for
-a session with credentials. (3) **California ZIP mortality** was fetched and tested but *rejected*:
-crude cause-specific death rates are age-confounded (the ACSC-death *fraction* even reads slightly
+**Crosswalk refined to population weighting (DONE).** The tract→ZCTA crosswalk now uses the **HUD
+USPS `res_ratio`** (the share of each ZIP's residential addresses in each tract) instead of crude land
+area. This *strengthened* every headline: CO composite within-county **+0.507 → +0.568**, overdose
+**+0.202 → +0.224**, care_access likewise - i.e. the area weighting had been *attenuating* the signal
+by mis-assigning sparsely-populated rural tracts. The findings are not just robust to the crosswalk
+choice; they were understated by the cruder one. (Falls back to area weighting when no HUD token is
+present; `validate_subcounty._load_hud_xwalk`.)
+
+**Still logged, not done.** (1) A **Texas** 5-digit-patient-ZIP ACSC panel (the biggest single
+expansion) needs the fixed-length record layout and S3 listing is disabled - a credential/file gap, a
+real recipe for later. (2) **California ZIP mortality** was fetched and tested but *rejected*: crude
+cause-specific death rates are age-confounded (the ACSC-death *fraction* even reads slightly
 wrong-signed), so it is a noisier validator than the age-adjusted ACSC/overdose rulers already in
-hand - a tested negative, not an improvement. The area-weighted crosswalk caveat is therefore
-disclosed but unrefined; the within-county findings are dominated by urban/suburban ZCTAs where the
-crosswalk is cleanest.
+hand - a tested negative, not an improvement (a Census-key age-standardization could salvage it).

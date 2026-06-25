@@ -30,8 +30,10 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -50,7 +52,12 @@ CO_ACSC_ARCGIS = ("https://www.cohealthmaps.dphe.state.co.us/arcgis/rest/service
                   "cdphe_health_outcomes_census_tract_county/MapServer/17/query")
 ZCTA_TRACT_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/"
                   "tab20_zcta520_tract20_natl.txt")
-XWALK_CACHE = config.PROCESSED / "zcta_tract_xwalk.parquet"   # national tract<->ZCTA, 3 cols
+XWALK_CACHE = config.PROCESSED / "zcta_tract_xwalk.parquet"   # national tract<->ZCTA, area (fallback)
+# HUD USPS ZIP<->TRACT crosswalk: res_ratio = the share of a ZIP's RESIDENTIAL addresses that fall in
+# each tract - the gold-standard POPULATION weight for aggregating tract values to ZIP/ZCTA (vs the
+# crude land-area weight). Needs a free HUDUSER token in $HUD_TOKEN or ~/.hud_token. type=1 = ZIP-TRACT.
+HUD_XWALK_CACHE = config.PROCESSED / "hud_zip_tract_xwalk.parquet"
+HUD_USPS_API = "https://www.huduser.gov/hudapi/public/usps?type=1&query=All&year=2023&quarter=4"
 # CDC NCHS "Mapping Injury, Overdose & Violence": census-tract DRUG-OVERDOSE mortality, nationwide,
 # observed deaths (Socrata, public domain, no DUA). The ONE national sub-county outcome found - it
 # relaxes the "no national sub-county ruler" ceiling. Overdose is a SPECIFIC access construct (SUD
@@ -159,10 +166,19 @@ def _fetch_co_acsc() -> pd.DataFrame:
                               "HD_ADJRATE": "hd"})
 
 
+def _read_secret(env: str, filename: str) -> str | None:
+    """A credential from $ENV or ~/filename (free Census/HUD keys; never committed)."""
+    v = os.environ.get(env)
+    if v:
+        return v.strip()
+    p = Path.home() / filename
+    return p.read_text().strip() if p.exists() else None
+
+
 def _load_xwalk() -> pd.DataFrame:
     """National Census 2020 ZCTA<->tract relationship (GEOID_ZCTA5_20, GEOID_TRACT_20, land-area of
-    the intersection), fetched once (~24MB) and cached to a 3-column parquet for reuse by every
-    tract-resolution outcome (CO ACSC, CDC overdose)."""
+    the intersection), fetched once (~24MB) and cached. The AREA-weighted FALLBACK crosswalk used
+    only when no HUD token is available."""
     if XWALK_CACHE.exists():
         return pd.read_parquet(XWALK_CACHE)
     log("subcounty", "fetching Census ZCTA<->tract relationship file (one-time, ~24MB)...")
@@ -175,21 +191,45 @@ def _load_xwalk() -> pd.DataFrame:
     return rel
 
 
+def _load_hud_xwalk() -> pd.DataFrame | None:
+    """National HUD ZIP<->TRACT crosswalk with res_ratio (residential-address share). The
+    POPULATION-weighted crosswalk - returns None if no HUD token is configured."""
+    if HUD_XWALK_CACHE.exists():
+        return pd.read_parquet(HUD_XWALK_CACHE)
+    token = _read_secret("HUD_TOKEN", ".hud_token")
+    if not token:
+        return None
+    log("subcounty", "fetching HUD ZIP<->tract crosswalk (res_ratio, one-time)...")
+    req = urllib.request.Request(HUD_USPS_API, headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        rows = json.load(r)["data"]["results"]
+    x = pd.DataFrame(rows)[["zip", "geoid", "res_ratio"]]
+    x["res_ratio"] = pd.to_numeric(x["res_ratio"], errors="coerce")
+    x = x[x["res_ratio"] > 0]
+    x.to_parquet(HUD_XWALK_CACHE, index=False)
+    return x
+
+
 def _tract_to_zcta(tract_vals: pd.DataFrame, value_cols: list[str]) -> pd.DataFrame:
-    """Land-area-weighted aggregation of tract-level value_cols up to ZCTA, over the tracts
-    overlapping each ZCTA. tract_vals must have a 'tract' column (11-digit FIPS). Area weighting is
-    the crude part - fine for a read-only validation crosswalk, not the production score."""
-    rel = _load_xwalk()
-    m = rel.merge(tract_vals, left_on="GEOID_TRACT_20", right_on="tract", how="inner")
+    """Aggregate tract-level value_cols up to ZCTA. Prefers HUD res_ratio (POPULATION-weighted:
+    each tract weighted by the share of the ZIP's residential addresses it holds); falls back to the
+    Census land-AREA weight when no HUD token is present. tract_vals needs an 11-digit 'tract' col."""
+    hud = _load_hud_xwalk()
+    if hud is not None:
+        m = hud.merge(tract_vals, left_on="geoid", right_on="tract", how="inner")
+        key, wcol = "zip", "res_ratio"
+    else:
+        m = _load_xwalk().merge(tract_vals, left_on="GEOID_TRACT_20", right_on="tract", how="inner")
+        key, wcol = "GEOID_ZCTA5_20", "AREALAND_PART"
 
     def wavg(g: pd.DataFrame, col: str) -> float:
-        w, v = g["AREALAND_PART"].to_numpy(), g[col].to_numpy()
+        w, v = g[wcol].to_numpy(float), g[col].to_numpy(float)
         ok = ~np.isnan(v) & (w > 0)
         return float((v[ok] * w[ok]).sum() / w[ok].sum()) if ok.any() else np.nan
 
-    return (m.groupby("GEOID_ZCTA5_20")
+    return (m.groupby(key)
             .apply(lambda g: pd.Series({k: wavg(g, k) for k in value_cols}), include_groups=False)
-            .reset_index().rename(columns={"GEOID_ZCTA5_20": "zcta5"}))
+            .reset_index().rename(columns={key: "zcta5"}))
 
 
 def _co_zcta_acsc() -> pd.DataFrame:
