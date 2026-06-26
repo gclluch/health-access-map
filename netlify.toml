@@ -1,0 +1,64 @@
+# Netlify config for the static SPA (free hosting). The whole core experience - map, scoring,
+# rankings, search, live re-weighting, the trend - runs client-side from the static payloads, so
+# no server is required. (The detail panel's deepest raw-measure drill-down needs the FastAPI
+# backend; without it the panel shows dimension/sub-score data and an "unavailable" note. To wire
+# the backend later, host it on a scale-to-zero free tier and add the redirect + connect-src below.)
+#
+# DEPLOY MODEL - the data payloads (frontend/public/{metrics.json, zcta_overview.geojson,
+# zcta.pmtiles, trends.json}) are gitignored and too large to regenerate on CI (needs API keys +
+# multi-GB downloads), so DON'T let Netlify build from git. Build locally and deploy the dir:
+#   make data                              # produce the static payloads (one time / on refresh)
+#   cd frontend && npm run build           # bundle dist/ (includes the payloads from public/)
+#   netlify deploy --prod --dir=frontend/dist
+# This file's headers/redirects are applied to the deployed directory.
+
+[build]
+  publish = "frontend/dist"
+  # No `command`: dist is built locally (see DEPLOY MODEL above), not on Netlify.
+
+# SPA history fallback - every unknown path serves the app shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# --- To enable the optional backend (full drill-down) later: host the FastAPI app on a free
+# scale-to-zero tier, set VITE_API_BASE to its origin at build time (or proxy here), and add the
+# origin to connect-src in the CSP below. Same-origin proxy version:
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://YOUR-API-HOST/api/:splat"
+#   status = 200
+#   force = true
+
+# Security headers - mirror frontend/nginx.conf (verified by `make verify-csp`). The apex AND the
+# wildcard cartocdn host are both required (style.json is served from the apex).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; connect-src 'self' https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Content-hashed Vite assets are immutable -> cache forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Regenerated each build (not hashed) -> cache but revalidate. Netlify serves byte ranges on
+# .pmtiles automatically, so the map streams only the viewport's tiles.
+[[headers]]
+  for = "/*.pmtiles"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/*.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/*.geojson"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"

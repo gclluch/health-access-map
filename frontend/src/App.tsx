@@ -10,6 +10,7 @@ import WeightSliders from "./components/WeightSliders";
 import MethodologyPanel from "./components/MethodologyPanel";
 import TopControls from "./components/TopControls";
 import CompareTray from "./components/CompareTray";
+import SiteCredits from "./components/SiteCredits";
 import Caret from "./components/Caret";
 
 function Loading() {
@@ -207,6 +208,7 @@ function AppInner() {
         </div>
       )}
 
+      {status === "ready" && <SiteCredits />}
       <Toast />
       <MethodologyPanel />
     </div>
