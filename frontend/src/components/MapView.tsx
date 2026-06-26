@@ -170,6 +170,7 @@ export default function MapView() {
         id: 'zcta-overview',
         data: overview as never,
         beforeId: labelLayerId,
+        visible: !detail, // hidden (not removed) at high zoom so its instance is never finalized
         pickable: true,
         stroked: true,
         filled: true,
@@ -184,7 +185,7 @@ export default function MapView() {
         updateTriggers: fillTriggers,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [overview, metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId],
+    [overview, metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId, detail],
   );
 
   // High-zoom streamed detail (vector tiles from pmtiles).
@@ -193,6 +194,7 @@ export default function MapView() {
       new TileLayer({
         id: 'zcta-tiles',
         getTileData,
+        visible: detail, // only fetch/draw tiles at high zoom; kept mounted (hidden) otherwise
         minZoom: TILE_MIN_ZOOM,
         maxZoom: TILE_MAX_ZOOM,
         renderSubLayers: ((props: {
@@ -232,10 +234,12 @@ export default function MapView() {
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId],
+    [metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId, detail],
   );
 
-  const layers = detail ? [tileLayer] : [overviewLayer];
+  // Both layers stay mounted; `visible` toggles which one draws. Swapping them in/out of the
+  // array instead would finalize the hidden layer's GPU state and crash when it returns.
+  const layers = [overviewLayer, tileLayer];
 
   const getTooltip = (info: { object?: ZctaFeature }) => {
     if (!info.object) return null;
