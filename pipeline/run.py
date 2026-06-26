@@ -17,20 +17,22 @@ import time
 
 from . import (build_acs, build_amenable, build_broadband, build_fqhc, build_gazetteer,
                build_geometry, build_geonames, build_hpsa, build_lifeexp, build_medicaldebt, build_outcomes,
-               build_places, build_providers, build_supply, join_and_score, validate)
+               build_pmtiles, build_places, build_providers, build_supply, join_and_score, validate)
 from .common import load_env, log
 from .preflight import check as preflight_check
 
-# ordered stages; geometry first (defines the ZCTA universe); supply + fqhc need
-# acs + gazetteer; lifeexp + outcomes are independent outcomes; join merges everything;
-# validate (multi-anchor outcome validation) reads the joined metrics last.
-# amenable: no-ops unless a manual CDC WONDER treatable-mortality export is present
-# (county data is not headlessly fetchable); runs before outcomes, which merges its CSV.
-STAGES = ["geometry", "places", "providers", "acs", "geonames",
+# ordered stages; geometry first (defines the ZCTA universe); pmtiles tiles the geometry +
+# emits centroids (geometry only, so right after it); supply + fqhc need acs + gazetteer;
+# lifeexp + outcomes are independent outcomes; join merges everything; validate (multi-anchor
+# outcome validation) reads the joined metrics last. amenable: no-ops unless a manual CDC
+# WONDER treatable-mortality export is present (county data is not headlessly fetchable);
+# runs before outcomes, which merges its CSV.
+STAGES = ["geometry", "pmtiles", "places", "providers", "acs", "geonames",
           "gazetteer", "supply", "fqhc", "hpsa", "broadband", "lifeexp", "medicaldebt", "amenable",
           "outcomes", "join", "validate"]
 BUILDERS = {
     "geometry": build_geometry.build,
+    "pmtiles": build_pmtiles.build,
     "places": build_places.build,
     "providers": build_providers.build,
     "acs": build_acs.build,

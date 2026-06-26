@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROCESSED = ROOT / "data" / "processed"
 METRICS = PROCESSED / "metrics.parquet"
 PROVENANCE = PROCESSED / "provenance.json"
-GEOJSON = ROOT / "frontend" / "public" / "zcta.geojson"
+GEOJSON = ROOT / "frontend" / "public" / "zcta_overview.geojson"
 
 pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline first")
 

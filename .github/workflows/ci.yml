@@ -47,7 +47,7 @@ jobs:
       # and we still catch TS/bundler regressions. (Real payloads ship via `make data`.)
       - run: |
           [ -f public/metrics.json ] || echo "[]" > public/metrics.json
-          [ -f public/zcta.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta.geojson
+          [ -f public/zcta_overview.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta_overview.geojson
       - run: npm run build
 
   e2e:

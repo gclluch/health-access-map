@@ -1,13 +1,15 @@
-// Writes a tiny deterministic metrics.json + zcta.geojson into public/ so the app can boot
-// in CI without the multi-GB data build. No-ops if real payloads are already present, so it
-// never clobbers a local `make data` build. Run before the Playwright smoke suite.
+// Writes a tiny deterministic metrics.json + zcta_overview.geojson into public/ so the app can
+// boot in CI without the multi-GB data build. A tiny zcta.pmtiles is also built when tippecanoe
+// is on PATH (the overview alone covers the low zooms, so the smoke suite passes without it).
+// No-ops if real payloads are already present, so it never clobbers a local `make data` build.
 import { existsSync, writeFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const pub = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const metricsPath = join(pub, 'metrics.json');
-const geoPath = join(pub, 'zcta.geojson');
+const geoPath = join(pub, 'zcta_overview.geojson');
 
 // Treat a >5 KB metrics.json as a real build worth preserving.
 const realExists = existsSync(metricsPath) && statSync(metricsPath).size > 5000;
@@ -56,4 +58,14 @@ const geojson = {
 
 writeFileSync(metricsPath, JSON.stringify(metrics));
 writeFileSync(geoPath, JSON.stringify(geojson));
+
+// Detailed geometry tiles (only used at z>=6). Best-effort: build from the fixture geojson if
+// tippecanoe is available, otherwise skip - getTileData tolerates a missing archive.
+try {
+  execFileSync('tippecanoe', ['-q', '--force', '-Z5', '-z10', '--no-tile-size-limit',
+    '--no-feature-limit', '-l', 'zcta', '-o', join(pub, 'zcta.pmtiles'), geoPath], { stdio: 'ignore' });
+  console.log('make-fixture: built zcta.pmtiles');
+} catch {
+  console.log('make-fixture: tippecanoe not found, skipping zcta.pmtiles (overview covers smoke)');
+}
 console.log(`make-fixture: wrote ${metrics.length}-ZCTA fixture to public/`);

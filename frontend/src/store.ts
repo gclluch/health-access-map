@@ -27,7 +27,7 @@ interface AppState {
   status: Status;
   error: string | null;
   metrics: Map<string, SlimMetric>;
-  geojson: FeatureCollection | null;
+  overview: FeatureCollection | null; // low-zoom geometry; detail streams from pmtiles
   centroids: Map<string, [number, number]>;
   bounds: [[number, number], [number, number]] | null;
   stateBounds: Map<string, [[number, number], [number, number]]>;
@@ -99,7 +99,7 @@ export const useStore = create<AppState>((set, get) => ({
   status: 'loading',
   error: null,
   metrics: new Map(),
-  geojson: null,
+  overview: null,
   centroids: new Map(),
   bounds: null,
   stateBounds: new Map(),
@@ -186,7 +186,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         status: 'ready',
         metrics: data.metrics,
-        geojson: data.geojson,
+        overview: data.overview,
         centroids: data.centroids,
         bounds: [
           [minLon, minLat],
