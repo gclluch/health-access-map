@@ -75,6 +75,7 @@ export default function MapView() {
   const mapRef = useRef<MapRef | null>(null);
   const { metrics, overview, metric, weights, selectedZcta, hoveredZcta, bounds, flyTarget, fitTarget } =
     useStore();
+  const trends = useStore((s) => s.trends);
   const select = useStore((s) => s.select);
   const hover = useStore((s) => s.hover);
   const [labelLayerId, setLabelLayerId] = useState<string | undefined>(undefined);
@@ -243,10 +244,16 @@ export default function MapView() {
     const v = m ? metricValue(m, metric, weights) : null;
     const place = m?.city ? `${m.city}, ${m.state ?? ''}` : m?.county_name ?? '';
     const placeHtml = place ? `<div style="font-weight:600">${esc(place)}</div>` : '';
+    // Display-only poverty-rank trend (build_trends.py). Only show a meaningful move (>=1 pctile).
+    const d = trends?.deltas.get(z);
+    const trendHtml =
+      d != null && Math.abs(d) >= 1
+        ? `<div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">poverty rank vs ${trends!.prior}: <b style="color:#fff">${d > 0 ? '▲' : '▼'} ${esc(Math.abs(d).toFixed(1))}</b></div>`
+        : '';
     return {
       html: `<div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:1.35">
         ${placeHtml}
-        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${esc(z)} · ${esc(metricLabel(metric))} <b style="color:#fff">${esc(fmtScore(v))}</b></div></div>`,
+        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${esc(z)} · ${esc(metricLabel(metric))} <b style="color:#fff">${esc(fmtScore(v))}</b></div>${trendHtml}</div>`,
       style: {
         background: CHROME.ink,
         color: '#fff',

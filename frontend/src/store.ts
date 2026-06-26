@@ -37,6 +37,8 @@ interface AppState {
   weights: Weights;
   anchors: AnchorPreset[];
   meta: BuildMeta | null;
+  // Display-only poverty-rank trend (pipeline/build_trends.py); never part of the score.
+  trends: { prior: number; curr: number; deltas: Map<string, number> } | null;
   subscoreCorrelations: SubscoreCorrelations;
   selectedZcta: string | null;
   hoveredZcta: string | null;
@@ -109,6 +111,7 @@ export const useStore = create<AppState>((set, get) => ({
   weights: { ...DEFAULT_WEIGHTS },
   anchors: [],
   meta: null,
+  trends: null,
   subscoreCorrelations: {},
   selectedZcta: null,
   hoveredZcta: null,
@@ -140,6 +143,16 @@ export const useStore = create<AppState>((set, get) => ({
         .then((r) => (r.ok ? r.json() : null))
         .then((mt) => {
           if (mt?.generated) set({ meta: mt });
+        })
+        .catch(() => {});
+      // poverty-rank trend (pipeline/build_trends.py), if present - display-only
+      fetch('/trends.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((t) => {
+          if (t?.deltas) {
+            set({ trends: { prior: t.prior, curr: t.curr,
+              deltas: new Map(Object.entries(t.deltas) as [string, number][]) } });
+          }
         })
         .catch(() => {});
       // Fit to the continental US by default: AK/HI/PR centroids otherwise stretch

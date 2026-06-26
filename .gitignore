@@ -26,6 +26,7 @@ frontend/public/metrics.json
 frontend/public/zcta_overview.geojson
 frontend/public/zcta.pmtiles
 frontend/public/meta.json
+frontend/public/trends.json
 
 # OS / editor
 .DS_Store
