@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useStore } from '../store';
+import { SUBSCORE_EVIDENCE } from '../lib/types';
 
 // Limitations made first-class (§15.9): integrity hidden is integrity absent.
 const POINTS: Array<[string, string]> = [
@@ -156,6 +157,10 @@ function CiteBlock() {
   );
 }
 
+const EVIDENCE_GUIDE = Array.from(
+  new Map(Object.values(SUBSCORE_EVIDENCE).map((m) => [m.label, m])).values(),
+);
+
 export default function MethodologyPanel() {
   const show = useStore((s) => s.showMethodology);
   const toggle = useStore((s) => s.toggleMethodology);
@@ -229,7 +234,7 @@ export default function MethodologyPanel() {
         <div className="px-5 py-4">
           <p className="text-[13px] text-ink leading-relaxed mb-3">
             The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, CMS NPPES, and Census
-            ACS roll up into 11 sub-scores (10 scored), then 3 dimensions (health need, social
+            ACS roll up into sub-scores, then 3 dimensions (health need, social
             vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
@@ -256,6 +261,30 @@ export default function MethodologyPanel() {
             </div>
           </div>
 
+          <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
+            <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
+              Which lens to use
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-[11px] leading-snug">
+              <div>
+                <div className="font-medium text-ink">Access gap</div>
+                <div className="text-graphite">Default screen: combined need, vulnerability, and barriers.</div>
+              </div>
+              <div>
+                <div className="font-medium text-ink">Within-state rank</div>
+                <div className="text-graphite">Use for state programs, grants, and peer comparisons inside one policy arena.</div>
+              </div>
+              <div>
+                <div className="font-medium text-ink">Net of deprivation</div>
+                <div className="text-graphite">Shows access barriers worse than health need + vulnerability predict.</div>
+              </div>
+              <div>
+                <div className="font-medium text-ink">Coincidence lens</div>
+                <div className="text-graphite">Highlights places where need and barriers overlap, useful for targeting.</div>
+              </div>
+            </div>
+          </div>
+
           {/* Exact formulas, in-product, so the score is never a black box. */}
           <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
@@ -268,10 +297,10 @@ export default function MethodologyPanel() {
                 ranking is robust to skew and outliers.
               </li>
               <li>
-                <b>Sub-scores</b> (11, of which 10 are scored) = the average of their member
-                percentiles, re-ranked. E.g. "unmet social needs" averages food, housing, transport
-                &amp; utility insecurity. (The FQHC safety-net sub-score is shown but unscored - it is
-                wrong-signed within counties.)
+                <b>Sub-scores</b> = the average of their member percentiles, re-ranked. E.g. "unmet
+                social needs" averages food, housing, transport &amp; utility insecurity. Some
+                rows are shown for context but unscored when they are downstream process measures
+                or wrong-signed within counties.
               </li>
               <li>
                 <b>Dimensions</b> (3) = the average of their sub-scores, re-ranked:{' '}
@@ -292,6 +321,21 @@ export default function MethodologyPanel() {
               ranks only ~±6 points (Spearman ~0.999): a sensitivity probe, not a rewrite.
             </p>
           </div>
+
+          <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
+            <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
+              Evidence labels in the detail panel
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] leading-snug">
+              {EVIDENCE_GUIDE.map((m) => (
+                <div key={m.label}>
+                  <span className="font-medium text-ink">{m.label}</span>
+                  <span className="text-graphite"> - {m.tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Explicit 5 A's coverage - the access framework, and where we have signal vs gaps. */}
           <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">

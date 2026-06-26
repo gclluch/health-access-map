@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { accessGap, buildScoreIndex, percentileOf } from '../lib/scoring';
 import { synthesize } from '../lib/synthesis';
-import { MODEL, type DimSpec, type SlimMetric } from '../lib/types';
+import { MODEL, SUBSCORE_EVIDENCE, type DimSpec, type SlimMetric } from '../lib/types';
 import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
@@ -17,6 +17,29 @@ function PctBar({ pct }: { pct: number | null | undefined }) {
     <div className="h-1.5 bg-hairline rounded-full overflow-hidden">
       <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
     </div>
+  );
+}
+
+function ResolutionBadge({ subKey }: { subKey: string }) {
+  const meta = SUBSCORE_EVIDENCE[subKey];
+  if (!meta) return null;
+  const isCounty = meta.kind === 'county';
+  const isContext = meta.kind === 'context';
+  return (
+    <Tip
+      tip={meta.tip}
+      focusable={false}
+      className={
+        'shrink-0 rounded border px-1 py-0.5 text-[9px] uppercase tracking-wide cursor-help ' +
+        (isCounty
+          ? 'border-accent/30 bg-accent/8 text-accent'
+          : isContext
+            ? 'border-hairline bg-paper text-graphite'
+            : 'border-hairline bg-surface text-graphite')
+      }
+    >
+      {meta.label}
+    </Tip>
   );
 }
 
@@ -80,9 +103,11 @@ function SubScoreRow({
   scored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const resolution = SUBSCORE_EVIDENCE[subKey];
   const tip =
     `${label}${SUBSCORE_BLURB[subKey] ? ` - ${SUBSCORE_BLURB[subKey]}` : ''}` +
-    (scored ? '' : ' Shown for context, not scored (wrong-signed within counties).');
+    (resolution ? ` ${resolution.tip}` : '') +
+    (scored ? '' : ' Shown for context, not scored.');
   return (
     <div className="border-t border-hairline/60">
       <button
@@ -102,6 +127,7 @@ function SubScoreRow({
             {!scored && <span className="ml-1 text-[10px] text-graphite font-normal">· not scored</span>}
           </span>
         </Tip>
+        <ResolutionBadge subKey={subKey} />
         <span className="num text-[10px] text-graphite w-14 text-right">
           {pct == null ? 'no data' : `${ordinal(pct)} pct`}
         </span>
@@ -156,6 +182,64 @@ function Dimension({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ComparisonFrame({
+  m,
+  scorePercentile,
+}: {
+  m: SlimMetric;
+  scorePercentile: number | null;
+}) {
+  if (scorePercentile == null) return null;
+  const range =
+    m.access_gap_rank_lo != null && m.access_gap_rank_hi != null
+      ? `${Math.round(m.access_gap_rank_lo)}-${Math.round(m.access_gap_rank_hi)}`
+      : null;
+  const cells = [
+    {
+      label: 'National',
+      value: ordinal(scorePercentile),
+      detail: `tier ${Math.ceil(scorePercentile / 10)} of 10; worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs under current weights`,
+    },
+    m.access_gap_pctile_within_state != null
+      ? {
+          label: 'Within state',
+          value: ordinal(m.access_gap_pctile_within_state),
+          detail: 'default-weight rank among ZIPs in this state',
+        }
+      : null,
+    range
+      ? {
+          label: 'Reliable range',
+          value: range,
+          detail: 'overlap means two ZIPs are not clearly different',
+        }
+      : null,
+    m.care_access_resid_pctile != null
+      ? {
+          label: 'Access net of deprivation',
+          value: ordinal(m.care_access_resid_pctile),
+          detail: 'barriers worse than need + vulnerability predict',
+        }
+      : null,
+  ].filter((x): x is { label: string; value: string; detail: string } => x != null);
+
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-1.5">
+      {cells.map((c) => (
+        <Tip
+          key={c.label}
+          tip={c.detail}
+          className="rounded border border-hairline bg-paper/70 px-2 py-1.5 cursor-help"
+        >
+          <div className="text-[9px] uppercase tracking-wide text-graphite">{c.label}</div>
+          <div className="num text-[13px] font-semibold text-ink">{c.value}</div>
+          <div className="text-[10px] text-graphite leading-tight">{c.detail}</div>
+        </Tip>
+      ))}
     </div>
   );
 }
@@ -466,20 +550,9 @@ export default function DetailPanel() {
               <div className="text-[11px] text-graphite mt-0.5">
                 {score == null || scorePercentile == null
                   ? 'Insufficient reliable data to score this area.'
-                  : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Ranked from a weighted index of need, vulnerability and barriers (see "What drives the gap").`}
+                  : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`}
               </div>
-              {score != null && scorePercentile != null && m.access_gap_rank_lo != null && (
-                <div className="text-[11px] text-graphite mt-1 bg-paper/70 border border-hairline rounded px-2 py-1.5 leading-snug">
-                  <span className="font-medium" style={{ color: sev ? sev.color : undefined }}>
-                    Tier {Math.ceil(scorePercentile / 10)} of 10
-                  </span>
-                  {' · reliable range '}
-                  <span className="num text-ink">
-                    {Math.round(m.access_gap_rank_lo as number)}-{Math.round(m.access_gap_rank_hi as number)}
-                  </span>
-                  {' percentile under reasonable re-weightings. Two ZIPs whose ranges overlap are not reliably different.'}
-                </div>
-              )}
+              {score != null && scorePercentile != null && <ComparisonFrame m={m} scorePercentile={scorePercentile} />}
             </>
           );
         })()}

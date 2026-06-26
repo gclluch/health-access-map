@@ -12,11 +12,11 @@ A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
 > known limitations as pick-up-ready tickets - start here if you're extending the project).
 
 The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
-11 sub-scores → ~50 measures, all drill-downable in the detail panel.
+scored sub-scores plus context/process indicators → ~50 measures, all drill-downable in the detail panel.
 
 1. **Health need** - chronic disease, behavioral risk, mental/social health, disability (CDC PLACES)
-2. **Social vulnerability** - socioeconomic, household, housing/transport, unmet social needs (Census ACS + PLACES SDOH)
-3. **Care access** - provider supply (**2SFCA spatial catchment**, not ZIP containment), insurance, preventive-care use (CMS NPPES + ACS + PLACES)
+2. **Social vulnerability** - socioeconomic, housing/transport, unmet social needs, and digital/telehealth barriers (Census ACS + PLACES SDOH)
+3. **Care access** - provider supply (**2SFCA spatial catchment**, not ZIP containment), HPSA shortage, insurance, and medical-debt burden; safety-net and preventive-use rows are displayed as context/process indicators, not scored
 4. **Access Gap Score** - the relative national-rank composite of the three
 
 The map is the product: pan/zoom a cividis choropleth, click a ZIP for a decomposed
@@ -98,9 +98,10 @@ a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.
 
 1. Each **measure** (~50) is oriented (higher = worse access) and percentile-ranked nationally
    (ordinal → immune to the heavy right-skew of provider density / income).
-2. **Sub-scores** (11; **10 scored**) = re-ranked mean of their available member percentiles.
-   `safetynet_access` is computed + displayed but **unscored** - it is wrong-signed *within*
-   counties (see [`docs/VALIDATION.md`](docs/VALIDATION.md)).
+2. **Sub-scores** = re-ranked mean of their available member percentiles. Some rows are computed
+   and displayed but **unscored** when validation says they are context/process measures rather than
+   upstream barriers: `safetynet_access` is wrong-signed *within* counties, and `preventive_use` is
+   realized care use rather than a scored barrier (see [`docs/VALIDATION.md`](docs/VALIDATION.md)).
 3. **Dimensions** (3) = re-ranked mean of their sub-scores: health need, social vulnerability,
    care access.
 4. **Access Gap = 0.35·need + 0.30·vulnerability + 0.35·care-access** (default; a conceptual

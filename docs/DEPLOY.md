@@ -16,6 +16,16 @@ make data        # -> data/processed/metrics.parquet
 CI does not have these (the data stages need API keys + large downloads), which is why the
 data-dependent pytest cases `skip` rather than fail when `metrics.parquet` is absent.
 
+Before cutting a deploy from a real local/national build, run:
+
+```bash
+make prod-check
+```
+
+That target runs the backend/pipeline tests, frontend typecheck/unit/build, rank-band verification,
+diagnostics, and `docker compose config`. Treat a skipped `pipeline.verify_bands` calibration gate
+as not production-ready for rank-band claims; rebuild the debug artifacts and rerun before shipping.
+
 ## One-box (docker compose)
 
 ```bash
