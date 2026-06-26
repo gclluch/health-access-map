@@ -1,0 +1,6 @@
+# Caddy auto-provisions a Let's Encrypt cert for $DOMAIN and adds HSTS. It reverse-proxies the
+# nginx `web` service (same-origin /api preserved). See docker-compose.prod.yml.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:80
+}

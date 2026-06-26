@@ -21,7 +21,7 @@ export default function RankingsList() {
   const setMetric = useStore((s) => s.setMetric);
   const setRankOrder = useStore((s) => s.setRankOrder);
 
-  const rows = useMemo(() => {
+  const { rows, total } = useMemo(() => {
     const out: Array<{ z: string; v: number; label: string }> = [];
     for (const m of metrics.values()) {
       if (!m.scoreable || m.low_confidence || m.institutional) continue;
@@ -33,7 +33,7 @@ export default function RankingsList() {
       }
     }
     out.sort((a, b) => (rankOrder === 'desc' ? b.v - a.v : a.v - b.v));
-    return out.slice(0, 100);
+    return { rows: out.slice(0, 100), total: out.length };
   }, [metrics, metric, weights, stateFilter, rankOrder]);
 
   const end = rankOrder === 'desc' ? 'Highest' : 'Lowest';
@@ -131,7 +131,7 @@ export default function RankingsList() {
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="text-[10px] text-graphite min-w-0 truncate">
-            {end} {metricLabel(metric).toLowerCase()} · top {rows.length}
+            {end} {metricLabel(metric).toLowerCase()} · top {rows.length}{total > rows.length ? ` of ${total}` : ''}
             {stateFilter ? ` · ${stateFilter}` : ''} · relative national rank
           </div>
           <button

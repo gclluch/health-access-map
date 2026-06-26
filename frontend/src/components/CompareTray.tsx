@@ -22,12 +22,14 @@ export default function CompareTray() {
   const clearCompare = useStore((s) => s.clearCompare);
   const select = useStore((s) => s.select);
   const [extra, setExtra] = useState<Record<string, ApiZcta>>({});
+  const [detailFailed, setDetailFailed] = useState(false);
 
   const sorted = useMemo(() => buildScoreIndex(metrics.values(), weights), [metrics, weights]);
 
   useEffect(() => {
     if (compareZctas.length === 0) {
       setExtra({});
+      setDetailFailed(false);
       return;
     }
     let live = true;
@@ -37,9 +39,12 @@ export default function CompareTray() {
         const map: Record<string, ApiZcta> = {};
         for (const rec of r.results) map[rec.zcta5] = rec;
         setExtra(map);
+        setDetailFailed(false);
       })
       .catch(() => {
-        /* API optional: the dimension rows still render from the slim metrics */
+        // API optional: the dimension rows still render from the slim metrics. Surface that the
+        // enriched columns (raw measures) are unavailable rather than hiding the gap silently.
+        if (live) setDetailFailed(true);
       });
     return () => {
       live = false;
@@ -93,6 +98,11 @@ export default function CompareTray() {
           </button>
         </div>
       </div>
+      {detailFailed && (
+        <div role="status" className="px-3 py-1 text-[10px] text-graphite bg-paper border-b border-hairline">
+          Detailed measures are unavailable (API unreachable) - showing the dimension scores only.
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>

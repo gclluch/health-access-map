@@ -287,9 +287,16 @@ well-covered; two are genuine holes, both hard to fill from free data.
   `img-src` / `worker-src` as needed. If `VITE_SENTRY_DSN` / `VITE_ANALYTICS_URL` point off-origin,
   add them to `connect-src`.
 - **Acceptance.** Map renders fully under the CSP with zero console violations.
-- **Status (2026-06-24): still BLOCKED headless.** Needs a headed browser loading the prod nginx
-  build to read console CSP violations; no browser automation is available in this agent session
-  (same constraint as the original build session). Carry forward to a session with a live browser.
+- **Status (2026-06-25): DONE - and it caught a real prod bug.** Headless Chromium (Playwright,
+  already used by the e2e suite) IS a real browser, so the "no headed browser" blocker was wrong.
+  Added `frontend/scripts/verify-csp.mjs` + `make verify-csp`: serves the built `dist/` with the
+  exact `nginx.conf` CSP + security headers, loads it, and fails on any CSP violation, a blocked
+  Carto/fonts request, a missing required origin, or a non-rendered canvas. **It immediately found
+  that the policy allowed only `*.basemaps.cartocdn.com` while the basemap `style.json` is served
+  from the apex `basemaps.cartocdn.com` (a wildcard does not match the apex) - the live basemap
+  would have been CSP-blocked in prod.** Fixed nginx.conf to allow both the apex and the wildcard
+  in `img-src` + `connect-src`; re-run is clean (0 violations, basemap + fonts load, canvas paints).
+  Wired into `make prod-check` and a non-blocking CI `csp` job (external CDN -> `continue-on-error`).
 
 ---
 
