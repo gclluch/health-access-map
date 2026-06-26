@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pipeline import validate_fqhc_lever as vf
 from pipeline import validate_placebo as vp
 from pipeline import validate_temporal as vt
 
@@ -123,6 +124,76 @@ def test_temporal_pre_barrier_cache_shape_if_present():
     b = pd.read_parquet(vt.PRE_BARRIER_CACHE)
     assert {"zcta5", "uninsured_2012"} <= set(b.columns)
     assert b["uninsured_2012"].between(0, 1).all()            # it is a fraction
+
+
+# --- FQHC supply lever: the Callaway-Sant'Anna group-time ATT estimator -------------------------
+
+def _staggered_panel(rng, cohorts, n_per_cohort, n_never, years, *, effect=0.0, common_trend=0.0,
+                     treat_slope=0.0, base=1500.0, zip_sd=50.0, noise=8.0):
+    """Synthetic staggered-adoption panel. `effect` = static ACSC shift at/after the opening year
+    (e>=0); `common_trend` = a secular drift shared by treated AND control (must be differenced out);
+    `treat_slope` = a treated-ONLY linear trajectory (a pre-trend the event study must EXPOSE)."""
+    rows, zid = [], 0
+    for g in cohorts:
+        for _ in range(n_per_cohort):
+            zfe = rng.normal(0, zip_sd)
+            for y in years:
+                e = y - g
+                eff = effect if e >= 0 else 0.0
+                rows.append({"zcta5": f"t{zid}", "year": y, "pop": 5000.0, "cohort": float(g),
+                             "state": "SYN",
+                             "rate": base + zfe + common_trend * (y - years[0])
+                                     + treat_slope * (y - years[0]) + eff + rng.normal(0, noise)})
+            zid += 1
+    for _ in range(n_never):
+        zfe = rng.normal(0, zip_sd)
+        for y in years:
+            rows.append({"zcta5": f"c{zid}", "year": y, "pop": 5000.0, "cohort": np.inf,
+                         "state": "SYN",
+                         "rate": base + zfe + common_trend * (y - years[0]) + rng.normal(0, noise)})
+        zid += 1
+    return pd.DataFrame(rows)
+
+
+def test_cs_recovers_planted_staggered_att_with_flat_pretrend():
+    """Plant a known static post-opening effect across staggered cohorts on top of a strong common
+    secular trend. CS must recover the effect (sign + rough size) AND leave the pre-period ATTs ~0."""
+    rng = np.random.default_rng(20)
+    years = list(range(2009, 2024))
+    j = _staggered_panel(rng, cohorts=[2013, 2015, 2017], n_per_cohort=40, n_never=200, years=years,
+                         effect=-50.0, common_trend=-9.0)        # common trend must be differenced out
+    attgt = vf.att_gt(j)
+    ev = vf.aggregate_event(attgt)
+    ov = vf.overall_att(attgt)
+    pre = ev[ev["e"] < 0]["att"].to_numpy()
+    assert ov < 0 and abs(ov - (-50.0)) < 12                     # recovers the planted ATT
+    assert np.sqrt(np.mean(np.square(pre))) < 12                 # parallel-trends: flat pre-period
+    assert -1 not in ev["e"].to_numpy()                          # universal base g-1 omitted (ref=0)
+
+
+def test_cs_differences_out_common_trend_no_false_effect():
+    """A strong secular trend shared by treated and control, with NO real treatment effect, must NOT
+    be mistaken for a lever: the DiD subtracts the control change, so the overall ATT sits at ~0."""
+    rng = np.random.default_rng(21)
+    years = list(range(2009, 2024))
+    j = _staggered_panel(rng, cohorts=[2013, 2016], n_per_cohort=50, n_never=200, years=years,
+                         effect=0.0, common_trend=-15.0)
+    attgt = vf.att_gt(j)
+    ov = vf.overall_att(attgt)
+    assert abs(ov) < 10                                          # common trend differenced out -> ~0
+
+
+def test_cs_event_study_exposes_treated_pretrend():
+    """The decisive diagnostic property: a treated-ONLY divergent trajectory (no genuine treatment
+    effect) must show up as NON-flat pre-period ATTs - exactly the §7b warning the event study exists
+    to surface, rather than being laundered into a clean-looking post coefficient."""
+    rng = np.random.default_rng(22)
+    years = list(range(2009, 2024))
+    j = _staggered_panel(rng, cohorts=[2015, 2017], n_per_cohort=50, n_never=200, years=years,
+                         effect=0.0, treat_slope=-12.0)          # treated drift, no real effect
+    ev = vf.aggregate_event(vf.att_gt(j))
+    pre = ev[ev["e"] < 0]["att"].to_numpy()
+    assert np.sqrt(np.mean(np.square(pre))) > 15                 # pre-trend is EXPOSED, not hidden
 
 
 # --- placebo negative control: the differential estimator ---------------------------------------

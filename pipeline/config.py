@@ -204,21 +204,6 @@ ADAPTIVE_SIGMA_MAX_KM = 60.0
 ADAPTIVE_KNN = 400           # bounded neighbor set per centroid (captures the decay tail)
 HPSA_SHORTAGE_RATIO = 3500   # HRSA primary-care shortage threshold (pop : provider)
 
-# --- drive-time E2SFCA (Layer C4, SPIKE) ---
-# Replaces the great-circle catchment distance with a calibrated ROAD drive-time, the one
-# remaining lever on provider_supply's near-zero sub-county signal (within-county r ~0.076):
-# straight-line distance can't see that rural roads are slow or that water/mountains detour
-# care. Source: Hu, Wang, Li & Wang (2020), J. Transport Geography 86:102770 - a nationwide
-# ZIP(ZCTA)-to-ZIP calibrated drive-time matrix (32,840 ZCTAs), CC BY 4.0. The Level-1 file
-# (NA_OD_3hours.csv, 0-3 h) holds every pair under our catchment; columns OZCTA, DZCTA,
-# EstTime (minutes), EstDist (miles). GATED behind USE_DRIVETIME until it beats haversine on
-# the validate_subcounty rulers (see docs/METHODOLOGY.md "What we tried").
-USE_DRIVETIME = False        # opt-in until the sub-county gate clears
-DRIVETIME_URL = "https://ndownloader.figshare.com/files/62775649"   # doi:10.6084/m9.figshare.31719763
-DRIVETIME_MEMBER = "NA_OD_3hours.csv"   # Level 1 (0-3 h); matched by basename in the zip
-DRIVETIME_CUTOFF_MIN = 90.0  # keep pairs <= this many minutes (covers the Gaussian decay tail)
-DRIVETIME_SIGMA_MIN_MIN = 10.0   # adaptive bandwidth floor, in minutes (dense urban)
-DRIVETIME_SIGMA_MAX_MIN = 60.0   # adaptive bandwidth ceiling, in minutes (sparse rural)
 # ZCTA field name varies by vintage; detected at runtime.
 TIGER_ZCTA_FIELDS = ["ZCTA5CE20", "ZCTA5CE10"]
 

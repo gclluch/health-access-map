@@ -29,6 +29,10 @@ const POINTS: Array<[string, string]> = [
     'Internally the score is reliable (split-half reliability 0.95) and it tracks independent outcomes - but a ZIP\'s national rank moves ~±6 points under any reasonable re-weighting and ~±4 more from measurement noise. So two ZIPs are reliably different only if they differ by ~10-15 percentile points - about 7-10 distinct tiers, not 33,000 ranks. Each ZIP shows a "reliable range"; if two ranges overlap, treat the ZIPs as indistinguishable. No federal index (ADI, SVI, County Health Rankings) publishes this - they show point ranks the data cannot support.',
   ],
   [
+    'Descriptive, not causal - a map of where, not proof of a fix',
+    'This shows where access disadvantage concentrates; it does not prove that adding a clinic, coverage, or program where the score is high would change outcomes. We tested this directly and report the honest result: cross-sectionally the index is statistically indistinguishable from a poverty/deprivation map (a negative-control test is a clean null - it does not separate deaths timely care could prevent from those it could not), and the one temporal "access lever" signal was overturned by a cross-state falsification control (a non-expansion state showed the same trend). Net of deprivation the index does track treatable mortality between counties (care-access partial r +0.395), which is why it is a strong descriptive screen - but actionability as a lever is not demonstrated. Use it for targeting and hypotheses, not as evidence that an intervention will work.',
+  ],
+  [
     'Why social vulnerability is access, not a descriptor',
     'Access ≠ supply. A provider you can\'t afford, reach, or communicate with isn\'t accessible. Per the 5 A\'s of access (Penchansky & Thomas) and Andersen\'s enabling factors, affordability (income), accessibility (transportation), and acceptability (language) are dimensions of access. The federal Medically Underserved formula itself uses % poverty + % elderly alongside provider supply. Proof it isn\'t just a descriptor: we DO have descriptors (age, % minority) and score them zero.',
   ],

@@ -600,10 +600,14 @@ free data allows. The honest answer, after running them all: **the index is a we
 | §7b | NY-only event study around 2014 | suggestive (-36.5) but **pre-trends imperfect** | a hint, not proof - high-barrier ZIPs may already be converging |
 | §7e | **Cross-state DiD-in-DiD** (NY vs TX control) | **falsified** (triple-diff +10.3, CI crosses 0) | TX never expanded yet declined the same → the §7b hint was secular convergence, not the expansion |
 | §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
+| §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **borderline** (-35.5/100k, CI [-71.7, +2.2] just includes 0) | the *supply* arm is a powered "almost" - right-signed, dose-responsive, robust to spillover, but short of significance and pre-trends not fully clean |
 | - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
 
 A single-state DiD would have shipped a causal claim (§7b) that the falsification control (§7e)
-shows the data does not support; the project reports the null rather than the optimistic read.
+shows the data does not support; the project reports the null rather than the optimistic read. The two
+arms of `care_access` land differently: **affordability** (the ACA coverage shock, §7b/§7e) is a clean,
+control-disciplined null; **supply** (the FQHC openings, §7f) is a powered near-miss - the strongest
+free-data hint of an actionable lever the project has, still honestly short of demonstrated.
 
 ### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.validate_placebo`)
 
@@ -681,8 +685,12 @@ conservative one: **free-data causal identification does not establish an action
 index is a deprivation-dominated *structural-access* map that is well-validated descriptively (§3-§6)
 but whose *actionability* is not demonstrated - and the project says so rather than resting on the
 single-state hint. This is the value of building the control: the naive single-state DiD would have
-shipped a causal claim the data does not support. Both temporal validators are standing, read-only, and
-never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP (Openshaw 1984) re-zoning
+shipped a causal claim the data does not support. But §7e tested only the *affordability* arm; the
+**supply arm (§7f below) - a staggered FQHC-opening event study - lands differently: a powered borderline,
+right-signed and dose-responsive but just short of significance.** So the sharpened conclusion is not a
+flat null but an asymmetry: affordability reads as a clean null, supply as a near-miss; the index's
+actionability remains *undemonstrated*, not *disproven*. All temporal validators are standing, read-only,
+and never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP (Openshaw 1984) re-zoning
 check) are in [BACKLOG.md](BACKLOG.md).
 
 ### 7d. Precision-weighting + disattenuation - the "modest" correlations are partly a noisy-ruler artifact
@@ -780,3 +788,77 @@ is the strongest free design available and it returns a clean, disciplined null 
 descriptive validity of §3-§6, is the accurate place to leave the index: a well-validated map of *where*
 access is poor, not a demonstrated lever for *fixing* it. The estimator is unit-tested with a planted
 treated-only effect against a common pre-trend (`tests/test_causal_validation.py`).
+
+### 7f. Supply lever - the staggered FQHC opening event study (`pipeline.validate_fqhc_lever`)
+
+Every test above (§7a-§7e) attacked the **affordability** arm of `care_access` - the ACA coverage shock,
+which moves who can *pay*. It left the other arm untouched: **supply / safety-net** - whether putting a
+clinic *where there was none* moves preventable hospitalizations. HRSA opens Federally Qualified Health
+Centers in dated, located waves (New Access Point grants), a **staggered treatment** that §7e's two-state
+DiD cannot exploit. The clean treatment is a ZCTA's **first-ever** FQHC opening in 2012-2019 (a 0→1
+transition; `build_fqhc_openings.py` derives it from the HRSA `Site Added to Scope` date - 551 such
+ZCTAs across the four panel states, matching the power gate's count). Controls are **supply-stable**
+ZCTAs (no opening in the window); ZCTAs that already had a clinic and merely gained another are excluded
+from both arms.
+
+With many adoption years a two-way-FE DiD is the *wrong* estimator: under heterogeneous, dynamic effects
+it contaminates each comparison with forbidden already-treated-vs-newly-treated 2×2s and can flip sign
+(Goodman-Bacon 2021). We use the **Callaway & Sant'Anna (2021) group-time ATT** instead, hand-rolled and
+unit-tested: for each cohort *g* (opening year) and period *t*,
+`ATT(g,t) = [Y_t − Y_{g−1} | cohort g] − [Y_t − Y_{g−1} | not-yet-treated by max(t,g)]`, a universal base
+period *g−1*, never using an already-treated ZIP as a control. Comparisons are made **within state**
+(NY treated vs NY not-yet, TX vs TX), so state-specific levels, scale and secular shocks difference out -
+the equivalent of state×year fixed effects - and the group-time ATTs aggregate to an event-time path
+weighted by cohort size. Outcomes: NY SPARCS PQI_90 ACSC/100k by ZIP×year 2009-2023, and the free TX
+DSHS PUDF ACSC/100k 2011-2019 (the §7e panel extended to nine annual years). Inference is the project's
+ZIP-cluster bootstrap. **This design was pre-registered by a Monte-Carlo power gate** (`validate_fqhc_power`,
+BACKLOG B5d.0) *before* any panel assembly: it rated the buildable NY+TX pool (~277 treated) as powered
+for the plausible 2-8% effect (MDE 5%) and NY-only (135) as a pilot - so a null here would be informative,
+not a power failure.
+
+**Realized design: 259 newly-served treated ZIPs (NY 125 + TX 134) vs 2,382 supply-stable controls**
+(≈ the gate's powered scenario). The event-study path (population-weighted):
+
+| event time *e* (yrs from opening) | ATT /100k | 95% CI | era |
+|---|---|---|---|
+| −5 … −2 (pre) | +31, +19, +35, +21 | mostly straddle 0 | parallel-trends |
+| **0** | −11 | [−35, +16] | post |
+| **+2** | −23 | [−61, +14] | post |
+| **+4** | −42 | [−87, +5] | post |
+| **+6** | −49 | [−108, +11] | post |
+| **+10** | −131 | [−269, +3] | post (few cohorts) |
+
+The post path is **monotone and dose-responsive** - ACSC falls further the longer the clinic has been
+open. The cohort-weighted **overall ATT is −35.5/100k** (~2.5% of the ~1,300/100k baseline), **95% CI
+[−71.7, +2.2]**; restricted to the well-populated horizon (*e*≤4) it is **−25.6/100k, CI [−56.9, +4.8]**.
+Both CIs **just barely include zero**. The pre-period is *not* perfectly flat (RMS 26.8/100k, residual
+*positive* - the **siting signal**: HRSA opens FQHCs where ACSC is already high and rising), so
+`parallel_trends_clean = False`. Pooling TX roughly halved that pre-trend versus the NY-only pilot (RMS
+57, overall −40.8, CI [−88, +17]), which on its own is underpowered exactly as the gate predicted.
+
+**Robustness (`run_robustness`).** Three checks, each reported against the headline:
+
+| variant | n_treated | overall ATT | 95% CI | reads |
+|---|---|---|---|---|
+| headline (clean 0→1) | 259 | −35.5 | [−71.9, +1.1] | the estimate |
+| drop controls <10 km (SUTVA) | 259 | **−39.5** | [−73.6, +0.9] | **persists, slightly more negative** - spillover onto near controls was biasing toward 0 |
+| placebo-in-time (−3 yr) | 259 | **−3.6** | [−35.1, +23.1] | **≈ 0** - the immediate pre-window is clean; the post-effect is not a near-term pre-trend artifact |
+| loose dose (any addition) | 369 | −66.5 | [−96.9, −38.2] | larger & excludes 0, but **more confounded** (repeated investment targets improving areas) - adds power, not clean identification |
+
+The headline survives the spillover check and **passes the placebo-in-time** - the two ways the borderline
+result could have been spurious. The loose-dose result is *larger* than the clean dose (the opposite of a
+diminishing-returns prediction), which we read not as a stronger lever but as a flag that the looser
+treatment folds in more siting endogeneity; the clean 0→1 transition remains the headline precisely
+because it is the better-identified one.
+
+**Honest verdict: borderline - a powered "almost", not a demonstrated lever and not a clean null.** The
+supply arm is right-signed, dose-responsive, robust to spillover, and clean on the near-term placebo, in
+a design the power gate certified - materially stronger than the affordability arm's control-disciplined
+null (§7e). But the 95% CI just includes zero and the distant pre-period carries a residual siting trend
+the event study cannot fully difference out, so the most we can honestly claim is a **suggestive modest
+supply effect (~2-2.5% of baseline ACSC), not statistically conclusive**. This does not overturn §7's
+top-line conclusion - the index's actionability is still not *demonstrated* - but it sharpens it: of the
+two access arms, affordability reads as a clean null and supply reads as a near-miss worth a future
+better-identified design (more states with annual panels; the distance-to-opening dose). Read-only;
+never feeds the composite. The CS estimator is unit-tested with a planted staggered effect, a common
+trend it must difference out, and a treated-only pre-trend it must expose (`tests/test_causal_validation.py`).

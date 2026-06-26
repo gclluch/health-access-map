@@ -209,6 +209,74 @@ log; consider committing it as `pipeline/audit.py`.)
   and crosswalked back - a *partial* MAUP check. **Where:** `pipeline/build_places.py`,
   `pipeline/build_acs.py` (tract geographies), the existing `zcta_tract_xwalk.parquet`. Honestly
   scope it as partial up front, or it over-promises.
+- **B5d (P2) - staggered FQHC New Access Point event study. BUILT - verdict BORDERLINE (2026-06-26).**
+  The full study is done and documented in `docs/VALIDATION.md` §7f (`make fqhc-lever`). Three new
+  read-only pieces, never feed the composite: `pipeline/build_fqhc_openings.py` (HRSA `Site Added to
+  Scope` → per-ZCTA first-open year → `data/processed/fqhc_openings.parquet`), `pipeline/validate_fqhc_lever.py`
+  (hand-rolled Callaway-Sant'Anna group-time ATT, within-state controls, NY+TX, + spillover/placebo/loose
+  robustness), and `validate_subcounty._fetch_tx_year` extended to annual TX PUDF 2011-2019. **Result:**
+  pooled NY+TX (259 newly-served treated ≈ the gate's powered 277 scenario) → overall ATT **−35.5/100k**
+  (~2.5% of baseline), monotone + dose-responsive, **95% CI [−71.7, +2.2] just includes 0**; pre-trends
+  not fully clean (residual siting). Robust to a <10 km spillover-control drop (−39.5) and passes
+  placebo-in-time (−3.6 ≈ 0); NY-only is an underpowered pilot (−40.8, CI crosses 0). So the **supply**
+  arm is a powered "almost" - right-signed and dose-responsive but short of significance - materially
+  stronger than the affordability arm's clean null (§7e), still not a demonstrated lever. 3 planted-effect
+  unit tests for the CS estimator (`tests/test_causal_validation.py`); suite green. The original plan
+  follows for the record.
+
+- **B5d (P2) - staggered FQHC New Access Point event study.** The sharpest free-data shot at a
+  *positive* causal lever: HRSA awards New Access Point (NAP) grants in waves, each opening a dated,
+  located FQHC site - a discrete shock to the **supply / safety-net arm** of `care_access` (the arm
+  §7b/§7e never tested; the ACA work tested affordability). Staggered timing → a Callaway & Sant'Anna
+  (2021) group-time ATT / event study, using **not-yet-treated + never-treated** ZIPs as controls -
+  which avoids the forbidden-comparison sign-flip that two-way FE suffers under heterogeneous timing
+  (Goodman-Bacon 2021; de Chaisemartin & D'Haultfœuille 2020). Outcome = ZIP ACSC, reusing the
+  state panels (NY/TX/CO/CA). **Treatment timing turned out to be already in hand**: the cached
+  `data/raw/hrsa_fqhc_sites.csv` carries **`Site Added to Scope this Date`** per site (the
+  new-access-point opening event), so a `ZIP x year -> first FQHC opened` panel is a groupby, not a
+  download - `build_fqhc.py` just never surfaced the date column. The B5d.0 gate below already used it
+  to ground the treated-N; remaining build lift is wiring those cohorts to the state ACSC panels + the
+  Callaway-Sant'Anna estimator, not data hunting.
+
+  - **B5d.0 (the go/no-go gate) - DONE, verdict GREEN-LIGHT** (`pipeline/validate_fqhc_power.py`,
+    `python -m pipeline.validate_fqhc_power`; run 2026-06-26). A Monte-Carlo power analysis on the
+    REAL noise floor before any treatment-panel assembly. **Result:** the design is well-powered.
+    - *Noise floor (real NY SPARCS panel, decomposed):* residual variance = an **irreducible
+      heterogeneity floor sqrt(a)=191/100k** + a sampling term b/pop; AR(1) rho=0.32; baseline
+      1,278/100k. Lever 3 (pop-weighting, §7d) cuts the effective SD 28% (319->231) but **barely moves
+      the MDE** - because WLS can only beat the sampling term, never the floor, and pop-weighting even
+      concentrates weight on big ZIPs that carry the full floor. So lever 3 is NOT the unlock.
+    - *Treated-N (real HRSA count) IS the binding lever, and it is large.* "Site Added to Scope"
+      openings (active, geocoded, 2012-2019) over the four panel states: 1,685 openings -> 874 unique
+      ZCTAs -> **555 NEWLY-served ZCTAs** (no prior site = the clean new-access-point treatment), 8
+      staggered cohorts of 51-100/yr (CA 243, TX 142, NY 135, CO 35). The earlier 40-150 guesses were
+      ~10x too low.
+    - *Verdict:* central design (n_treated=350 after ~37% outcome-coverage attrition, pop-weighted)
+      **MDE = 4%**, below the 5% plausible-band midpoint - detects the LIKELY FQHC effect at >=80%
+      power (power 0.91 at 4%, 0.96 at 5%). Even the pessimistic 200-ZIP / 8-yr design reaches MDE 5%.
+      Underpowered ONLY if the true effect sits near the 2% floor. **=> proceed to the full B5d build.**
+    - *Method retained below for the record (and to re-run with refined assumptions):*
+    - *Noise floor (free, in hand):* residual SD + within-ZIP AR(1) of ZIP ACSC after two-way
+      demeaning, estimated directly from the existing `validate_temporal._fetch_ny_panel()` (+ the TX/CO
+      panels via `validate_subcounty`). This is the variance the estimator actually fights.
+    - *Dose / dilution:* plausible per-capita ACSC reduction from one new FQHC × catchment penetration
+      (treated fraction = new-FQHC patients / ZIP pop); parameterize as a range and report the
+      **minimum detectable effect (MDE)** at 80% power, not a single guess. Anchor the effect range to
+      the FQHC→preventable-hospitalization literature.
+    - *Design dimensions:* number of treated ZIPs × cohorts is the binding constraint - only the 4
+      state panels have the outcome, so simulate over realized per-state NAP award *counts* (rough HRSA
+      tallies, no geocoding yet) × treatment years × panel length × control pool.
+    - *Estimator in the loop:* simulate the CS group-time ATT + aggregation with the project-standard
+      ZIP-cluster bootstrap, so the MDE reflects the real inference spec, not an i.i.d. approximation.
+    - *Add spillover:* a catchment-leakage parameter (treated clinic serves neighboring control ZIPs)
+      that attenuates the treated fraction - SUTVA is violated by construction, so bound its cost.
+    - **Decision rule:** if MDE > the plausible effect range → underpowered-by-construction → **don't
+      build B5d**; ship the negative result itself (an honest, citable "the free-data supply lever is
+      underpowered at ZIP resolution" finding, in `docs/VALIDATION.md` §7). If MDE < plausible effect →
+      green-light the HRSA NAP panel assembly and the full study. Either branch is a real deliverable.
+    - **Effort:** small - one simulation module (~few hundred lines), reuses the existing panel +
+      bootstrap; no heavy downloads. This is the cheap insurance against sinking the multi-year-download
+      effort into a study that can't detect anything.
 
 ---
 
