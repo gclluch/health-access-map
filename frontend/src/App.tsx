@@ -1,17 +1,23 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { useStore } from "./store";
 import { reportError } from "./lib/observability";
 import MapView from "./components/MapView";
 import Legend from "./components/Legend";
 import SearchBox from "./components/SearchBox";
-import RankingsList from "./components/RankingsList";
-import DetailPanel from "./components/DetailPanel";
-import WeightSliders from "./components/WeightSliders";
-import MethodologyPanel from "./components/MethodologyPanel";
 import TopControls from "./components/TopControls";
-import CompareTray from "./components/CompareTray";
 import SiteCredits from "./components/SiteCredits";
 import Caret from "./components/Caret";
+
+// Interaction-gated panels: none are needed for first paint (the rail starts collapsed, the
+// detail/compare panels appear only on selection, methodology only when opened). Code-splitting
+// them keeps the largest chunk - the map - out of their JS and trims the initial download, the
+// biggest win on mobile/cellular. Each renders only when its trigger fires, so the chunk loads
+// exactly when first used; fallback={null} because every one of these is already conditionally shown.
+const RankingsList = lazy(() => import("./components/RankingsList"));
+const DetailPanel = lazy(() => import("./components/DetailPanel"));
+const WeightSliders = lazy(() => import("./components/WeightSliders"));
+const MethodologyPanel = lazy(() => import("./components/MethodologyPanel"));
+const CompareTray = lazy(() => import("./components/CompareTray"));
 
 function Loading() {
   return (
@@ -107,6 +113,7 @@ function AppInner() {
   const selectedZcta = useStore((s) => s.selectedZcta);
   const compareCount = useStore((s) => s.compareZctas.length);
   const showWeights = useStore((s) => s.showWeights);
+  const showMethodology = useStore((s) => s.showMethodology);
   const toggleMethodology = useStore((s) => s.toggleMethodology);
   const [isCompactHeight, setCompactHeight] = useState(
     () => window.innerHeight < 520,
@@ -152,7 +159,7 @@ function AppInner() {
           <SearchBox />
           <button
             onClick={() => toggleMethodology(true)}
-            className="text-[12px] text-graphite hover:text-accent bg-surface/90 border border-hairline rounded px-2.5 py-1.5 whitespace-nowrap max-[520px]:px-2"
+            className="text-[12px] text-graphite hover:text-accent bg-surface/90 border border-hairline rounded px-2.5 py-1.5 whitespace-nowrap max-[520px]:px-2 max-[520px]:min-h-[40px] max-[520px]:inline-flex max-[520px]:items-center"
           >
             How to read this
           </button>
@@ -179,7 +186,9 @@ function AppInner() {
             </button>
             {railOpen && !isCompactHeight && (
               <div className="flex-1 min-h-0 overflow-hidden">
-                <RankingsList />
+                <Suspense fallback={null}>
+                  <RankingsList />
+                </Suspense>
               </div>
             )}
           </div>
@@ -189,7 +198,9 @@ function AppInner() {
       {/* detail panel (on selection): right rail desktop / bottom sheet mobile */}
       {status === "ready" && selectedZcta && (
         <div className="absolute z-30 left-2 right-2 bottom-2 sm:left-auto sm:right-3 sm:top-14 sm:bottom-auto max-[520px]:bottom-1">
-          <DetailPanel />
+          <Suspense fallback={null}>
+            <DetailPanel />
+          </Suspense>
         </div>
       )}
 
@@ -201,7 +212,9 @@ function AppInner() {
         <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5 max-[520px]:bottom-[40px] max-[520px]:w-[calc(100vw-16px)]">
           {showWeights && (
             <div className="panel rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
-              <WeightSliders />
+              <Suspense fallback={null}>
+                <WeightSliders />
+              </Suspense>
             </div>
           )}
           <Legend />
@@ -211,13 +224,19 @@ function AppInner() {
       {/* comparison tray (when 1+ ZIPs are pinned): top-center, above the map */}
       {status === "ready" && compareCount > 0 && (
         <div className="absolute z-30 left-2 right-2 top-[52px] sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[540px] max-w-[96vw] max-[520px]:top-[126px]">
-          <CompareTray />
+          <Suspense fallback={null}>
+            <CompareTray />
+          </Suspense>
         </div>
       )}
 
       {status === "ready" && <SiteCredits />}
       <Toast />
-      <MethodologyPanel />
+      {showMethodology && (
+        <Suspense fallback={null}>
+          <MethodologyPanel />
+        </Suspense>
+      )}
     </div>
   );
 }
