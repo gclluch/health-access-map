@@ -197,6 +197,11 @@ export default function MapView() {
         visible: detail, // only fetch/draw tiles at high zoom; kept mounted (hidden) otherwise
         minZoom: TILE_MIN_ZOOM,
         maxZoom: TILE_MAX_ZOOM,
+        // Picking is handled at the TileLayer level (it receives the picked tile feature) - an
+        // onClick on the renderSubLayers child does not fire for a TileLayer.
+        pickable: true,
+        onClick: onClickFeat,
+        onHover: onHoverFeat,
         renderSubLayers: ((props: {
           id: string;
           data: ZctaFeature[] | null;
@@ -212,7 +217,7 @@ export default function MapView() {
             id: `${props.id}-fill`,
             data: props.data as never,
             beforeId: labelLayerId,
-            pickable: true,
+            pickable: true, // feeds the TileLayer's picking pass; the handlers live on the parent
             stroked: true,
             filled: true,
             lineWidthUnits: 'pixels',
@@ -221,8 +226,6 @@ export default function MapView() {
             getFillColor: fillColor,
             getLineColor: lineColor,
             getLineWidth: lineWidth,
-            onClick: onClickFeat,
-            onHover: onHoverFeat,
             transitions: { getFillColor: { duration: REDUCE_MOTION ? 0 : 350 } },
             updateTriggers: fillTriggers,
             extensions: [new ClipExtension()],
