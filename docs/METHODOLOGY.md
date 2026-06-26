@@ -42,7 +42,7 @@ This is the County Health Rankings stance (factors are ranked separately from ou
 
 ## 2. Architecture and the percentile backbone
 
-**Hierarchy:** 3 dimensions -> 11 sub-scores -> ~50 measures (`pipeline/taxonomy.py` is the
+**Hierarchy:** 3 dimensions -> 14 sub-scores (12 scored + 2 displayed-only) -> ~50 measures (`pipeline/taxonomy.py` is the
 single source of truth; the frontend mirrors it in `lib/types.ts`).
 
 **Every node is a national percentile rank (0-100), re-ranked at each level.** This is the

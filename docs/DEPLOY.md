@@ -1,7 +1,8 @@
 # Deploy
 
-The app is two deployables: a **static SPA** (the map + the precomputed `metrics.json` /
-`zcta.geojson`) and a small **FastAPI** service (per-ZIP drill-down, rankings, compare). The map
+The app is two deployables: a **static SPA** (the map + the precomputed `metrics.json`,
+`zcta_overview.geojson`, and range-requested `zcta.pmtiles`) and a small **FastAPI** service
+(per-ZIP drill-down, rankings, compare). The map
 works from the static files alone; the API powers the detail-panel deep drill-down.
 
 ## Prerequisites

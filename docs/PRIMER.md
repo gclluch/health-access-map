@@ -15,7 +15,7 @@ jargon, and the domain knowledge. Written to onboard a human or an agent from ze
 
 **Care Access Map** is a web app: a choropleth (color-shaded) map of the United
 States at **ZIP-code-area** granularity. For any ZIP you see a composite **Access
-Gap Score** and can drill down through 3 dimensions → 11 sub-scores → ~50 underlying
+Gap Score** and can drill down through 3 dimensions → 14 sub-scores → ~50 underlying
 measures. You can re-weight the score live, rank the worst/best areas by any metric,
 search a ZIP, and read every methodological caveat in-app.
 
@@ -72,18 +72,24 @@ ACCESS GAP SCORE  (one 0-100 relative national rank, tunable weights)
 ├─ HEALTH NEED            (35%)   ── CDC PLACES
 │  ├─ Chronic disease            (11 conditions)
 │  ├─ Behavioral risk            (smoking, inactivity, drinking, sleep)
-│  ├─ Mental & social health     (depression, poor-mental-health-days, loneliness…)
+│  ├─ Mental & social distress   (depression, poor-mental-health-days, loneliness…)
 │  └─ Disability                 (7 disability types)
 ├─ SOCIAL VULNERABILITY   (30%)   ── Census ACS + CDC PLACES (SDOH)
 │  ├─ Socioeconomic              (poverty, income, unemployment, education)
-│  ├─ Household composition      (age 65+, age 17−, limited English)
 │  ├─ Housing & transport        (no vehicle, crowding, mobile homes, multi-unit)
-│  └─ Unmet social needs         (food/housing/transport/utility insecurity)
-└─ BARRIERS TO CARE       (35%)   ── CMS NPPES + HRSA + Census ACS + CDC PLACES
+│  ├─ Unmet social needs         (food/housing/transport/utility insecurity)
+│  └─ Digital / telehealth access (no household internet)
+└─ BARRIERS TO CARE       (35%)   ── CMS NPPES + HRSA + Census ACS + Urban Institute
    ├─ Low provider supply (spatial) (E2SFCA: primary, mental, dental, maternity/OB)
-   ├─ Low safety-net access         (E2SFCA to HRSA FQHC sites — sliding-fee clinics)
-   ├─ Lack of insurance          (uninsured)
-   └─ Low preventive-care use    (checkups, screenings — low use = barrier)
+   ├─ Official provider shortage    (HRSA primary-care HPSA)
+   ├─ Lack of insurance             (uninsured: ACS + PLACES)
+   ├─ Medical debt burden           (in collections — Urban Institute)
+   ├─ Unmet safety-net need*        (FQHC desert × poverty)
+   └─ Low preventive-care use*      (checkups, screenings)
+
+* displayed but NOT scored (see §6 and DECISIONS.md). The former "household
+  composition" sub-score (age 65+, age 17−, limited English) was dropped — age is
+  context and limited-English is wrong-signed vs mortality.
 ```
 
 Every level is a **0-100 national percentile, and every label is direction-honest:
@@ -229,29 +235,42 @@ social/emotional support.
 **Socioeconomic:** `poverty_rate` below federal poverty line · `median_income`
 median household income (*↑better*, $) · `unemployment_rate` · `no_hs_diploma_rate`
 adults 25+ without a high-school diploma.
-**Household composition:** `age65_rate` aged 65+ · `age17_rate` aged 17 & under ·
-`limited_english_rate` households that speak English "less than very well".
 **Housing & transport:** `no_vehicle_rate` no vehicle available · `crowding_rate` >1
 occupant per room · `mobile_home_rate` · `multi_unit_rate` 10+ unit structures.
 **Unmet social needs (PLACES SDOH %):** `foodinsecu_pct` food insecurity ·
 `housinsecu_pct` housing insecurity · `lacktrpt_pct` lack of reliable transportation ·
 `shututility_pct` utility shut-off threat · `foodstamp_pct` receives SNAP/food stamps.
+**Digital / telehealth access:** `no_internet_rate` households with no internet
+subscription (ACS B28002) — the telehealth analog of the no-vehicle barrier.
+
+> The former **household composition** sub-score (`age65_rate`, `age17_rate`,
+> `limited_english_rate`) is no longer scored — age structure is context and limited
+> English is wrong-signed vs mortality (immigrant-health paradox). Those columns remain
+> as context (see below).
 
 ### CARE ACCESS
 **Provider supply (spatial, E2SFCA):** `primary_2sfca` primary-care providers per 1,000
 people *reachable within ~16 km* (*↑better*) · `mental_2sfca` mental health · `dental_2sfca`
 dental · `ob_2sfca` maternity/OB-GYN. Derived: `primary_people_per_provider` (catchment
 people-per-provider) and `primary_shortage` (boolean, true if > HRSA 3,500:1).
-**Safety-net access:** `safetynet_2sfca` FQHC capacity reachable · `fqhc_sites_reachable` ·
-`nearest_fqhc_km`.
+**Official provider shortage (HPSA):** `hpsa_pc_score` HRSA primary-care Health
+Professional Shortage Area score — an official designation orthogonal to the E2SFCA density.
 **Insurance:** `uninsured_rate` (ACS, all ages) · `access2_pct` (PLACES, adults 18-64).
-**Preventive-care use (PLACES %, all `↑better` — low use = a barrier):** `checkup_pct`
+**Medical debt burden:** `medical_debt` share with medical debt in collections (Urban
+Institute credit-bureau panel, county-level) — the affordability barrier beyond coverage.
+**Safety-net access (displayed, NOT scored):** `safetynet_2sfca` FQHC capacity reachable ·
+`fqhc_sites_reachable` · `nearest_fqhc_km`. Scored form `safetynet_barrier` (FQHC desert ×
+poverty) is `scored=False` — wrong-signed within counties (see §6 / VALIDATION.md).
+**Preventive-care use (PLACES %, `↑better`; displayed, NOT scored):** `checkup_pct`
 annual checkup · `dental_pct` dental visit · `cholscreen_pct` cholesterol screening ·
 `mammouse_pct` mammography · `colon_screen_pct` colorectal screening · `bpmed_pct`
-taking prescribed BP medication.
+taking prescribed BP medication. Realized utilization (a mediator), so `scored=False`.
 
 ### Context only (shown, never scored — by design)
 `median_age`, `pct_minority` (1 − white-non-Hispanic share), `pct_under5`,
+`pct_over65_ctx`, `age65_rate`, `age17_rate`, `limited_english_rate` (the former
+"household composition" inputs, now context), `medicaid_rate` (Medicaid/means-tested
+coverage — a barrier that collapses to the poverty gradient, so shown not scored),
 `ghlth_pct` (fair/poor general health), `phlth_pct` (poor physical-health days),
 provider raw counts, population, and geography (`city`, `county_name`, `state_name`).
 
@@ -261,10 +280,12 @@ provider raw counts, population, and geography (`city`, `county_name`, `state_na
 > causal. We show demographics for context only.
 
 ### The derived percentiles (what the UI mostly shows)
-- 11 sub-scores: `chronic_disease_pctile`, `behavioral_risk_pctile`,
+- 14 sub-scores: `chronic_disease_pctile`, `behavioral_risk_pctile`,
   `mental_social_health_pctile`, `disability_pctile`, `socioeconomic_pctile`,
-  `household_pctile`, `housing_transport_pctile`, `social_needs_pctile`,
-  `provider_supply_pctile`, `insurance_pctile`, `preventive_use_pctile`.
+  `housing_transport_pctile`, `social_needs_pctile`, `digital_access_pctile`,
+  `provider_supply_pctile`, `shortage_designation_pctile`, `insurance_pctile`,
+  `medical_debt_pctile`, plus `safetynet_access_pctile` and `preventive_use_pctile`
+  (the last two are computed and displayed but **not scored** — `scored=False`).
 - 3 dimensions: `health_need_pctile`, `social_vulnerability_pctile`,
   `care_access_pctile`.
 - Composite: `access_gap_score` (the weighted blend) and `access_gap_pctile` (its true
@@ -330,8 +351,9 @@ yields a score; an area needs ≥2 of 3 dimensions and a population to be "score
 
 ### 7.6 Why the weights are tunable
 The default 35/30/35 dimension weights are a **value judgment, not empirical** (as in
-County Health Rankings). The three dimensions are also **correlated (~0.5)**, so a
-weighted sum double-counts shared variance. The **sliders** make that subjectivity
+County Health Rankings). The three dimensions are also **strongly collinear**
+(need↔vulnerability **0.73**, need↔access 0.59, vulnerability↔access 0.61; ~1.6 effective
+dimensions), so a weighted sum double-counts shared variance. The **sliders** make that subjectivity
 explicit and explorable rather than hidden - that's the honest resolution.
 
 ---
@@ -408,8 +430,9 @@ explicit and explorable rather than hidden - that's the honest resolution.
 3. **Provider supply is spatial access over registrations.** 2SFCA fixes containment, but
    NPPES counts over-state active capacity and ignore Medicaid/new-patient acceptance.
    The HRSA flag is the only benchmark-referenced gap.
-4. **Collinear dimensions (~0.5).** The weighted sum double-counts; sliders make it
-   explicit; correlations are reported in `provenance.json`.
+4. **Strongly collinear dimensions** (need↔vulnerability **0.73**, need↔access 0.59,
+   vulnerability↔access 0.61; ~1.6 effective dimensions). The weighted sum double-counts;
+   sliders make it explicit; correlations are reported in `provenance.json`.
 5. **Small-area noise.** Low-population ZIPs have wide MOEs; flagged low-confidence and
    excluded from headline rankings; uninhabited ZIPs render gray ("no reliable data").
 6. **Vintage/universe skew.** NPPES (this month), ACS (centered ~2-3 yrs back), PLACES

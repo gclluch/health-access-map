@@ -350,7 +350,7 @@ OECD/JRC evaluation of the live build:
 | External validity | r ≈ +0.52 LE, +0.49 premature death, +0.40 infant mort | moderate, correctly signed, ≈ SDI's published validation |
 | Plausible-weight rank wobble | ~±6 pts | reasonable weightings barely move ranks (Spearman 0.999) |
 | Measurement noise (split-half SE) | ≈2.6 pts; min detectable gap ≈7 | two ZIPs <7 pts apart are within noise |
-| Dimensionality | PC1 = 46%; corr(composite, PC1) 0.94 | ~one "general deprivation" gradient under the hood |
+| Dimensionality | PC1 = 46% **across the underlying measures** (cf. **76% at the 3-dimension level**, §1b); corr(composite, PC1) 0.94 | ~one "general deprivation" gradient under the hood |
 
 **Combined: two ZIPs are reliably different only by ~10-15 percentile points ⇒ ~7-10 tiers, not
 33,181 ranks.** The UI leads with **deciles + a 5-95 rank band**, not an integer leaderboard.

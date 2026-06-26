@@ -8,8 +8,8 @@ says so.
 
 > **Note on versions.** §1 (the percentile backbone) and §8-13 (access theory, the honest
 > scoring evaluation, weights, the E2SFCA supply upgrade, safety-net, and the multiplicative
-> lens) describe the **current hierarchical model** - 3 dimensions → 11 sub-scores → ~50
-> measures. §2 is a short appendix recording the original **v1** 3-component scoring (disease /
+> lens) describe the **current hierarchical model** - 3 dimensions → 14 sub-scores
+> (12 scored + 2 displayed-only) → ~50 measures. §2 is a short appendix recording the original **v1** 3-component scoring (disease /
 > supply / econ) for history. See [`METHODOLOGY.md`](METHODOLOGY.md) and
 > [`PRIMER.md`](PRIMER.md) for the current structure.
 
@@ -48,7 +48,7 @@ gap 0.35 / economic vulnerability 0.25** - each component standardized then perc
 (standardize-then-combine, the construction of deprivation indices and the Human Development
 Index; supply gap = 100 - provider-density percentile, on the HRSA HPSA ratio precedent). It was
 replaced by the current **hierarchical SVI-method model** (§1, §8-13 here +
-[`METHODOLOGY.md`](METHODOLOGY.md)): 3 dimensions -> 11 sub-scores -> ~50 measures at default
+[`METHODOLOGY.md`](METHODOLOGY.md)): 3 dimensions -> 14 sub-scores (12 scored + 2 displayed-only) -> ~50 measures at default
 weights 35 / 30 / 35. The hierarchical model fixed v1's two weak spots - flat ZIP-containment
 supply (now E2SFCA + adaptive catchment, §11) and a thin economic axis (now the full
 social-vulnerability dimension, §8). The percentile backbone (§1) and precedents (SVI, ADI, CHR,
@@ -111,7 +111,7 @@ coverage availability). This makes the score **realized/effective access**, not 
 
 **Redundancies (disclosed, mostly intentional):**
 - **Poverty is counted ~twice** - it conditions PLACES disease estimates (health need) *and*
-  drives social vulnerability (dimension correlation ~0.5). The sliders + reported
+  drives social vulnerability (need↔vulnerability dimension correlation **0.73**). The sliders + reported
   correlations are the honest resolution; a PCA/factor composite would formally de-dup.
 - **Two transportation measures** - `no_vehicle` (structural asset) and `lacktrpt` (PLACES
   experienced barrier). Related but distinct (you can own a car and still lack reliable
@@ -205,6 +205,8 @@ validity + no-outcome-regression, **not** on an outcome-r lift (the additive for
 maximizes outcome correlation, so gating on outcome-r would wrongly reject a correct construct).
 
 **Shipped as a selectable lens, not the default** (the user owns the compensability assumption,
-as they own the weights). Stored as `access_gap_mult` / `access_gap_mult_pctile`; the pctile is
-in the `metrics.json` payload. Remaining: the frontend toggle. See [VALIDATION.md](VALIDATION.md)
-for the gate detail.
+as they own the weights). It is live in the Color-by + Rankings menus (`COMPOSITE_MULT_METRIC`
+in the frontend), recomputed **client-side** from the three stored dimension percentiles
+(`scoring.accessGapMult()`) — so the precomputed `access_gap_mult_pctile` was dropped from the
+slim `metrics.json` payload (kept in the parquet for the API/CSV). See [VALIDATION.md](VALIDATION.md)
+for the gate detail and [DECISIONS.md](DECISIONS.md) (lens toggle DONE; slim-payload trim, D1).

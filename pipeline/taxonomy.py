@@ -1,4 +1,7 @@
-"""The hierarchical measure model: 3 dimensions -> 11 sub-scores -> ~50 measures.
+"""The hierarchical measure model: 3 dimensions -> 14 sub-scores -> ~50 measures.
+
+(12 sub-scores are scored; `safetynet_access` and `preventive_use` are computed and
+displayed but carry `scored=False` - see their inline notes below.)
 
 Groupings follow established frameworks (CDC PLACES categories, CDC/ATSDR SVI
 themes, HRSA/2SFCA for supply) rather than ad-hoc choices.

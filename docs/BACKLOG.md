@@ -324,10 +324,10 @@ well-covered; two are genuine holes, both hard to fill from free data.
 
 ## D. Engineering / product
 
-### D1 (P2) - Web payload / cold-load weight (the PMTiles item)
-- **Problem.** ~16.7 MB `zcta.geojson` (~4.5 MB gzip) + ~30 MB `metrics.json` are loaded eagerly on
-  every cold visit (~45 MB parsed to JS objects + Maps). OOM risk on low-memory mobile; the single
-  biggest scalability liability. Mitigated (gzip_static, off-main-thread worker parse, hashed
+### D1 (P2) - Web payload / cold-load weight (the PMTiles item) — RESOLVED
+- **Problem (original).** ~16.7 MB `zcta.geojson` (~4.5 MB gzip) + ~30 MB `metrics.json` were loaded
+  eagerly on every cold visit (~45 MB parsed to JS objects + Maps). OOM risk on low-memory mobile; the
+  single biggest scalability liability. Mitigated (gzip_static, off-main-thread worker parse, hashed
   immutable assets) but not structurally fixed.
 - **Where to look.** `frontend/src/lib/data.ts` + `frontend/src/lib/dataWorker.ts` (eager fetch +
   parse); `pipeline/build_geometry.py` (mapshaper simplify); `frontend/nginx.conf` (gzip_static);
@@ -352,8 +352,15 @@ well-covered; two are genuine holes, both hard to fill from free data.
   read. Dropped it from `_write_slim_json` (kept in the parquet for the API/CSV): 36→35 cols, 31.3→
   30.3 MB raw, 3.9→3.75 MB gzip, one fewer field per parsed record. tsc + scoring tests green.
   **The remaining columns are load-bearing** (map-coloring by any dimension/sub-score/outcome +
-  client reweighting), so further trimming needs the *structural* split (slim coloring payload +
-  on-demand sub-scores) or PMTiles for the 16 MB geometry - that is the real lever and stays open.
+  client reweighting).
+- **Status (2026-06, `perf/mobile-and-bundle`): structural fix DONE.** The 16 MB single-blob geometry
+  is gone — geometry is now **hybrid**: a small heavily-simplified `zcta_overview.geojson` for the
+  national choropleth at z<6 plus range-requested **PMTiles** vector tiles (`zcta.pmtiles`,
+  tippecanoe) at z>=6, wired through `frontend/src/lib/data.ts` / `dataWorker.ts` / `store.ts` /
+  `MapView.tsx` and built by `pipeline/build_pmtiles.py`. `zcta.geojson` is now an unshipped pipeline
+  intermediate (input to tiling), not a payload. Cold-load geometry and resident memory are bounded;
+  the remaining slim-`metrics.json` split into a coloring payload + on-demand sub-scores is the only
+  optional follow-up left.
 
 ### D2 (P3) - CSP needs a real-browser verification
 - **Problem.** The Content-Security-Policy added to `frontend/nginx.conf` is scoped to the known
