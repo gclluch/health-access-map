@@ -12,15 +12,13 @@ claims). Ship only if the north star (`drop_care_access` stays below FULL) and r
 (>=0.93) hold, judged against the **death-records / ACSC** outcomes, never flu/mammography
 (the anti-circularity rule).
 
-Current baseline: FULL **0.498** / drop_care_access **0.452** (care access adds **+0.046**) /
-composite **0.503** (ZCTA-broadcast; matched-resolution county-collapsed **0.547**) / clean-4
-**0.538** / split-half **0.953** / bands ALL PASS / scoreable **33176**.
-(The ZCTA-broadcast headline r's are slightly below the prior 0.510 / 0.514 baseline **because**
-the full iterative Fay-Herriot upgrade sharpened **sub-county** resolution: the broadcast metric
-mechanically falls as within-county signal rises, while the matched-resolution county-collapsed
-**0.547** and within-county validity **held/rose** - see the Fay-Herriot entry in Kept and the
-V1-vs-V2 negative in Rejected. Earlier arc: up from FULL 0.492 at session start by dropping the
-mediator `preventive_use` and adding the `medical_debt` affordability barrier.)
+Current gate numbers - FULL vs drop-each-dimension, composite agreement (ZCTA-broadcast and the
+matched-resolution county-collapsed point), clean-4, split-half, bands, and scoreable count, plus
+every margin CI - live in `data/processed/provenance.json` + `gate_ci.json`; read them there so
+this ledger can't silently go stale. (The ZCTA-broadcast headline r sits slightly below the
+county-collapsed point by design: the full iterative Fay-Herriot upgrade sharpened **sub-county**
+resolution, and the broadcast metric mechanically falls as within-county signal rises - see the
+Fay-Herriot entry in Kept and the V1-vs-V2 negative in Rejected.)
 
 ## Kept (passed the gate)
 

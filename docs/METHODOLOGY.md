@@ -165,9 +165,9 @@ r = 0.000, scored on construct grounds not sub-county signal - VALIDATION.md §3
 provider_supply 0.273, **shortage_designation** (HPSA) 0.20. These thin margins are **not
 multiple-comparisons corrected** (VALIDATION.md §1c). Two care items are computed +
 displayed but **unscored**: `safetynet_access` (wrong-signed within counties) and `preventive_use`
-(realized utilization - a mediator/outcome, not a barrier). The arc this session: dropped the
-`preventive_use` mediator (clean-r 0.501→0.516) and added the `medical_debt` barrier (→0.547),
-lifting FULL from 0.492. See VALIDATION.md + DECISIONS.md.
+(realized utilization - a mediator/outcome, not a barrier). By design the `preventive_use`
+mediator is dropped from scoring and the `medical_debt` affordability barrier is scored in its
+place. See VALIDATION.md + DECISIONS.md.
 
 ### The cardinal anti-circularity rule
 Flu vaccination and mammography are **healthcare-engagement** measures *and* validation
@@ -181,7 +181,7 @@ ones.** This rule is what caught Layer C1 (§8).
 ## 7. Uncertainty and comparability
 
 - **Small-area noise:** low-population ZCTAs have wide ACS margins of error. We apply
-  empirical-Bayes (**Fay-Herriot**) shrinkage to the social/economic rates - each ZCTA is pulled
+  empirical-Bayes (**Fay-Herriot**; Fay & Herriot 1979) shrinkage to the social/economic rates - each ZCTA is pulled
   toward its county mean in proportion to its own noise. Noisiest ZCTAs are flagged
   low-confidence and kept out of headline rankings.
 - **Rank bands:** each scoreable ZCTA carries a 5-95 national-rank band (Saisana/OECD
@@ -269,21 +269,20 @@ specced in DECISIONS.md), the only remaining lever that could add genuinely new 
 6. **Pipeline is the source of truth, the backend just serves it.** `data/` and the big payloads
    are gitignored and reproducible via the staged build (`python -m pipeline.run`).
 
-**C1-redux (condition-specific quality-of-care) has now been tested and REJECTED** - Dartmouth
-diabetic process measures carry no clean signal (+0.04; see the decision log above). The lever
-that worked instead was **HPSA shortage designation (C5)** - an *official* shortage signal, not
-a modeled rate.
+**C1-redux (condition-specific quality-of-care) is tested and rejected** - Dartmouth diabetic
+process measures carry no clean signal (+0.04; see the decision log above). The lever that worked
+instead was **HPSA shortage designation (C5)** - an *official* shortage signal, not a modeled rate.
 
-**The spatial-signal ceiling is reached (2026-06-23).** Three further probes - hospital quality
+**The spatial-signal ceiling is reached.** Three further probes - hospital quality
 (Care Compare), SUD/behavioral desert (SAMHSA/NPPES), and sub-county HPSA - all failed the same way
 every earlier one did: collinear with the poverty/rural/supply gradient already scored, so raw signal
 collapses in partial-r. No remaining free spatial dataset is orthogonal to that gradient. The
 remaining levers are therefore **completeness/structural, not signal** (in rough ROI order):
-1. ~~**PLACES measurement-noise bands (Layer B3)**~~ ✅ **SHIPPED 2026-06-23** - health_need's
-   measurement noise (previously σ=0 in the bands) is now parsed from PLACES 95% CIs into a
-   `places_input_cv`, injected in quadrature with the ACS term and calibrated to a member-input
-   resample (gate 3 health_need inj/emp 0.97). Point scores unchanged; the uncertainty model is now
-   complete across all three dimensions. See DECISIONS.md Layer B3.
+1. **PLACES measurement-noise bands (Layer B3).** health_need's measurement noise (previously σ=0
+   in the bands) is parsed from PLACES 95% CIs into a `places_input_cv`, injected in quadrature with
+   the ACS term and calibrated to a member-input resample (gate 3 health_need inj/emp 0.97). Point
+   scores unchanged; the uncertainty model is complete across all three dimensions. See DECISIONS.md
+   Layer B3.
 2. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
    isochrones. A *build* (routing over provider coords), not a download; deemed infeasible at C3,
    revisit only with a precomputed travel-time matrix (e.g. Urban Institute national tract OSRM).
@@ -291,4 +290,4 @@ remaining levers are therefore **completeness/structural, not signal** (in rough
 3. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
    file exists (only the CMS NDF Medicare-assignment flag, near-saturated); needs the scrape-to-
    calibrate heuristic in DECISIONS.md. A real slog. Lowest ROI.
-~~ZIP/sub-county HPSA resolution~~ - tested 2026-06-23, a wash (0.991 correlated with county-max).
+ZIP/sub-county HPSA resolution - a wash (0.991 correlated with county-max).

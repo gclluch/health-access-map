@@ -28,7 +28,8 @@ killed inputs on margins as small as +0.04 with no uncertainty attached. `pipeli
 puts a 95% CI on every margin, with two deliberate choices that make the interval honest, not
 flattering:
 
-- **Cluster bootstrap over county** (`state|county_name`), not ZCTA rows. Five of the six
+- **Cluster bootstrap over county** (`state|county_name`), not ZCTA rows (Efron & Tibshirani
+  1993; the clustered/block form follows Cameron, Gelbach & Miller 2008). Five of the six
   outcomes are county-level (CHR), so resampling 33k ZCTAs as if independent treats one county's
   ~11 ZCTAs as 11 independent looks at a single outcome value and understates uncertainty by
   ~√(zctas/county). Resampling whole counties (≈3,225 clusters) respects the true effective N.
@@ -67,7 +68,8 @@ point. Treat the headline r as good to ~one decimal, with the honest interval co
 
 At the dimension level the correlation matrix (need/vulnerability/access) has eigenvalues
 [2.30, 0.44, 0.26]: **PC1 = 76%** of the joint variance, **participation ratio ≈ 1.6 effective
-dimensions**. The three-dimension framing is a *construct* decomposition (the 5 A's), not a claim
+dimensions** (the inverse participation ratio - IPR - a standard spectral measure of effective
+dimensionality). The three-dimension framing is a *construct* decomposition (the 5 A's), not a claim
 of three statistically independent axes - which is exactly why re-weighting them barely moves
 ranks (Spearman ~0.999, ~±6 pts) and why the sliders are framed in-product as a sensitivity
 probe, not a control that rewrites the map. Reported live in `provenance.json`
@@ -247,9 +249,9 @@ mediator *raised* clean-r (0.501→0.516); adding the medical-debt barrier raise
 realized-use proxies (mediators) - it was a genuine upstream **affordability** barrier (medical
 debt). Spatial supply stays the weakest, least-productive piece.*
 
-## 4. Amenable mortality - the gold-standard anchor (**RUN - care access validated**)
+## 4. Amenable mortality - the gold-standard anchor
 
-> **STATUS: VALIDATED against treatable mortality (2026-06-24).** A CDC WONDER county export
+> A CDC WONDER county export
 > (OECD treatable causes, ages 0-74, **age-adjusted**, pooled 2016-2020; committed at
 > `data/manual/wonder_amenable_county.txt`, 3,088 counties) is now built into `metrics.parquet`
 > as `amenable_mortality` and gated. **Headline: care_access partial r(amenable | health_need,
@@ -315,8 +317,8 @@ vintage or the full OECD code set, follow the recipe in `pipeline/build_amenable
 several selected on thin margins against the standard six, never re-checked on an outcome they
 weren't fitted to. `bootstrap_gate.amenable_subscores()` closes it: for each **scored** care
 sub-score, partial r vs amenable mortality net of need + vulnerability, cluster-bootstrapped over
-county, with a **Benjamini-Hochberg FDR correction across the four** (the multiplicity fix §1c said
-was missing). 3,066 counties / 32,879 ZCTAs.
+county, with a **Benjamini-Hochberg FDR correction (Benjamini & Hochberg 1995) across the four** (the
+multiplicity fix §1c said was missing). 3,066 counties / 32,879 ZCTAs.
 
 | Scored care sub-score | raw r | partial r \| need,vuln | 95% CI (cluster) | BH q | verdict |
 |---|---|---|---|---|---|
@@ -366,11 +368,10 @@ Key sources: IHME HAQ (GBD 2016, PMC5986687); Robert Graham Center SDI (Butler 2
 Handbook 2008; Saisana/Saltelli/Tarantola 2005; Spielman/Folch/Nagle 2014 (Applied Geography);
 Petterson 2023 (ADI critique, Health Affairs Scholar); CHR ranking-methods.
 
-## 6. Robustness program - answering the hardest statistical critiques (2026-06-25)
+## 6. Robustness program - answering the hardest statistical critiques
 
-A methodologist's review raised five specific weaknesses. Each was implemented and run; the
-honest results are below. Two strengthen the project, two are real-but-bounded, one is the
-known structural ceiling.
+The robustness program addresses five specific statistical weaknesses; the honest results are
+below. Two strengthen the project, two are real-but-bounded, one is the known structural ceiling.
 
 ### 6a. Sub-county validation across five states + two national rulers (`validate_subcounty --all`)
 
@@ -565,7 +566,7 @@ CO), while the national sub-county check rides on overdose mortality - a real bu
 ruler. B4 (PLACES SES-conditioning) is structurally unfixable but now **bounded** (§6f): ≤10% of
 external validity depends on the circular dimension.
 
-**Crosswalk refined to population weighting (DONE).** The tract→ZCTA crosswalk now uses the **HUD
+**Crosswalk refined to population weighting.** The tract→ZCTA crosswalk now uses the **HUD
 USPS `res_ratio`** (the share of each ZIP's residential addresses in each tract) instead of crude land
 area. This *strengthened* every headline: CO composite within-county **+0.507 → +0.568**, overdose
 **+0.202 → +0.224**, care_access likewise - i.e. the area weighting had been *attenuating* the signal
@@ -580,7 +581,7 @@ single *national* ACSC panel - paid + DUA, not headless. The free state-by-state
 largest states) is the substitute. (California was initially shelved as age-confounded, then
 *recovered* once age was properly controlled - see §6a.)
 
-## 7. Causal / actionability frontier - is it a lever, or just a better poverty map? (2026-06-25)
+## 7. Causal / actionability frontier - is it a lever, or just a better poverty map?
 
 Every check in §1-§6 is **cross-sectional**: it correlates the index with outcomes at one point in
 time. The deepest surviving critique accepts all of it and still says: *your index correlates with
@@ -601,13 +602,13 @@ free data allows. The honest answer, after running them all: **the index is a we
 | §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
 | - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
 
-The discipline is the point: a single-state DiD would have shipped a causal claim (§7b) that the
-falsification control (§7e) shows the data does not support. We report the null, loudly.
+A single-state DiD would have shipped a causal claim (§7b) that the falsification control (§7e)
+shows the data does not support; the project reports the null rather than the optimistic read.
 
 ### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.validate_placebo`)
 
-A placebo-outcome design splits mortality into two buckets that are **both** deprivation-loaded but
-differ on one axis - whether timely ambulatory care can prevent the death:
+A placebo-outcome / negative-control design (Lipsitch, Tchetgen Tchetgen & Cohen 2010) splits
+mortality into two buckets that are **both** deprivation-loaded but differ on one axis - whether timely ambulatory care can prevent the death:
 
 - **access-sensitive** (the target): ACSC deaths - diabetes, heart disease, COPD, stroke. Primary
   care, medication, and disease management prevent these.
@@ -641,8 +642,8 @@ temporal test below is the better question.
 Cross-sectional differential prediction is an extremely hard bar (everything bad loads on the same
 gradient). A within-unit fixed-effects **event study** around a real access shock escapes it. NY
 publishes ACSC hospitalizations (AHRQ PQI_90) by patient ZIP every year 2009-2023; in 2014 the ACA
-coverage expansion sharply cut the uninsured rate, **most where it was highest**. The model is two-way
-fixed effects:
+coverage expansion sharply cut the uninsured rate, **most where it was highest**. The model is a two-way-fixed-effects
+event study (DiD: Card & Krueger 1994; two-way-FE / event-study framing: Angrist & Pischke 2009):
 
 `PQI_zt = α_z + γ_t + Σ_k β_k·(barrier_z × 1[year=k]) + ε`  (base year 2013)
 
@@ -681,7 +682,7 @@ index is a deprivation-dominated *structural-access* map that is well-validated 
 but whose *actionability* is not demonstrated - and the project says so rather than resting on the
 single-state hint. This is the value of building the control: the naive single-state DiD would have
 shipped a causal claim the data does not support. Both temporal validators are standing, read-only, and
-never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP re-zoning
+never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP (Openshaw 1984) re-zoning
 check) are in [BACKLOG.md](BACKLOG.md).
 
 ### 7d. Precision-weighting + disattenuation - the "modest" correlations are partly a noisy-ruler artifact
@@ -735,7 +736,7 @@ The CV-optimal supervised reweighting at sub-score level was measured and **decl
 +0.02 to +0.085 out-of-sample R² and costs the conceptual-weight interpretability the index protects
 (`validate._cv_regression` shows the 3-dimension weights are near-optimal, optimism ≤0.03).
 
-**The pruning lever is exhausted (checked, 2026-06-25).** Removing a component only raises clean-r if
+**The pruning lever is exhausted.** Removing a component only raises clean-r if
 the component was adding noise - which is how `safetynet_access` and `preventive_use` were dropped
 historically. Re-running the per-sub-score gate (`bootstrap_gate.amenable_subscores`, BH-FDR q≤0.05)
 shows **every** scored care sub-score now HOLDS a positive partial r against amenable mortality:
