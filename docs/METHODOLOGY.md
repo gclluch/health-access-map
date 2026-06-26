@@ -238,7 +238,7 @@ honest "what are we still missing," separate from the signal question:
 | Axis (5 A's) | Covered by | Status |
 |---|---|---|
 | **Availability** (enough providers) | provider_supply (E2SFCA × 4 types), shortage_designation (HPSA) | **Strong** - the most-engineered piece |
-| **Accessibility** (can physically reach) | adaptive catchment, no_vehicle (ACS), digital_access (telehealth) | **Good** - missing only true drive-time (infeasible; circuity's capturable part is a per-stratum rescale percentiles absorb) |
+| **Accessibility** (can physically reach) | adaptive catchment, no_vehicle (ACS), digital_access (telehealth) | **Good** - true drive-time was built from a free calibrated matrix and **tested-rejected** (made provider_supply wrong-signed within county; see §10 / DECISIONS). The great-circle adaptive catchment is the better analog. |
 | **Affordability** (can pay) | insurance (uninsured), socioeconomic (income/poverty), safetynet (FQHC desert × poverty) | **Good** on cost; **missing Medicaid/new-patient acceptance** (no free national file) |
 | **Accommodation** (hours, how care is organized) | — | **GAP**. FQHC operating-hours tested: orthogonal but too weak (§8). ED-timeliness wrong-signed. No usable free signal. |
 | **Acceptability** (cultural/linguistic fit, trust) | — | **GAP**. limited-English is wrong-signed (immigrant-health paradox); no free provider language/race-concordance data. FQHC presence is the only proxy. |
@@ -283,10 +283,20 @@ remaining levers are therefore **completeness/structural, not signal** (in rough
    the ACS term and calibrated to a member-input resample (gate 3 health_need inj/emp 0.97). Point
    scores unchanged; the uncertainty model is complete across all three dimensions. See DECISIONS.md
    Layer B3.
-2. **Drive-time E2SFCA** - replace the straight-line adaptive catchment with true OSRM road-network
-   isochrones. A *build* (routing over provider coords), not a download; deemed infeasible at C3,
-   revisit only with a precomputed travel-time matrix (e.g. Urban Institute national tract OSRM).
-   Sharpens provider_supply; does not expand signal.
+2. **Drive-time E2SFCA - TESTED and REJECTED (2026-06).** A free precomputed matrix *does* exist
+   (Hu, Wang, Li & Wang 2020, J. Transport Geography 86:102770; calibrated ZCTA-to-ZCTA road
+   drive-times, 32,840 ZCTAs, CC BY 4.0, figshare doi:10.6084/m9.figshare.31719763), so the C3
+   "infeasible" verdict was wrong - it was buildable. We built it (Level-1 0-3 h file, pairs <= 90
+   min) and swapped it for the great-circle adaptive catchment. It made provider_supply **worse**,
+   not better. Across the sub-county rulers, within-county r for provider_supply went from
+   **+0.065 -> -0.048 (NY)**, **+0.154 -> -0.153 (CO)**, **+0.121 -> -0.077 (CA)**, ~flat on TX
+   (+0.089 -> +0.101) and overdose (+0.044 -> +0.036); care_access within-county dropped in every
+   state, improved in none; and a 5-point bandwidth sweep was monotonically worse the tighter the
+   catchment. Root cause: a *sharper* spatial-access measure locks onto the within-county
+   urban-core-vs-periphery confound (short-drive dense cores are sicker; long-drive wealthy
+   periphery is healthier), so it flips wrong-signed. Confirms the ceiling is about the *construct*
+   (potential spatial access genuinely doesn't separate neighbouring ZIPs' outcomes - insurance
+   does), not the *measurement*. Don't re-run.
 3. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
    file exists (only the CMS NDF Medicare-assignment flag, near-saturated); needs the scrape-to-
    calibrate heuristic in DECISIONS.md. A real slog. Lowest ROI.

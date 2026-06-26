@@ -32,6 +32,44 @@ looks more powerful than it is.
 
 ---
 
+## How to read this map
+
+**A relative screening lens for where health-care-access disadvantage concentrates - not an
+absolute verdict, an eligibility tool, or a causal claim.** A score of 95 means "worse access
+than 95% of U.S. ZIPs," not "objectively bad." Use it to *prioritize investigation*, not to
+settle it.
+
+| | |
+|---|---|
+| **Trust it for** | Broad geography (regional clusters, high-gap belts, urban/rural contrasts), state-level targeting, and the dimension pattern behind a headline score. |
+| **Trust it coarsely for** | Decile-scale ZIP comparisons (top-decile vs middle vs low-gap). The UI leads with deciles + a 5-95 reliable rank band for this reason. |
+| **Don't trust it for** | Fine rank order. Two ZIPs are reliably different only ~10-15 percentile points apart (~7-10 tiers, not 33,000 ranks). If two reliable ranges overlap, treat the ZIPs as tied. |
+
+**What it is.** A transparent hierarchy (≈50 measures → sub-scores → 3 dimensions → one
+composite), validated against **6 independent outcomes** it never ingests (CMS claims + NCHS
+vital records, never the BRFSS/PLACES inputs): split-half reliability **0.95**; tracks life
+expectancy (+0.52), premature death (+0.49), and - against the access-sensitive ruler the field
+actually uses - treatable/amenable mortality net of deprivation (care-access partial r **+0.395**).
+Sub-county discrimination is confirmed in **five states + nationally**.
+
+**What it is not - and read this before acting.** It is **descriptive, not causal.**
+Cross-sectionally the index is **statistically indistinguishable from a poverty/deprivation map**
+(a negative-control test returns a clean null - it does not flag deaths timely care could have
+prevented over those it could not), and the one temporal "access lever" signal was **overturned by
+a cross-state falsification control**. So the map tells you *where* access disadvantage is
+concentrated; it does **not** demonstrate that putting a clinic, coverage, or program where the
+index is high will *change* outcomes. It is also not complete access reality - capacity, Medicaid
+acceptance, appointment availability, hours, and true drive-time are only partly observed or
+proxied (see the 5 A's coverage in the methodology panel). Treat it as exploration, grant
+targeting, needs assessment, and hypothesis generation - not precise ranking, eligibility, or
+diagnosis.
+
+> The full uncertainty accounting (rank bands, selection-bias caveat, PLACES circularity bound,
+> the complete causal ladder) lives in [`docs/VALIDATION.md`](docs/VALIDATION.md) §5-§7 and the
+> in-product **"How to read this"** panel.
+
+---
+
 ## Quickstart
 
 ```bash
