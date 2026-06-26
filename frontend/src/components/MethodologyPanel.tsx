@@ -18,7 +18,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are strongly correlated (0.58-0.74; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
@@ -59,7 +59,9 @@ function ValidationTable() {
   if (anchors.length === 0) return null;
   const careRows: Array<[string, string]> = [
     ['provider_supply', 'Provider supply'],
+    ['shortage_designation', 'Shortage (HPSA)'],
     ['insurance', 'Insurance'],
+    ['medical_debt', 'Medical debt'],
     ['safetynet_access', 'Safety-net (FQHC)'],
   ];
   const fmt = (n: number | null | undefined) => (n == null ? '–' : n.toFixed(2));
@@ -123,10 +125,11 @@ function ValidationTable() {
           </tbody>
         </table>
         <p className="mt-1 leading-snug">
-          Provider supply tracks infant mortality (+) but is ~0 vs life expectancy; safety-net
-          (FQHC) reads wrong-signed (red) - clinics sit in the highest-need areas, and it is
-          wrong-signed <i>within</i> counties in 85% of states, so it is now shown for context
-          but <b>excluded from the composite</b> (computed + displayed, not scored).
+          Medical debt is the strongest scored care barrier; provider supply tracks infant
+          mortality (+) but is ~0 vs life expectancy. Safety-net (FQHC) reads wrong-signed (red) -
+          clinics sit in the highest-need areas, and it is wrong-signed <i>within</i> counties in
+          85% of states, so it is shown for context but <b>excluded from the composite</b>
+          (computed + displayed, not scored).
         </p>
       </div>
     </div>
@@ -237,8 +240,8 @@ export default function MethodologyPanel() {
         </div>
         <div className="px-5 py-4">
           <p className="text-[13px] text-ink leading-relaxed mb-3">
-            The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, CMS NPPES, and Census
-            ACS roll up into sub-scores, then 3 dimensions (health need, social
+            The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
+            HRSA, and the Urban Institute roll up into sub-scores, then 3 dimensions (health need, social
             vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
@@ -319,7 +322,7 @@ export default function MethodologyPanel() {
               </li>
             </ul>
             <p className="text-[11px] text-graphite mt-2">
-              Dimensions are strongly correlated (0.58-0.74; ~1.6 effective dimensions), so the
+              Dimensions are strongly correlated (0.59-0.73; ~1.6 effective dimensions), so the
               weighted sum partly double-counts shared variance. The sliders exist so that
               value judgment is yours - but because the axes move together, re-weighting shifts
               ranks only ~±6 points (Spearman ~0.999): a sensitivity probe, not a rewrite.
@@ -350,7 +353,7 @@ export default function MethodologyPanel() {
                 {([
                   ['Availability', 'scored', 'provider supply (2SFCA), HRSA shortage (HPSA)'],
                   ['Accessibility', 'scored', 'no-vehicle, telehealth/broadband, spatial catchment'],
-                  ['Affordability', 'scored', 'uninsured, poverty / income'],
+                  ['Affordability', 'scored', 'uninsured, medical debt, poverty / income'],
                   ['Accommodation', 'gap', 'hours / after-hours - no free signal-bearing data (FQHC hours too flat)'],
                   ['Acceptability', 'context', 'FQHC presence + Medicaid population shown; true provider-acceptance needs a calibrated build'],
                 ] as Array<[string, string, string]>).map(([a, status, via]) => (
