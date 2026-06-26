@@ -3,7 +3,9 @@ import { test, expect } from '@playwright/test';
 // Exercises the wired-up compare flow: rankings row -> detail panel -> pin to comparison tray.
 test('pin a ZIP from the rankings list into the comparison tray', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Rankings' })).toBeVisible({ timeout: 20_000 });
+  const rankings = page.getByRole('button', { name: 'Rankings' });
+  await expect(rankings).toBeVisible({ timeout: 20_000 });
+  await rankings.click(); // the rail is collapsed by default; open it so the rows render
 
   await page.getByTestId('ranking-row').first().click();
   // the detail panel's "what drives the gap" driver-share bar renders with per-dimension segments
