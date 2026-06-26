@@ -1,4 +1,4 @@
-# Health Access Map
+# Care Access Map
 
 A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
 

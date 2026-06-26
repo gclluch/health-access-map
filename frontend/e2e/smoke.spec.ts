@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 
 test('boots, loads data, and renders core chrome', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Health Access Map')).toBeVisible();
+  await expect(page.getByText('Care Access Map')).toBeVisible();
 
   // Loading -> ready: the rail only mounts once loadData() resolves.
   await expect(page.getByRole('button', { name: 'Rankings' })).toBeVisible({ timeout: 20_000 });

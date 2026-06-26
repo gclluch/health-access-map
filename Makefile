@@ -1,4 +1,4 @@
-# Health Access Map -- orchestration
+# Care Access Map -- orchestration
 # Requires: .venv (python deps), node_modules (mapshaper), frontend/node_modules.
 PY = .venv/bin/python
 UVICORN = .venv/bin/uvicorn

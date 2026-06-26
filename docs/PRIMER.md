@@ -1,4 +1,4 @@
-# Health Access Map - Primer
+# Care Access Map - Primer
 
 A single resource to get intimately familiar with this project: the purpose, the
 problem space, every dataset and field, the metrics and the math behind them, the
@@ -13,7 +13,7 @@ jargon, and the domain knowledge. Written to onboard a human or an agent from ze
 
 ## 1. What this is, and who it's for
 
-**Health Access Map** is a web app: a choropleth (color-shaded) map of the United
+**Care Access Map** is a web app: a choropleth (color-shaded) map of the United
 States at **ZIP-code-area** granularity. For any ZIP you see a composite **Access
 Gap Score** and can drill down through 3 dimensions → 11 sub-scores → ~50 underlying
 measures. You can re-weight the score live, rank the worst/best areas by any metric,

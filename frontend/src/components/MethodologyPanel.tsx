@@ -138,7 +138,7 @@ function ValidationTable() {
 function CiteBlock() {
   const year = new Date().getFullYear();
   const citation =
-    `Health Access Map (${year}). A national ZIP-level (ZCTA) relative index of health-care-access ` +
+    `Care Access Map (${year}). A national ZIP-level (ZCTA) relative index of health-care-access ` +
     `disadvantage. Derived from CDC PLACES, Census ACS 5-year, CMS NPPES, HRSA, and Urban Institute ` +
     `open data. Retrieved ${new Date().toISOString().slice(0, 10)} from ${location.origin}.`;
   return (

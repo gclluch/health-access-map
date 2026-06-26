@@ -148,7 +148,7 @@ function AppInner() {
       <header className="absolute top-0 left-0 right-0 z-30 flex items-start gap-2 px-3 py-2.5 pointer-events-none flex-wrap max-[520px]:px-2 max-[520px]:py-2">
         <div className="pointer-events-auto flex items-center gap-2">
           <span className="font-serif text-[16px] text-ink bg-surface/90 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline max-[520px]:text-[15px]">
-            Health Access Map
+            Care Access Map
           </span>
           <FreshnessBadge />
           {status === "ready" && <CoverageNote />}
