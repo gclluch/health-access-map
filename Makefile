@@ -3,7 +3,7 @@
 PY = .venv/bin/python
 UVICORN = .venv/bin/uvicorn
 
-.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal prod-check verify-csp trends acceptability
+.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal fqhc-lever prod-check verify-csp trends acceptability
 
 help:
 	@echo "make setup        - create venv + install python/node deps"
@@ -18,6 +18,7 @@ help:
 	@echo "make amenable     - one-step amenable-mortality re-gate (after a WONDER export)"
 	@echo "make subcounty    - consolidated sub-county validity scorecard (5 states + 2 national)"
 	@echo "make causal       - causal/actionability frontier: negative-control + temporal event study"
+	@echo "make fqhc-lever    - staggered FQHC supply-lever event study (Callaway-Sant'Anna, NY+TX) + robustness"
 	@echo "make acceptability- C1 spike: NY Medicaid-acceptance vs ACSC (partial-r, documents the collapse)"
 	@echo "make trends       - display-only poverty-rank trend (two ACS vintages) -> trends.json"
 	@echo "make prod-check   - predeploy checks on a real data build"
@@ -66,6 +67,10 @@ subcounty:
 causal:
 	$(PY) -m pipeline.validate_placebo
 	$(PY) -m pipeline.validate_temporal
+
+fqhc-lever:
+	$(PY) -m pipeline.build_fqhc_openings
+	$(PY) -m pipeline.validate_fqhc_lever robust
 
 prod-check:
 	$(PY) -m pytest tests -q
