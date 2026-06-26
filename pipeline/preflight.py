@@ -46,6 +46,13 @@ def check() -> bool:
     else:
         _fail("mapshaper", "missing; run `npm install` in repo root"); ok = False
 
+    # tippecanoe (vector-tile build for zcta.pmtiles)
+    if shutil.which("tippecanoe"):
+        _ok("tippecanoe")
+    else:
+        _fail("tippecanoe", "missing; install it (brew install tippecanoe / build from source)")
+        ok = False
+
     # unzip
     if shutil.which("unzip"):
         _ok("unzip")

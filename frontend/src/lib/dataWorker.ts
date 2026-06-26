@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
-// Off-main-thread loader: fetches + JSON.parses the large payloads (~28 MB metrics + ~16 MB
-// geojson) and computes polygon centroids, so the UI thread stays responsive (spinner keeps
-// animating) during cold load. The heavy JSON.parse is the win moved off the main thread.
+// Off-main-thread loader: fetches + JSON.parses the large payloads (~30 MB metrics + the
+// low-zoom overview geojson) and computes polygon centroids, so the UI thread stays responsive
+// (spinner keeps animating) during cold load. The heavy JSON.parse is the win moved off the
+// main thread. Detailed geometry is NOT parsed here - it streams as vector tiles (zcta.pmtiles).
 
 function centroid(coords: unknown): [number, number] {
   let sx = 0;
@@ -31,7 +32,7 @@ self.onmessage = async (e: MessageEvent<{ metricsUrl: string; geoUrl: string }>)
     const { metricsUrl, geoUrl } = e.data;
     const [mRes, gRes] = await Promise.all([fetch(metricsUrl), fetch(geoUrl)]);
     if (!mRes.ok) throw new Error(`metrics.json ${mRes.status}`);
-    if (!gRes.ok) throw new Error(`zcta.geojson ${gRes.status}`);
+    if (!gRes.ok) throw new Error(`zcta_overview.geojson ${gRes.status}`);
     const records = await mRes.json();
     const geojson = (await gRes.json()) as { type: string; features: GeoFeature[] };
     geojson.features = geojson.features.filter((f) => f.geometry && f.geometry.coordinates);

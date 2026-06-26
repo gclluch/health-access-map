@@ -1,7 +1,10 @@
 # Local production-parity stack: API + nginx-served SPA (same-origin /api).
-#   make data        # produce metrics.parquet + frontend/public/{metrics.json,zcta.geojson}
+#   make data        # produce metrics.parquet + frontend/public/{metrics.json,zcta_overview.geojson,zcta.pmtiles}
 #   docker compose up --build
 #   open http://localhost:8080
+# For a single-VPS TLS deploy, layer the prod override (adds Caddy auto-HTTPS):
+#   cp .env.prod.example .env && edit, then
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 services:
   api:
     build:
@@ -13,6 +16,13 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    # The whole metrics table is read into memory (pandas) once at startup; cap so a leak can't
+    # take down the host. /api/health drives the Dockerfile HEALTHCHECK.
+    mem_limit: 1g
+    cpus: 1.5
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   web:
     build:
@@ -26,3 +36,15 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 1.0
+    healthcheck:
+      # busybox wget ships in nginx:alpine; fails the container if nginx stops serving.
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

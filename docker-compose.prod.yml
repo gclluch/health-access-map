@@ -1,0 +1,30 @@
+# Single-VPS production overlay: puts Caddy in front for automatic Let's Encrypt TLS + HSTS.
+# Layer it over the base stack:
+#   cp .env.prod.example .env   # set DOMAIN + ALLOWED_ORIGINS (https)
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# DNS for $DOMAIN must point at this host and ports 80+443 must be open. Caddy proxies to the
+# `web` nginx over the internal compose network, which keeps the SPA same-origin with /api.
+# Firewall the base stack's 8080/8000 publish in prod - only 80/443 (Caddy) should be public.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env (see .env.prod.example)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy_data:
+  caddy_config:

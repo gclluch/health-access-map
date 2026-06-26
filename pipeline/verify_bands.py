@@ -178,6 +178,8 @@ def gate3_calibration(d: pd.DataFrame, draws: int = 300, sample: int = 600,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--compare", help="OFF-shrinkage metrics parquet for gate 2")
+    ap.add_argument("--require-calibration", action="store_true",
+                    help="exit nonzero if gate 3 calibration is skipped")
     args = ap.parse_args()
     d = pd.read_parquet(METRICS)
     d = d[d["scoreable"] == True].reset_index(drop=True)  # noqa: E712
@@ -204,6 +206,10 @@ def main():
     g3_disp = "SKIPPED" if g3 is None else g3
     print(f"\nLAYER B GATE: {verdict} "
           f"(g1={g1} g2={g2 if args.compare else 'run --compare'} g3={g3_disp})")
+    if args.require_calibration and g3 is None:
+        raise SystemExit("gate 3 calibration skipped; rebuild with HAM_SE_DEBUG=1 and rerun")
+    if not all_ran_pass:
+        raise SystemExit("layer B gate failed")
 
 
 if __name__ == "__main__":

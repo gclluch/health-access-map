@@ -8,6 +8,17 @@ import Caret from './Caret';
 
 const BINS = 44;
 
+const LENS_HELP: Record<string, string> = {
+  [COMPOSITE_METRIC]:
+    'Default descriptive screen: where need, vulnerability, and barriers combine into the largest access gap.',
+  [COMPOSITE_MULT_METRIC]:
+    'Targeting lens: emphasizes places where high need and high barriers coincide, instead of letting one dimension fully offset another.',
+  [ACCESS_RESID_METRIC]:
+    'Structural-access lens: barriers to care after health need + social vulnerability are statistically removed.',
+  [WITHIN_STATE_METRIC]:
+    'Decision-context lens: ranks each ZIP against peers in the same state, useful for state programs and grant targeting.',
+};
+
 // The signature element (§14.4): a histogram of all ZIPs along the active
 // metric's axis, ramp beneath, and a marker for where the selected ZIP falls.
 // The whole product is about *relative position*; the legend says it directly.
@@ -75,10 +86,9 @@ export default function Legend() {
         </div>
       </div>
 
-      {metric === ACCESS_RESID_METRIC && (
+      {LENS_HELP[metric] && (
         <p className="text-[10px] text-graphite mb-1 leading-snug">
-          Barriers to care with health need + social vulnerability statistically removed - brighter
-          = access worse than this area's deprivation predicts (structural, not just "a poor area").
+          {LENS_HELP[metric]}
         </p>
       )}
 

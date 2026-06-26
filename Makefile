@@ -3,7 +3,7 @@
 PY = .venv/bin/python
 UVICORN = .venv/bin/uvicorn
 
-.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal
+.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal prod-check verify-csp trends acceptability
 
 help:
 	@echo "make setup        - create venv + install python/node deps"
@@ -18,6 +18,10 @@ help:
 	@echo "make amenable     - one-step amenable-mortality re-gate (after a WONDER export)"
 	@echo "make subcounty    - consolidated sub-county validity scorecard (5 states + 2 national)"
 	@echo "make causal       - causal/actionability frontier: negative-control + temporal event study"
+	@echo "make acceptability- C1 spike: NY Medicaid-acceptance vs ACSC (partial-r, documents the collapse)"
+	@echo "make trends       - display-only poverty-rank trend (two ACS vintages) -> trends.json"
+	@echo "make prod-check   - predeploy checks on a real data build"
+	@echo "make verify-csp   - render the prod build under the nginx CSP; fail on any violation"
 	@echo "make clean-nppes  - delete the 10 GB extracted NPPES CSV"
 
 setup:
@@ -33,11 +37,9 @@ preflight:
 
 data-ca:
 	$(PY) -m pipeline.run --dev-state CA --force
-	cp data/processed/zcta.geojson frontend/public/zcta.geojson
 
 data data-national:
 	$(PY) -m pipeline.run --force
-	cp data/processed/zcta.geojson frontend/public/zcta.geojson
 
 api:
 	$(UVICORN) backend.main:app --reload --port 8000
@@ -64,6 +66,25 @@ subcounty:
 causal:
 	$(PY) -m pipeline.validate_placebo
 	$(PY) -m pipeline.validate_temporal
+
+prod-check:
+	$(PY) -m pytest tests -q
+	cd frontend && npm run typecheck
+	cd frontend && npm test
+	cd frontend && npm run build
+	cd frontend && node scripts/verify-csp.mjs
+	$(PY) -m pipeline.verify_bands --require-calibration
+	$(PY) -m pipeline.diagnostics
+	docker compose config >/dev/null
+
+acceptability:
+	$(PY) -m pipeline.validate_acceptability
+
+trends:
+	$(PY) -m pipeline.build_trends
+
+verify-csp:
+	cd frontend && npm run build && node scripts/verify-csp.mjs
 
 clean-nppes:
 	$(PY) -m pipeline.run --cleanup

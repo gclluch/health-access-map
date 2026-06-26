@@ -47,7 +47,7 @@ jobs:
       # and we still catch TS/bundler regressions. (Real payloads ship via `make data`.)
       - run: |
           [ -f public/metrics.json ] || echo "[]" > public/metrics.json
-          [ -f public/zcta.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta.geojson
+          [ -f public/zcta_overview.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta_overview.geojson
       - run: npm run build
 
   e2e:
@@ -68,3 +68,25 @@ jobs:
       # Seed a tiny deterministic fixture so the app renders without a full build pipeline.
       - run: node e2e/make-fixture.mjs
       - run: npm run test:e2e
+
+  csp:
+    name: frontend (csp policy)
+    runs-on: ubuntu-latest
+    # Loads the real Carto basemap over the network, so a CDN hiccup must not gate a merge;
+    # the authoritative run is `make verify-csp` locally. It still surfaces CSP regressions.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node e2e/make-fixture.mjs
+      - run: npm run build
+      - run: node scripts/verify-csp.mjs

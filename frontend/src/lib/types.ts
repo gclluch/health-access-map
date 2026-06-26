@@ -126,6 +126,86 @@ export function parseAnchors(raw: RawWeights): AnchorPreset[] {
 // the drill-down panel, and the rankings selector.
 export interface SubSpec { key: string; label: string; scored?: boolean }
 export interface DimSpec { key: DimKey; label: string; blurb: string; subs: SubSpec[] }
+export interface SubscoreEvidence {
+  label: string;
+  tip: string;
+  kind: 'local' | 'county' | 'modeled' | 'mixed' | 'context';
+}
+
+// Evidence / resolution metadata for each sub-score. This is the shared data dictionary for
+// explaining whether a row is truly local, modeled, county-broadcast, or context-only.
+export const SUBSCORE_EVIDENCE: Record<string, SubscoreEvidence> = {
+  chronic_disease: {
+    label: 'modeled local',
+    kind: 'modeled',
+    tip: 'ZCTA-level CDC PLACES model estimate. Useful for local burden, but not an observed count.',
+  },
+  behavioral_risk: {
+    label: 'modeled local',
+    kind: 'modeled',
+    tip: 'ZCTA-level CDC PLACES model estimate. Useful for local burden, but not an observed count.',
+  },
+  mental_social_health: {
+    label: 'modeled local',
+    kind: 'modeled',
+    tip: 'ZCTA-level CDC PLACES model estimate. Useful for local burden, but not an observed count.',
+  },
+  disability: {
+    label: 'modeled local',
+    kind: 'modeled',
+    tip: 'ZCTA-level CDC PLACES model estimate. Useful for local burden, but not an observed count.',
+  },
+  socioeconomic: {
+    label: 'local survey',
+    kind: 'local',
+    tip: 'ZCTA-level ACS 5-year estimate, shrunk where small-area margins are wide.',
+  },
+  housing_transport: {
+    label: 'local survey',
+    kind: 'local',
+    tip: 'ZCTA-level ACS 5-year estimate, shrunk where small-area margins are wide.',
+  },
+  social_needs: {
+    label: 'modeled local',
+    kind: 'modeled',
+    tip: 'ZCTA-level CDC PLACES model estimate. Useful for local burden, but not an observed count.',
+  },
+  digital_access: {
+    label: 'local survey',
+    kind: 'local',
+    tip: 'ZCTA-level ACS 5-year internet-access estimate, shrunk where small-area margins are wide.',
+  },
+  provider_supply: {
+    label: 'local spatial',
+    kind: 'local',
+    tip: 'Varies by ZCTA using spatial provider catchments; one of the truly local care-access signals.',
+  },
+  shortage_designation: {
+    label: 'county-level',
+    kind: 'county',
+    tip: 'Official shortage signal is effectively county-level here, so it helps between counties but does not distinguish ZIPs inside the same county.',
+  },
+  safetynet_access: {
+    label: 'context only',
+    kind: 'context',
+    tip: 'Shown for context but excluded from the score because it is wrong-signed within counties.',
+  },
+  insurance: {
+    label: 'mixed local',
+    kind: 'mixed',
+    tip: 'Combines local ACS uninsured estimates with modeled PLACES adult uninsured estimates.',
+  },
+  medical_debt: {
+    label: 'county-level',
+    kind: 'county',
+    tip: 'County-level Urban Institute medical-debt burden. Strong between counties, but every ZIP in a county receives the same value.',
+  },
+  preventive_use: {
+    label: 'process only',
+    kind: 'context',
+    tip: 'Shown as realized care use, not scored as an upstream barrier. Some members overlap validation outcomes.',
+  },
+};
 
 export const MODEL: DimSpec[] = [
   {

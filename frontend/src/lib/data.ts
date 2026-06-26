@@ -11,7 +11,9 @@ export interface FeatureCollection {
 
 export interface LoadedData {
   metrics: Map<string, SlimMetric>;
-  geojson: FeatureCollection;
+  // The low-zoom overview geometry (every ZCTA, heavily simplified). Detailed geometry for
+  // z>=6 streams from zcta.pmtiles in the map; this drives the dense national choropleth.
+  overview: FeatureCollection;
   centroids: Map<string, [number, number]>;
 }
 
@@ -33,7 +35,7 @@ function centroid(coords: unknown): [number, number] {
 }
 
 const METRICS_URL = '/metrics.json';
-const GEO_URL = '/zcta.geojson';
+const GEO_URL = '/zcta_overview.geojson';
 
 // Try the Web Worker (off-main-thread parse); fall back to main-thread parse if Workers are
 // unavailable or the worker errors. Keeps the cold-load JSON.parse off the UI thread when possible.
@@ -59,7 +61,7 @@ function loadViaWorker(): Promise<LoadedData> {
       for (const [z, lon, lat] of d.centroids as Array<[string, number, number]>) {
         centroids.set(z, [lon, lat]);
       }
-      resolve({ metrics, geojson: d.geojson as FeatureCollection, centroids });
+      resolve({ metrics, overview: d.geojson as FeatureCollection, centroids });
     };
     worker.onerror = (err) => {
       worker.terminate();
@@ -72,19 +74,19 @@ function loadViaWorker(): Promise<LoadedData> {
 async function loadOnMainThread(): Promise<LoadedData> {
   const [mRes, gRes] = await Promise.all([fetch(METRICS_URL), fetch(GEO_URL)]);
   if (!mRes.ok) throw new Error(`metrics.json ${mRes.status}`);
-  if (!gRes.ok) throw new Error(`zcta.geojson ${gRes.status}`);
+  if (!gRes.ok) throw new Error(`zcta_overview.geojson ${gRes.status}`);
   const records = (await mRes.json()) as SlimMetric[];
-  const geojson = (await gRes.json()) as FeatureCollection;
+  const overview = (await gRes.json()) as FeatureCollection;
 
   // Some national ZCTAs ship with null geometry; they can't be drawn -> drop them.
-  geojson.features = geojson.features.filter((f) => f.geometry && f.geometry.coordinates);
+  overview.features = overview.features.filter((f) => f.geometry && f.geometry.coordinates);
 
   const metrics = new Map<string, SlimMetric>();
   for (const r of records) metrics.set(r.zcta5, r);
 
   const centroids = new Map<string, [number, number]>();
-  for (const f of geojson.features) {
+  for (const f of overview.features) {
     centroids.set(f.properties.zcta5, centroid(f.geometry.coordinates));
   }
-  return { metrics, geojson, centroids };
+  return { metrics, overview, centroids };
 }

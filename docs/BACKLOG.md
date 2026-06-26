@@ -227,7 +227,18 @@ well-covered; two are genuine holes, both hard to fill from free data.
   provider Medicaid/new-patient acceptance in a few states, regress on held features, predict
   nationally, gate the predicted column). Real provider-directory scraping (state Medicaid enrolled-
   provider lists, e.g. NY Socrata `keti-qx5t`); CMS NDF assignment flag (near-saturated, weak).
-- **Status.** Blocked / research-grade. Tested negatives are logged - read them before retrying.
+- **Status (2026-06-25): the scrape-to-calibrate lever was RUN, and it COLLAPSES.**
+  `pipeline/validate_acceptability.py` (`make acceptability`) pulled the full NY Medicaid-enrolled
+  provider directory (Socrata `keti-qx5t`, ~1.1M rows), built a per-ZIP **acceptance rate** =
+  Medicaid-enrolled primary-care NPIs / all local NPPES primary-care providers, and tested it
+  against the independent NY SPARCS PQI_90 ACSC O/E outcome with a county-cluster bootstrap.
+  Result over 1,103 NY ZIPs: **raw corr +0.047 (near-zero, wrong sign); partial r controlling for
+  need+vuln+care_access = +0.040, 95% CI [-0.037, +0.125]** - includes 0 and points the wrong way.
+  So Medicaid-acceptance density adds NO protective signal beyond supply + the deprivation gradient
+  (it mostly re-expresses provider supply, already captured by care_access). This confirms the prior
+  qualitative C1 finding with a measured number. **Keep BLOCKED.** The remaining untried angle is
+  *Accommodation* (hours / after-hours / appointment availability), for which no free national ZIP
+  source exists. Re-run any time with `make acceptability`; NY-only, no DUA.
 
 ### C2 (P3) - Straight-line distance, not drive-time
 - **Problem.** E2SFCA uses haversine (straight-line) catchments, not road-network travel time.
@@ -287,9 +298,16 @@ well-covered; two are genuine holes, both hard to fill from free data.
   `img-src` / `worker-src` as needed. If `VITE_SENTRY_DSN` / `VITE_ANALYTICS_URL` point off-origin,
   add them to `connect-src`.
 - **Acceptance.** Map renders fully under the CSP with zero console violations.
-- **Status (2026-06-24): still BLOCKED headless.** Needs a headed browser loading the prod nginx
-  build to read console CSP violations; no browser automation is available in this agent session
-  (same constraint as the original build session). Carry forward to a session with a live browser.
+- **Status (2026-06-25): DONE - and it caught a real prod bug.** Headless Chromium (Playwright,
+  already used by the e2e suite) IS a real browser, so the "no headed browser" blocker was wrong.
+  Added `frontend/scripts/verify-csp.mjs` + `make verify-csp`: serves the built `dist/` with the
+  exact `nginx.conf` CSP + security headers, loads it, and fails on any CSP violation, a blocked
+  Carto/fonts request, a missing required origin, or a non-rendered canvas. **It immediately found
+  that the policy allowed only `*.basemaps.cartocdn.com` while the basemap `style.json` is served
+  from the apex `basemaps.cartocdn.com` (a wildcard does not match the apex) - the live basemap
+  would have been CSP-blocked in prod.** Fixed nginx.conf to allow both the apex and the wildcard
+  in `img-src` + `connect-src`; re-run is clean (0 violations, basemap + fonts load, canvas paints).
+  Wired into `make prod-check` and a non-blocking CI `csp` job (external CDN -> `continue-on-error`).
 
 ---
 

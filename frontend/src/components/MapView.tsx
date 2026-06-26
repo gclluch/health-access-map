@@ -3,9 +3,14 @@ import { Map, NavigationControl, useControl, type MapRef } from 'react-map-gl/ma
 import { WebMercatorViewport } from '@deck.gl/core';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { GeoJsonLayer } from '@deck.gl/layers';
+import { TileLayer } from '@deck.gl/geo-layers';
+import { ClipExtension } from '@deck.gl/extensions';
+import { PMTiles } from 'pmtiles';
+import { MVTLoader } from '@loaders.gl/mvt';
+import { parse } from '@loaders.gl/core';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { buildQuantile, colorFor, SELECT_CASING, SELECT_LINE, CHROME, HOVER_LINE, IDLE_LINE } from '../lib/colors';
+import { buildQuantile, colorFor, SELECT_LINE, CHROME, HOVER_LINE, IDLE_LINE } from '../lib/colors';
 import { fmtScore } from '../lib/format';
 import { metricLabel } from '../lib/types';
 
@@ -13,8 +18,38 @@ import { metricLabel } from '../lib/types';
 // (cross-language, so it cannot be a shared import); keep the two in sync if changed.
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-// deck.gl GeoJSON feature shape we read (single definition; used by every layer handler).
+// Hybrid geometry renderer (see pipeline/build_pmtiles.py): below DETAIL_ZOOM the dense national
+// choropleth draws from a small all-ZCTA overview (held in the store); at/above it, detailed
+// geometry streams per-viewport from zcta.pmtiles. Vector tiles generalize low-zoom geometry to
+// sub-pixel slivers, so tiles alone thin the national view - the overview keeps it dense.
+const PM = new PMTiles('/zcta.pmtiles');
+const TILE_MIN_ZOOM = 5; // mirrors -Z in pipeline/build_pmtiles.py
+const TILE_MAX_ZOOM = 10; // mirrors -z; overzoomed past this
+const DETAIL_ZOOM = 6; // overview below, streamed tiles at/above
+
 type ZctaFeature = { properties: { zcta5: string } };
+
+// Decode one tile from the PMTiles archive into WGS84 GeoJSON. Module-scope (referentially
+// stable) so re-creating the TileLayer on a recolor never refetches/redecodes tiles - deck.gl
+// reconciles by id and only re-runs the fill accessor.
+async function getTileData(tile: {
+  index: { x: number; y: number; z: number };
+  signal?: AbortSignal;
+}): Promise<ZctaFeature[] | null> {
+  const { x, y, z } = tile.index;
+  try {
+    const t = await PM.getZxy(z, x, y, tile.signal);
+    if (!t) return null;
+    const gj = await parse(t.data, MVTLoader, {
+      mvt: { coordinates: 'wgs84', tileIndex: { x, y, z }, layerProperty: 'layerName' },
+    });
+    return (gj as { features?: ZctaFeature[] }).features ?? (gj as unknown as ZctaFeature[]);
+  } catch {
+    // Missing/unreachable archive (e.g. a CI fixture with no tiles) -> draw nothing for this
+    // tile rather than throwing; the overview still covers the low zooms.
+    return null;
+  }
+}
 
 // Escape any data-derived string before it enters the tooltip's innerHTML. Place names come
 // from Census today (not user input), but the tooltip is a raw-HTML sink, so this removes the
@@ -26,7 +61,7 @@ function esc(s: string): string {
 
 function DeckOverlay(props: { layers: unknown[]; getTooltip?: (o: unknown) => unknown }) {
   // interleaved: the choropleth is inserted *beneath* the basemap's label/road layers
-  // (via each layer's beforeId), so place names and roads stay legible on top of the fill.
+  // (via beforeId), so place names and roads stay legible on top of the fill.
   const overlay = useControl(() => new MapboxOverlay({ interleaved: true }));
   overlay.setProps(props as never);
   return null;
@@ -38,13 +73,15 @@ const REDUCE_MOTION =
 
 export default function MapView() {
   const mapRef = useRef<MapRef | null>(null);
-  const { metrics, geojson, metric, weights, selectedZcta, hoveredZcta, bounds, flyTarget, fitTarget } =
+  const { metrics, overview, metric, weights, selectedZcta, hoveredZcta, bounds, flyTarget, fitTarget } =
     useStore();
+  const trends = useStore((s) => s.trends);
   const select = useStore((s) => s.select);
   const hover = useStore((s) => s.hover);
-  // id of the basemap's first label layer; the choropleth inserts beneath it so
-  // roads + place names render on top (set on map load).
   const [labelLayerId, setLabelLayerId] = useState<string | undefined>(undefined);
+  // Which geometry source is live. Flipped only when the zoom crosses DETAIL_ZOOM (not on every
+  // move) so layers aren't rebuilt continuously while panning.
+  const [detail, setDetail] = useState(false);
 
   // Quantile color scale over the active metric's current value domain.
   const scale = useMemo(() => {
@@ -70,8 +107,6 @@ export default function MapView() {
       return {
         longitude: vp.longitude,
         latitude: vp.latitude,
-        // A literal fit makes the country feel tiny on tall phones. Keep the
-        // national context, but start closer so the map remains the hero.
         zoom: narrow ? Math.min(vp.zoom + 0.65, 4.2) : vp.zoom,
       };
     } catch {
@@ -97,66 +132,117 @@ export default function MapView() {
     }
   }, [fitTarget]);
 
-  const layer = useMemo(
+  // Shared fill/line accessors - identical join + colour for both the overview GeoJsonLayer and
+  // the per-tile sublayers, so the choropleth looks the same across the hand-off.
+  const fillColor = (f: ZctaFeature): [number, number, number, number] => {
+    const m = metrics.get(f.properties.zcta5);
+    const v = m ? metricValue(m, metric, weights) : null;
+    const [r, g, b] = colorFor(v, scale);
+    // semi-transparent so the basemap (roads, place names) shows through; "no reliable
+    // data" recedes further (quiet gray, §15.5).
+    const alpha = v == null || Number.isNaN(v) ? 55 : 158;
+    return [r, g, b, alpha];
+  };
+  const lineColor = (f: ZctaFeature): [number, number, number, number] => {
+    if (f.properties.zcta5 === selectedZcta) return SELECT_LINE;
+    return f.properties.zcta5 === hoveredZcta ? HOVER_LINE : IDLE_LINE;
+  };
+  const lineWidth = (f: ZctaFeature): number => {
+    if (f.properties.zcta5 === selectedZcta) return 3;
+    return f.properties.zcta5 === hoveredZcta ? 1.5 : 0.3;
+  };
+  const onClickFeat = (info: { object?: ZctaFeature }) => {
+    if (info.object) select(info.object.properties.zcta5);
+  };
+  const onHoverFeat = (info: { object?: ZctaFeature }) => {
+    hover(info.object ? info.object.properties.zcta5 : null);
+  };
+  const fillTriggers = {
+    getFillColor: [metric, weights, scale],
+    getLineColor: [selectedZcta, hoveredZcta],
+    getLineWidth: [selectedZcta, hoveredZcta],
+  };
+
+  // Low-zoom dense national choropleth (all ZCTAs, simplified overview geometry).
+  const overviewLayer = useMemo(
     () =>
       new GeoJsonLayer({
-        id: 'zcta',
-        data: geojson as never,
-        beforeId: labelLayerId, // insert beneath basemap labels/roads (interleaved)
+        id: 'zcta-overview',
+        data: overview as never,
+        beforeId: labelLayerId,
+        visible: !detail, // hidden (not removed) at high zoom so its instance is never finalized
         pickable: true,
         stroked: true,
         filled: true,
         lineWidthUnits: 'pixels',
-        getFillColor: (f: ZctaFeature) => {
-          const m = metrics.get(f.properties.zcta5);
-          const v = m ? metricValue(m, metric, weights) : null;
-          const [r, g, b] = colorFor(v, scale);
-          // semi-transparent so the basemap (roads, place names) shows through;
-          // "no reliable data" recedes further (quiet gray, §15.5).
-          const alpha = v == null || Number.isNaN(v) ? 55 : 158;
-          return [r, g, b, alpha];
-        },
-        getLineColor: (f: ZctaFeature) =>
-          f.properties.zcta5 === hoveredZcta ? HOVER_LINE : IDLE_LINE,
-        getLineWidth: (f: ZctaFeature) =>
-          f.properties.zcta5 === hoveredZcta ? 1.5 : 0.3,
-        onClick: (info: { object?: ZctaFeature }) => {
-          if (info.object) select(info.object.properties.zcta5);
-        },
-        onHover: (info: { object?: ZctaFeature }) => {
-          hover(info.object ? info.object.properties.zcta5 : null);
-        },
-        // smooth recolor when weights/metric change (§14.5); gentle, reduced-motion
-        // respected by the browser at the CSS layer for the chrome.
+        lineWidthMinPixels: 0.3,
+        getFillColor: fillColor,
+        getLineColor: lineColor,
+        getLineWidth: lineWidth,
+        onClick: onClickFeat,
+        onHover: onHoverFeat,
         transitions: { getFillColor: { duration: REDUCE_MOTION ? 0 : 350 } },
-        updateTriggers: {
-          getFillColor: [metric, weights, scale],
-          getLineColor: [selectedZcta, hoveredZcta],
-          getLineWidth: [selectedZcta, hoveredZcta],
-        },
+        updateTriggers: fillTriggers,
       }),
-    [geojson, metrics, metric, weights, scale, selectedZcta, hoveredZcta, select, hover, labelLayerId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [overview, metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId, detail],
   );
 
-  // Selection halo: a thick near-black casing under a bright white line, drawn as a
-  // dedicated overlay so the selected ZIP reads clearly against BOTH ends of the ramp.
-  const selectionLayers = useMemo(() => {
-    if (!selectedZcta || !geojson) return [];
-    const feats = (geojson as { features: ZctaFeature[] }).features;
-    const feat = feats.find((f) => f.properties.zcta5 === selectedZcta);
-    if (!feat) return [];
-    const data = { type: 'FeatureCollection', features: [feat] } as never;
-    const common = {
-      data, stroked: true, filled: false, pickable: false,
-      lineJointRounded: true, lineWidthUnits: 'pixels' as const,
-    };
-    return [
-      new GeoJsonLayer({ ...common, id: 'sel-casing', getLineColor: SELECT_CASING,
-        getLineWidth: 7, lineWidthMinPixels: 6 }),
-      new GeoJsonLayer({ ...common, id: 'sel-line', getLineColor: SELECT_LINE,
-        getLineWidth: 3, lineWidthMinPixels: 2.5 }),
-    ];
-  }, [selectedZcta, geojson]);
+  // High-zoom streamed detail (vector tiles from pmtiles).
+  const tileLayer = useMemo(
+    () =>
+      new TileLayer({
+        id: 'zcta-tiles',
+        getTileData,
+        visible: detail, // only fetch/draw tiles at high zoom; kept mounted (hidden) otherwise
+        minZoom: TILE_MIN_ZOOM,
+        maxZoom: TILE_MAX_ZOOM,
+        // Picking is handled at the TileLayer level (it receives the picked tile feature) - an
+        // onClick on the renderSubLayers child does not fire for a TileLayer.
+        pickable: true,
+        onClick: onClickFeat,
+        onHover: onHoverFeat,
+        renderSubLayers: ((props: {
+          id: string;
+          data: ZctaFeature[] | null;
+          tile: { boundingBox: number[][] };
+        }) => {
+          if (!props.data) return null;
+          // Clip each tile's features to its own bounds. tippecanoe buffers tiles, so edge
+          // ZCTAs appear in adjacent tiles; without clipping the semi-transparent fills double
+          // up into darker seams along the tile grid. This is what MVTLayer does internally.
+          const bb = props.tile.boundingBox;
+          const w = bb[0][0], s = bb[0][1], e = bb[1][0], n = bb[1][1];
+          return new GeoJsonLayer({
+            id: `${props.id}-fill`,
+            data: props.data as never,
+            beforeId: labelLayerId,
+            pickable: true, // feeds the TileLayer's picking pass; the handlers live on the parent
+            stroked: true,
+            filled: true,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 0.3,
+            lineJointRounded: true,
+            getFillColor: fillColor,
+            getLineColor: lineColor,
+            getLineWidth: lineWidth,
+            transitions: { getFillColor: { duration: REDUCE_MOTION ? 0 : 350 } },
+            updateTriggers: fillTriggers,
+            extensions: [new ClipExtension()],
+            clipBounds: [w, s, e, n],
+          });
+        }) as never,
+        updateTriggers: {
+          renderSubLayers: [metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId],
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [metrics, metric, weights, scale, selectedZcta, hoveredZcta, labelLayerId, detail],
+  );
+
+  // Both layers stay mounted; `visible` toggles which one draws. Swapping them in/out of the
+  // array instead would finalize the hidden layer's GPU state and crash when it returns.
+  const layers = [overviewLayer, tileLayer];
 
   const getTooltip = (info: { object?: ZctaFeature }) => {
     if (!info.object) return null;
@@ -165,10 +251,16 @@ export default function MapView() {
     const v = m ? metricValue(m, metric, weights) : null;
     const place = m?.city ? `${m.city}, ${m.state ?? ''}` : m?.county_name ?? '';
     const placeHtml = place ? `<div style="font-weight:600">${esc(place)}</div>` : '';
+    // Display-only poverty-rank trend (build_trends.py). Only show a meaningful move (>=1 pctile).
+    const d = trends?.deltas.get(z);
+    const trendHtml =
+      d != null && Math.abs(d) >= 1
+        ? `<div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">poverty rank vs ${trends!.prior}: <b style="color:#fff">${d > 0 ? '▲' : '▼'} ${esc(Math.abs(d).toFixed(1))}</b></div>`
+        : '';
     return {
       html: `<div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:1.35">
         ${placeHtml}
-        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${esc(z)} · ${esc(metricLabel(metric))} <b style="color:#fff">${esc(fmtScore(v))}</b></div></div>`,
+        <div style="font-family:'IBM Plex Mono',monospace;color:${CHROME.tooltipMono}">ZIP ${esc(z)} · ${esc(metricLabel(metric))} <b style="color:#fff">${esc(fmtScore(v))}</b></div>${trendHtml}</div>`,
       style: {
         background: CHROME.ink,
         color: '#fff',
@@ -183,17 +275,20 @@ export default function MapView() {
       ref={mapRef}
       initialViewState={initialViewState}
       mapStyle={BASEMAP}
+      minZoom={TILE_MIN_ZOOM - 2}
       keyboard
+      onMove={(e) => {
+        const next = e.viewState.zoom >= DETAIL_ZOOM;
+        setDetail((cur) => (cur === next ? cur : next));
+      }}
       onLoad={(e) => {
         const style = (e.target as { getStyle: () => { layers: Array<{ id: string; type: string }> } }).getStyle();
-        // first symbol (label) layer; roads sit just below it, so inserting the
-        // choropleth here keeps both roads and labels on top.
         const firstSymbol = style?.layers?.find((l) => l.type === 'symbol');
         setLabelLayerId(firstSymbol?.id);
       }}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
-      <DeckOverlay layers={[layer, ...selectionLayers]} getTooltip={getTooltip as never} />
+      <DeckOverlay layers={layers} getTooltip={getTooltip as never} />
     </Map>
   );
 }
