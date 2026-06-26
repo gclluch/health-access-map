@@ -85,6 +85,11 @@ make web              # Vite dev server on :5173    (terminal 2)
 make acceptance       # run the acceptance suite
 ```
 
+Validation-only targets are heavier: `make causal` and `make fqhc-lever` (the §7 causal frontier)
+hit live data sources. `make fqhc-lever` in particular streams the Texas DSHS PUDF for 2011-2019 on a
+fresh clone (~150-700 MB/quarter; only the small ZIP-level aggregates are cached, never the raw files),
+so its first run is slow. These are read-only diagnostics and never feed the shipped composite.
+
 Requires Python ≥ 3.10, Node ≥ 18, ~25 GB free disk for the national NPPES stage.
 
 ---
