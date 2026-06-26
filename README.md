@@ -54,12 +54,12 @@ Requires Python ≥ 3.10, Node ≥ 18, ~25 GB free disk for the national NPPES s
 ## Architecture
 
 ```
-data/raw/*  ──(pipeline: Python + DuckDB + mapshaper)──►  data/processed/metrics.parquet
-                                                          data/processed/zcta.geojson (geometry only)
+data/raw/*  ──(pipeline: Python + DuckDB + mapshaper + tippecanoe)──►  metrics.parquet
+                                                  zcta.pmtiles + zcta_overview.geojson (geometry)
                                                                  │
                           ┌──────────────────────────────────────┼───────────────────────────┐
                           ▼                                       ▼                            ▼
-                   FastAPI (in-memory parquet)            zcta.geojson + metrics.json   static files
+                   FastAPI (in-memory parquet)        pmtiles + overview + metrics.json   static files
                    /api/zcta /api/rankings /api/compare    copied to frontend/public     (Vite / CDN)
                           │                                       │
                           └──────────────► React + deck.gl + MapLibre map ◄───────────────────┘
@@ -67,7 +67,9 @@ data/raw/*  ──(pipeline: Python + DuckDB + mapshaper)──►  data/process
 
 - **DuckDB** streams the ~11 GB NPPES CSV (projecting 3 columns) - never loaded into pandas.
 - **SQLite/Postgres rejected**: 33k rows of attribute lookups fit trivially in memory.
-- **Simplified GeoJSON** (mapshaper, 8% simplify, reprojected to WGS84) - no tippecanoe/PMTiles in v1.
+- **Hybrid geometry**: a small all-ZCTA overview (mapshaper, heavily simplified) keeps the national
+  choropleth dense at low zoom, while detail streams from range-requested **PMTiles** vector tiles
+  (tippecanoe) at z>=6 - so cold-load geometry and resident memory stay bounded.
 - **Base metrics precomputed server-side; the Access Gap is recomputed client-side** from the
   stored component percentiles, which is what makes the weight sliders instant.
 
@@ -178,13 +180,11 @@ rather than silently producing a wrong column.
   base are env-driven (`ALLOWED_ORIGINS`, `VITE_API_BASE`) so prod works without code changes.
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
   over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. It also
-  runs the **amenable-mortality focus** (care-access partial r vs the access-sensitive outcome).
-  **This anchor has now been pulled and run** (CDC WONDER treatable mortality, age-adjusted, 0-74,
-  2016-2020; committed at `data/manual/wonder_amenable_county.txt`): care_access partial r vs
-  treatable mortality is **+0.395 [0.368, 0.43]** - strong and net of the deprivation gradient,
-  vs only +0.125 against all-cause LE. This is the gold-standard validation the field uses and it
-  confirms the care-access dimension is **descriptively** sound (see `docs/VALIDATION.md` §4). Re-run
-  any time with `make amenable`; refresh the export via the recipe in `pipeline/build_amenable.py`.
+  runs the **amenable-mortality focus**: care_access partial r vs CDC WONDER treatable mortality
+  (age-adjusted, 0-74, 2016-2020) is **+0.395 [0.368, 0.43]** - strong and net of the deprivation
+  gradient, vs only +0.125 against all-cause life expectancy. This is the field's gold-standard
+  validation and confirms the care-access dimension is **descriptively** sound (`docs/VALIDATION.md`
+  §4). Re-run with `make amenable`.
 - **Descriptive, not (yet) prescriptive - the honest causal ceiling** (`docs/VALIDATION.md` §7). The
   partial-r above says the access dimension *correlates* with treatable mortality net of deprivation;
   it does not say access is an actionable *lever*. We tested that directly: a cross-sectional
@@ -199,11 +199,10 @@ rather than silently producing a wrong column.
 
 ### Roadmap / honestly not done yet
 
-- **Time dimension.** The app is a single snapshot. A true trend view needs multi-vintage
-  ingestion (historical ACS/PLACES/NPPES re-run and stored per year) - a real pipeline effort,
-  not a UI toggle. Not started; would be the highest-value next feature for decision use.
-- **Vector tiles / PMTiles for geometry.** The ~16.7 MB `zcta.geojson` (~4.5 MB gzip) is the
-  real cold-load weight. Mitigated for now (gzip_static, off-main-thread Web Worker parse, immutable
-  hashed assets) but the structural fix is tippecanoe -> PMTiles, which is not yet wired.
-- **Drive-time E2SFCA** (vs straight-line adaptive catchment) and the **acceptability**
-  (Medicaid/new-patient acceptance) axis remain open - see `docs/METHODOLOGY.md §10`.
+- **Full time dimension.** The app is a single snapshot. A display-only **poverty-rank trend**
+  across two ACS vintages ships (`make trends`; shown in the tooltip), but a true multi-dimension
+  trend view needs historical ACS/PLACES/NPPES re-run and stored per year - a real pipeline effort.
+  PLACES year-over-year is also model-drift-contaminated and NPPES history is ~1 GB/month.
+- **Drive-time E2SFCA** (vs the straight-line adaptive catchment) and the **acceptability**
+  (Medicaid/new-patient acceptance) axis remain open - the latter was tested and collapses in
+  partial-r (`make acceptability`); see `docs/METHODOLOGY.md §10` and `docs/DECISIONS.md`.

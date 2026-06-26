@@ -18,7 +18,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are strongly correlated (0.58-0.74; PC1 explains 77% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+    'Health need, social vulnerability, and care access are strongly correlated (0.58-0.74; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
