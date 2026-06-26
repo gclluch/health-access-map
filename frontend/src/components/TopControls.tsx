@@ -16,9 +16,10 @@ export default function TopControls() {
           value={stateFilter ?? ''}
           onChange={(e) => jumpToState(e.target.value || null)}
           aria-label="Jump to a state"
+          title="The default map opens on the continental U.S.; Alaska, Hawaii, and Puerto Rico are available here."
           className="w-full appearance-none text-[12px] bg-surface/90 border border-hairline rounded pl-2 pr-6 py-1.5 text-ink outline-none focus:border-accent cursor-pointer max-[520px]:pr-5"
         >
-          <option value="">All United States</option>
+          <option value="">CONUS overview</option>
           {availableStates.map((s) => (
             <option key={s} value={s}>
               {STATE_NAMES[s] ?? s}

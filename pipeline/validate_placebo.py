@@ -38,10 +38,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .common import log
+from .common import download_file, log
 from .taxonomy import DIMENSIONS, subscore_specs
+from .validation_stats import pearson_corr as _corr
+from .validation_stats import within_residual as _within
 from .validate_subcounty import (
-    CA_DEATHS_CACHE, CA_DEATHS_URL, MIN_POP, METRICS, _corr, _within,
+    CA_DEATHS_CACHE, CA_DEATHS_URL, MIN_POP, METRICS,
 )
 
 ACSC_CAUSES = ("DIA", "HTD", "CLD", "STK")          # access-sensitive (ambulatory-care preventable)
@@ -55,10 +57,8 @@ def _fetch_ca_cause_counts(causes: tuple[str, ...]) -> pd.DataFrame:
     """Pooled 2019-2024 CA death counts (Total Population strata) summed over `causes`, per ZIP.
     Suppressed small cells are NaN in the source and drop out of the sum."""
     if not CA_DEATHS_CACHE.exists():
-        import subprocess
         log("placebo", "downloading CA CHHS deaths-by-ZIP (one-time, ~48MB)...")
-        subprocess.run(["curl", "-sL", "--max-time", "180", CA_DEATHS_URL,
-                        "-o", str(CA_DEATHS_CACHE)], check=True)
+        download_file(CA_DEATHS_URL, CA_DEATHS_CACHE, min_bytes=1_000_000)
     df = pd.read_csv(CA_DEATHS_CACHE, dtype=str)
     df = df[(df["Strata"] == "Total Population") & df["Cause"].isin(causes)].copy()
     df["Count"] = pd.to_numeric(df["Count"], errors="coerce")

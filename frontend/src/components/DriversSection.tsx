@@ -56,13 +56,13 @@ export default function DriversSection({
   return (
     <div className="mt-3 pt-2.5 border-t border-hairline">
       <div className="flex items-baseline justify-between mb-1.5">
-        <span className="text-[11px] uppercase tracking-wide text-graphite">What drives the gap</span>
-        <span className="text-[10px] text-graphite">share of the score · hover for detail</span>
+        <span className="text-[12px] uppercase tracking-wide text-graphite">What drives the gap</span>
+        <span className="text-[11px] text-graphite">share of the score · hover for detail</span>
       </div>
 
       {/* attribution: 100%-stacked driver-share bar */}
       <div
-        className="flex h-5 rounded overflow-hidden border border-hairline"
+        className="flex h-6 rounded overflow-hidden border border-hairline"
         role="group"
         aria-label="What drives the gap - share of the score by dimension"
       >
@@ -83,7 +83,7 @@ export default function DriversSection({
             style={{ width: `${r.share}%` }}
           >
             {r.share >= 13 && (
-              <span className="num text-[10px] text-paper font-medium leading-none">{Math.round(r.share)}%</span>
+              <span className="num text-[11px] text-paper font-medium leading-none">{Math.round(r.share)}%</span>
             )}
           </button>
         ))}
@@ -109,9 +109,9 @@ export default function DriversSection({
             >
               <div className="flex items-baseline gap-2">
                 <span className={`inline-block w-2 h-2 rounded-sm shrink-0 ${r.shade}`} />
-                <span className="text-[11px] text-ink flex-1 truncate">{r.label}</span>
-                <span className="num text-[10px] text-graphite">drives {Math.round(r.share)}%</span>
-                <span className="num text-[11px] text-ink font-medium w-9 text-right">{ordinal(r.pct)}</span>
+                <span className="text-[12px] text-ink flex-1 truncate">{r.label}</span>
+                <span className="num text-[11px] text-graphite">drives {Math.round(r.share)}%</span>
+                <span className="num text-[12px] text-ink font-medium w-9 text-right">{ordinal(r.pct)}</span>
               </div>
               {on && (
                 <div className="pl-4 pr-1 mt-0.5">
@@ -128,7 +128,7 @@ export default function DriversSection({
         })}
       </div>
 
-      <div className="text-[10px] text-graphite mt-2 leading-snug">
+      <div className="text-[11px] text-graphite mt-2 leading-snug">
         Segment width = how much each dimension <span className="text-ink">drives</span> this score
         (its share); hover a segment for that dimension's <span className="text-ink">severity</span>{' '}
         (national percentile) and weight. The dimensions weight to an index of{' '}

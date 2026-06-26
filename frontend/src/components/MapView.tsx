@@ -99,15 +99,20 @@ export default function MapView() {
     const fallback = { longitude: -98, latitude: 39, zoom: 3.6 };
     if (!bounds) return fallback;
     try {
+      const narrow = window.innerWidth < 640;
       const vp = new WebMercatorViewport({
         width: window.innerWidth || 1280,
         height: window.innerHeight || 800,
-      }).fitBounds(bounds, { padding: 60 });
-      const narrow = window.innerWidth < 640;
+      }).fitBounds(bounds, {
+        // Mobile has fixed controls at the top and the legend/rankings dock at the bottom.
+        // Asymmetric padding keeps the national view in the open reading area instead of
+        // over-zooming into a map that starts below a large blank band.
+        padding: narrow ? { top: 118, right: 22, bottom: 245, left: 22 } : 60,
+      });
       return {
         longitude: vp.longitude,
         latitude: vp.latitude,
-        zoom: narrow ? Math.min(vp.zoom + 0.65, 4.2) : vp.zoom,
+        zoom: narrow ? Math.min(vp.zoom, 4) : vp.zoom,
       };
     } catch {
       return fallback;

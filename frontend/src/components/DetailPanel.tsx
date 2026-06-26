@@ -233,11 +233,11 @@ function ComparisonFrame({
         <Tip
           key={c.label}
           tip={c.detail}
-          className="rounded border border-hairline bg-paper/70 px-2 py-1.5 cursor-help"
+          className="rounded border border-hairline bg-paper/70 px-2.5 py-2 cursor-help"
         >
-          <div className="text-[9px] uppercase tracking-wide text-graphite">{c.label}</div>
-          <div className="num text-[13px] font-semibold text-ink">{c.value}</div>
-          <div className="text-[10px] text-graphite leading-tight">{c.detail}</div>
+          <div className="text-[10px] uppercase tracking-wide text-graphite">{c.label}</div>
+          <div className="num text-[14px] font-semibold text-ink">{c.value}</div>
+          <div className="text-[11px] text-graphite leading-tight">{c.detail}</div>
         </Tip>
       ))}
     </div>
@@ -248,7 +248,7 @@ function ComparisonFrame({
 // access-gap score. Every value comes from the full API record (Census ACS 5-year),
 // except population which is already in the slim metric. Cells with no data are dropped.
 function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> | null }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const num = (v: unknown) => (typeof v === 'number' && !Number.isNaN(v) ? v : null);
   const pct = (v: unknown) => {
     const n = num(v);
@@ -315,11 +315,11 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
 
   if (cells.length === 0) return null;
   return (
-    <div className="mb-3 rounded-md border border-hairline bg-paper/60 px-3 py-2">
+    <div className="mt-3 rounded-md border border-hairline bg-paper/60 px-3 py-2">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-graphite"
+        className="w-full flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-graphite"
       >
         <Caret open={open} size={12} className="text-graphite" />
         <span>Who lives here</span>
@@ -333,7 +333,7 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
             <Tip
               key={c.label}
               tip={c.tip}
-              className="flex justify-between items-baseline text-[11px] cursor-help"
+            className="flex justify-between items-baseline text-[12px] cursor-help"
             >
               <span className="text-graphite">
                 {c.label}
@@ -343,7 +343,7 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
               <span className="num text-ink">{c.value}</span>
             </Tip>
           ) : (
-            <div key={c.label} className="flex justify-between items-baseline text-[11px]">
+            <div key={c.label} className="flex justify-between items-baseline text-[12px]">
               <span className="text-graphite">{c.label}</span>
               <span className="num text-ink">{c.value}</span>
             </div>
@@ -353,14 +353,14 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
       {race.length > 0 && (
         <div className="mt-2 pt-2 border-t border-hairline/60">
           <Tip
-            className="text-[10px] uppercase tracking-wide text-graphite mb-1 cursor-help inline-block"
+            className="text-[11px] uppercase tracking-wide text-graphite mb-1 cursor-help inline-block"
             tip='Race & ethnicity. Non-Hispanic single-race for White/Black/Asian; Hispanic is any race; "Other" combines American Indian/Alaska Native, Native Hawaiian/Pacific Islander, some-other-race and two-or-more. Census ACS 5-year (B03002). Context only - not scored.'
           >
             Race &amp; ethnicity<span className="text-graphite"> ⓘ</span>
           </Tip>
           <div className="space-y-0.5">
             {race.map((r) => (
-              <div key={r.label} className="flex items-center gap-2 text-[11px]">
+              <div key={r.label} className="flex items-center gap-2 text-[12px]">
                 <span className="text-graphite w-16 shrink-0">{r.label}</span>
                 <span className="flex-1 h-1.5 bg-hairline rounded-full overflow-hidden">
                   <span
@@ -468,7 +468,7 @@ export default function DetailPanel() {
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <div
-              className="font-serif text-[20px] text-ink leading-tight truncate"
+              className="font-serif text-[21px] text-ink leading-tight truncate"
               title={m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
             >
               {m.city ?? m.county_name ?? `ZIP ${m.zcta5}`}
@@ -505,25 +505,23 @@ export default function DetailPanel() {
 
       <div className="px-4 py-3">
         {m.low_confidence && (
-          <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
+          <div className="mb-3 text-[12px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
             Low-confidence area - small population ({fmtInt(m.population as number)}), wide margins.
           </div>
         )}
         {m.institutional && (
-          <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
+          <div className="mb-3 text-[12px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
             Institutional ZIP - more registered providers than residents (a hospital campus, medical
             school, or VA complex). The supply reflects a workplace, not the local population, so raw
             per-capita figures are not meaningful and this area is held out of headline rankings.
           </div>
         )}
         {m.n_dims_scored != null && m.n_dims_scored < 3 && (
-          <div className="mb-3 text-[11px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
+          <div className="mb-3 text-[12px] text-accent bg-accent/8 border border-accent/20 rounded px-2 py-1.5">
             Partial score - built from {m.n_dims_scored} of 3 dimensions (one had no usable data
             here), so it is a weaker estimate than a full 3-dimension score. Compare with care.
           </div>
         )}
-
-        <WhoLivesHere m={m} rec={rec} />
 
         {(() => {
           const sev = score != null && scorePercentile != null ? severity(scorePercentile) : null;
@@ -536,7 +534,7 @@ export default function DetailPanel() {
                 >
                   {fmtScore(scorePercentile)}
                 </span>
-                <span className="text-[11px] text-graphite">/ 100 · access-gap rank</span>
+                <span className="text-[12px] text-graphite">/ 100 · access-gap rank</span>
                 {sev && (
                   <span
                     className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
@@ -547,7 +545,7 @@ export default function DetailPanel() {
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-graphite mt-0.5">
+              <div className="text-[12px] text-graphite mt-1 leading-snug">
                 {score == null || scorePercentile == null
                   ? 'Insufficient reliable data to score this area.'
                   : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`}
@@ -558,12 +556,14 @@ export default function DetailPanel() {
         })()}
 
         {score != null && (
-          <p className="font-serif text-[13px] text-ink leading-snug mt-2.5">
+          <p className="font-serif text-[14px] text-ink leading-snug mt-2.5">
             {synthesize(m, weights)}
           </p>
         )}
 
         <DriversSection m={m} weights={weights} score={score} scorePercentile={scorePercentile} />
+
+        <WhoLivesHere m={m} rec={rec} />
 
         {/* drill-down: dimensions -> sub-scores -> measures */}
         <div className="mt-3 pt-2.5 border-t border-hairline">

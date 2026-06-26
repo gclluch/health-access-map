@@ -14,7 +14,9 @@ services:
       # Must include the web origin below so the browser's CORS check passes.
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
     ports:
-      - "8000:8000"
+      # Bind only on loopback. In production Caddy reaches the service over the internal
+      # compose network; the API should not be directly exposed to the internet.
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
     # The whole metrics table is read into memory (pandas) once at startup; cap so a leak can't
     # take down the host. /api/health drives the Dockerfile HEALTHCHECK.
@@ -32,7 +34,9 @@ services:
         # Empty -> SPA calls same-origin /api, which nginx proxies to the api service.
         VITE_API_BASE: ""
     ports:
-      - "8080:80"
+      # Local preview only. The production overlay exposes Caddy on 80/443 and keeps this
+      # nginx service private except for loopback.
+      - "127.0.0.1:8080:80"
     depends_on:
       - api
     restart: unless-stopped

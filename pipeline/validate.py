@@ -33,6 +33,7 @@ import pandas as pd
 from . import config
 from .common import die, log, write_provenance
 from .taxonomy import DIMENSION_WEIGHTS, DIMENSIONS
+from .validation_stats import pearson_corr, weighted_corr
 
 METRICS = config.PROCESSED / "metrics.parquet"
 OUTCOMES = config.PROCESSED / "outcomes.parquet"
@@ -81,12 +82,8 @@ def _wmean(frame: pd.DataFrame, value_cols: list[str], by: str, w: str) -> pd.Da
 
 
 def _corr(a: np.ndarray, b: np.ndarray) -> float | None:
-    m = ~(np.isnan(a) | np.isnan(b))
-    if m.sum() < 100:
-        return None
-    a, b = a[m] - a[m].mean(), b[m] - b[m].mean()
-    denom = np.sqrt((a @ a) * (b @ b))
-    return float(a @ b / denom) if denom > 0 else None
+    r = pearson_corr(a, b, min_pairs=100)
+    return None if np.isnan(r) else r
 
 
 def _wcorr(a: np.ndarray, b: np.ndarray, w: np.ndarray) -> float | None:
@@ -96,16 +93,8 @@ def _wcorr(a: np.ndarray, b: np.ndarray, w: np.ndarray) -> float | None:
     estimand to 'the correlation where people actually live' - the decision-relevant one. A near-
     guaranteed, legitimate recovery of attenuated signal (it corrects measurement noise, fits
     nothing). See docs/VALIDATION.md §7d."""
-    a, b, w = np.asarray(a, float), np.asarray(b, float), np.asarray(w, float)
-    m = ~(np.isnan(a) | np.isnan(b) | np.isnan(w)) & (w > 0)
-    if m.sum() < 100:
-        return None
-    a, b, w = a[m], b[m], w[m]
-    W = w.sum()
-    am, bm = (a * w).sum() / W, (b * w).sum() / W
-    cov = (w * (a - am) * (b - bm)).sum()
-    va, vb = (w * (a - am) ** 2).sum(), (w * (b - bm) ** 2).sum()
-    return float(cov / np.sqrt(va * vb)) if va > 0 and vb > 0 else None
+    r = weighted_corr(a, b, w, min_pairs=100)
+    return None if np.isnan(r) else r
 
 
 def _index_reliability(cty: pd.DataFrame, sub_cols: list[str], n_splits: int = 200) -> float | None:

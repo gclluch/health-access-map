@@ -10,7 +10,7 @@ Both images bake in build outputs that are gitignored and reproducible:
 
 ```bash
 make data        # -> data/processed/metrics.parquet
-                 #    frontend/public/{metrics.json,zcta.geojson}
+                 #    frontend/public/{metrics.json,zcta_overview.geojson,zcta.pmtiles}
 ```
 
 CI does not have these (the data stages need API keys + large downloads), which is why the
@@ -36,6 +36,27 @@ open http://localhost:8080      # SPA; nginx proxies same-origin /api -> api:800
 
 `ALLOWED_ORIGINS` defaults to `http://localhost:8080` (the web origin the browser sends on the
 CORS preflight). Set it to your real origin in production.
+
+## Single-VPS production
+
+The repo ships a Caddy overlay for the cheapest reliable production beta: nginx serves the SPA,
+FastAPI stays internal, and Caddy terminates TLS.
+
+```bash
+make data
+make prod-check
+cp .env.prod.example .env
+# edit DOMAIN and ALLOWED_ORIGINS
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+DNS for `DOMAIN` must point at the VPS, and only ports **80/443** need to be open publicly. The
+base `api` and `web` ports bind to `127.0.0.1` for local debugging; external traffic should enter
+through Caddy only.
+
+Minimum practical VPS: **1 vCPU / 1 GB RAM / 10 GB disk**. Runtime data is small
+(`metrics.parquet` is ~20 MB and expands to ~60 MB in pandas), but the full data pipeline should be
+run on a machine with **25+ GB free disk** because NPPES is large.
 
 ## Split deploy (static host + API host)
 
@@ -63,8 +84,19 @@ CORS preflight). Set it to your real origin in production.
 
 ## Payload weight (know before you ship)
 
-`metrics.json` (~28 MB raw / ~3.7 MB gzip) + `zcta.geojson` (~16.7 MB / ~4.5 MB gzip) are the
-cold-load cost. Mitigations already in place: `gzip_static` pre-compressed files, immutable
-hashed assets, a Web Worker that parses the payloads off the main thread, and split vendor
-chunks. Not yet done (documented in README "Roadmap"): vector tiles / PMTiles for the geometry,
-which is the real fix for the geojson weight.
+`metrics.json` (~30 MB raw / ~3.6 MB gzip), `zcta_overview.geojson` (~7 MB raw / ~1.3 MB gzip),
+and `zcta.pmtiles` (~15 MB, range-requested) are the cold-load cost. Mitigations already in place:
+`gzip_static` pre-compressed JSON/GeoJSON, immutable hashed assets, a Web Worker that parses the
+payloads off the main thread, split vendor chunks, and PMTiles for detailed geometry.
+
+## Security checklist
+
+- Keep `.env` out of git; use `.env.prod.example` only as a template.
+- Set `ALLOWED_ORIGINS=https://your-domain` before deploy.
+- Keep only ports 80/443 open to the internet; `api` and `web` are loopback-bound by compose.
+- Verify `curl -I https://your-domain` shows `Strict-Transport-Security`,
+  `Content-Security-Policy`, `X-Content-Type-Options`, and `Permissions-Policy`.
+- Run `make verify-csp` after setting analytics/Sentry domains, because external telemetry origins
+  must be added to nginx `connect-src`.
+- Run `make prod-check` after every scoring/data rebuild; it fails if rank-band calibration is
+  skipped.

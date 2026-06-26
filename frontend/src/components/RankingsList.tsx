@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
-import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel, MODEL, OUTCOME_METRICS } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel } from '../lib/types';
 import Caret from './Caret';
+import MetricSelect from './MetricSelect';
 
 // access_gap spreads 0-100; the raw-percentile metrics cluster near 100/0 at the
 // ends, so show one decimal there to keep the ordering legible.
@@ -79,33 +80,12 @@ export default function RankingsList() {
         {/* metric + direction controls */}
         <div className="flex items-center gap-1.5 mb-1">
           <div className="relative flex-1 min-w-0">
-            <select
-              aria-label="Rank by metric"
+            <MetricSelect
+              ariaLabel="Rank by metric"
               value={metric}
-              onChange={(e) => setMetric(e.target.value)}
+              onChange={setMetric}
               className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5"
-            >
-              <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
-              <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
-              <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
-              {MODEL.map((d) => (
-                <optgroup key={d.key} label={d.label}>
-                  <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
-                  {d.subs.map((s) => (
-                    <option key={s.key} value={`${s.key}_pctile`}>
-                      &nbsp;&nbsp;{s.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              <optgroup label="Outcomes (not in the score)">
-                {OUTCOME_METRICS.map((o) => (
-                  <option key={o.key} value={`${o.key}_pctile`}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+            />
             <Caret
               open
               size={12}

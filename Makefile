@@ -69,8 +69,11 @@ causal:
 
 prod-check:
 	$(PY) -m pytest tests -q
+	$(PY) -m pip check
+	npm audit --omit=dev
 	cd frontend && npm run typecheck
 	cd frontend && npm test
+	cd frontend && npm audit --omit=dev
 	cd frontend && npm run build
 	cd frontend && node scripts/verify-csp.mjs
 	$(PY) -m pipeline.verify_bands --require-calibration

@@ -5,7 +5,10 @@ test('pin a ZIP from the rankings list into the comparison tray', async ({ page 
   await page.goto('/');
   const rankings = page.getByRole('button', { name: 'Rankings' });
   await expect(rankings).toBeVisible({ timeout: 20_000 });
-  await rankings.click(); // the rail is collapsed by default; open it so the rows render
+  // Desktop opens the rail by default; narrower/compact contexts may still start collapsed.
+  if ((await page.getByTestId('ranking-row').count()) === 0) {
+    await rankings.click();
+  }
 
   await page.getByTestId('ranking-row').first().click();
   // the detail panel's "what drives the gap" driver-share bar renders with per-dimension segments

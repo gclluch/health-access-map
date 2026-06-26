@@ -27,6 +27,8 @@ export const HOVER_LINE: [number, number, number, number] = [20, 84, 90, 220]; /
 export const IDLE_LINE: [number, number, number, number] = [120, 130, 145, 40]; // quiet idle border
 
 const seq = scaleSequential(interpolateCividis).domain([0, 100]);
+export const QUANTILE_STOPS = [0, 0.14, 0.28, 0.42, 0.56, 0.7, 0.85, 1] as const;
+export const QUANTILE_COLORS = QUANTILE_STOPS.map((s) => seq(s * 100));
 
 // d3 interpolators may return "rgb(r, g, b)" or "#rrggbb"; handle both.
 function parseColor(c: string): [number, number, number] {
@@ -45,7 +47,7 @@ function parseColor(c: string): [number, number, number] {
 export function buildQuantile(values: number[]) {
   const scale = scaleQuantile<string>()
     .domain(values)
-    .range(['0', '0.14', '0.28', '0.42', '0.56', '0.7', '0.85', '1'].map((s) => seq(+s * 100)));
+    .range(QUANTILE_COLORS);
   return scale;
 }
 

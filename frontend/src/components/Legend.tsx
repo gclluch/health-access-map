@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
-import { RAMP, CHROME } from '../lib/colors';
-import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, MODEL, OUTCOME_METRICS, WITHIN_STATE_METRIC } from '../lib/types';
+import { buildQuantile, quantileBreaks, QUANTILE_COLORS, CHROME } from '../lib/colors';
+import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC } from '../lib/types';
 import { fmtScore } from '../lib/format';
 import Caret from './Caret';
+import MetricSelect from './MetricSelect';
 
 const BINS = 44;
 
@@ -28,11 +29,13 @@ export default function Legend() {
   const showWeights = useStore((s) => s.showWeights);
   const toggleWeights = useStore((s) => s.toggleWeights);
 
-  const { hist, max, selValue, selBin } = useMemo(() => {
+  const { hist, max, selValue, selBin, breaks, noData } = useMemo(() => {
     const vals: number[] = [];
+    let missing = 0;
     for (const m of metrics.values()) {
       const v = metricValue(m, metric, weights);
       if (v != null && !Number.isNaN(v)) vals.push(v);
+      else missing += 1;
     }
     const h = new Array(BINS).fill(0);
     for (const v of vals) {
@@ -42,7 +45,15 @@ export default function Legend() {
     const sel = selectedZcta ? metrics.get(selectedZcta) : undefined;
     const sv = sel ? metricValue(sel, metric, weights) : null;
     const sb = sv != null ? Math.min(BINS - 1, Math.floor((sv / 100) * BINS)) : null;
-    return { hist: h, max: Math.max(1, ...h), selValue: sv, selBin: sb };
+    const scale = buildQuantile(vals);
+    return {
+      hist: h,
+      max: Math.max(1, ...h),
+      selValue: sv,
+      selBin: sb,
+      breaks: quantileBreaks(scale),
+      noData: missing,
+    };
   }, [metrics, metric, weights, selectedZcta]);
 
   return (
@@ -50,34 +61,13 @@ export default function Legend() {
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[11px] uppercase tracking-wide text-graphite">Color by</span>
         <div className="relative max-w-[200px] max-[520px]:max-w-[210px]">
-          <select
-            aria-label="Color the map by metric"
+          <MetricSelect
+            ariaLabel="Color the map by metric"
             className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
             value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-          >
-            <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
-            <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
-            <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
-            <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>
-            {MODEL.map((d) => (
-              <optgroup key={d.key} label={d.label}>
-                <option value={`${d.key}_pctile`}>{d.label} (overall)</option>
-                {d.subs.map((s) => (
-                  <option key={s.key} value={`${s.key}_pctile`}>
-                    &nbsp;&nbsp;{s.label}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-            <optgroup label="Outcomes (not in the score)">
-              {OUTCOME_METRICS.map((o) => (
-                <option key={o.key} value={`${o.key}_pctile`}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            onChange={setMetric}
+            includeWithinState
+          />
           <Caret
             open
             size={12}
@@ -87,8 +77,9 @@ export default function Legend() {
       </div>
 
       {LENS_HELP[metric] && (
-        <p className="text-[10px] text-graphite mb-1 leading-snug">
-          {LENS_HELP[metric]}
+        <p className="text-[11px] text-graphite mb-1.5 leading-snug">
+          {LENS_HELP[metric]} Colors are quantile bands: each color holds roughly the same number
+          of scored ZIPs.
         </p>
       )}
 
@@ -108,21 +99,37 @@ export default function Legend() {
         )}
       </svg>
 
-      {/* ramp */}
-      <div
-        className="h-2 rounded-sm mt-0.5"
-        style={{
-          background: `linear-gradient(to right, ${Array.from({ length: 9 }, (_, i) => RAMP((i / 8) * 100)).join(',')})`,
-        }}
-      />
-      <div className="flex justify-between text-[10px] num text-graphite mt-0.5">
-        <span>low</span>
+      {/* stepped quantile ramp: matches the map's eight equal-count color classes. */}
+      <div className="grid grid-cols-8 h-2.5 rounded-sm mt-0.5 overflow-hidden border border-hairline/60">
+        {QUANTILE_COLORS.map((color, i) => (
+          <span key={i} style={{ backgroundColor: color }} className={i > 0 ? 'border-l border-white/40' : ''} />
+        ))}
+      </div>
+      <div className="relative h-3 mt-0.5" aria-hidden="true">
+        {breaks.slice(1, 6).map((b, i) => (
+          <span
+            key={`${b}-${i}`}
+            className="absolute top-0 h-1.5 border-l border-graphite/45"
+            style={{ left: `${((i + 2) / 8) * 100}%` }}
+            title={`Quantile break ${fmtScore(b)}`}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between gap-2 text-[10px] num text-graphite -mt-1">
+        <span>lower gap</span>
         {selValue != null && (
           <span className="text-accent font-medium">
             {selectedZcta} · {fmtScore(selValue)}
           </span>
         )}
-        <span>high</span>
+        <span>higher gap</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-graphite">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-4 rounded-sm border border-hairline bg-[#CACED4]" />
+          no reliable data{noData > 0 ? <span className="num"> · {noData.toLocaleString()}</span> : null}
+        </span>
+        <span className="num">8 quantile bands</span>
       </div>
 
       {/* Weighting control - sibling of the metric selector above. Expands the sliders

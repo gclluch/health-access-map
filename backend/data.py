@@ -8,17 +8,21 @@ from pathlib import Path
 
 import pandas as pd
 
+from pipeline.taxonomy import DIMENSIONS, subscore_specs
+
 ROOT = Path(__file__).resolve().parent.parent
 METRICS_PATH = ROOT / "data" / "processed" / "metrics.parquet"
 
-# composite + 3 dimensions + 11 sub-scores are all rankable / colorable.
-from pipeline.taxonomy import DIMENSIONS, subscore_specs  # noqa: E402
+def _rankable_metrics() -> set[str]:
+    """Composite, dimensions, and sub-scores that can be ranked / colorized."""
+    return (
+        {"access_gap_score", "access_gap_pctile"}
+        | {f"{d}_pctile" for d in DIMENSIONS}
+        | {f"{s['key']}_pctile" for s in subscore_specs()}
+    )
 
-RANKABLE_METRICS = (
-    {"access_gap_score", "access_gap_pctile"}
-    | {f"{d}_pctile" for d in DIMENSIONS}
-    | {f"{s['key']}_pctile" for s in subscore_specs()}
-)
+
+RANKABLE_METRICS = _rankable_metrics()
 
 _DF: pd.DataFrame | None = None
 

@@ -144,6 +144,7 @@ function AppInner() {
             Health Access Map
           </span>
           <FreshnessBadge />
+          {status === "ready" && <CoverageNote />}
         </div>
         <div className="flex-1 min-w-[8px]" />
         <div className="pointer-events-auto flex items-center gap-1.5 flex-wrap justify-end max-[520px]:gap-1 max-[520px]:max-w-[270px]">
@@ -160,14 +161,20 @@ function AppInner() {
 
       {/* left rail (desktop) / bottom sheet (mobile): rankings + customize */}
       {status === "ready" && (
-        <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[270px] max-[520px]:bottom-1">
+        <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[282px] max-[520px]:bottom-1">
           <div className="panel rounded-md overflow-hidden flex flex-col max-h-[38vh] sm:max-h-[calc(100vh-150px)] max-[520px]:max-h-[34px]">
             <button
               onClick={() => setRailOpen((v) => !v)}
               aria-expanded={railOpen}
-              className="px-3 py-2 flex items-center justify-between text-[12px] font-medium text-ink border-b border-hairline max-[520px]:py-1.5"
+              aria-label="Rankings"
+              className="px-3 py-2 flex items-center justify-between text-[13px] font-medium text-ink border-b border-hairline max-[520px]:py-1.5 max-[520px]:text-[12px]"
             >
-              Rankings
+              <span>
+                Top access gaps
+                <span className="ml-1 font-normal text-[11px] text-graphite max-[520px]:hidden">
+                  ranked ZIPs
+                </span>
+              </span>
               <Caret open={railOpen} size={14} className="text-graphite" />
             </button>
             {railOpen && !isCompactHeight && (
@@ -235,6 +242,26 @@ function FreshnessBadge() {
       className="hidden sm:inline-block num text-[10px] text-graphite bg-surface/85 border border-hairline rounded px-1.5 py-1 cursor-help"
     >
       data as of {meta.generated}
+    </span>
+  );
+}
+
+function CoverageNote() {
+  const jumpToState = useStore((s) => s.jumpToState);
+  return (
+    <span className="hidden lg:inline-flex items-center gap-1 num text-[10px] text-graphite bg-surface/85 border border-hairline rounded px-1.5 py-1">
+      CONUS view
+      <span className="font-sans">· jump</span>
+      {(["AK", "HI", "PR"] as const).map((s) => (
+        <button
+          key={s}
+          onClick={() => jumpToState(s)}
+          className="text-accent hover:underline"
+          title={`Jump to ${s}`}
+        >
+          {s}
+        </button>
+      ))}
     </span>
   );
 }

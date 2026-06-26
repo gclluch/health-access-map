@@ -42,6 +42,9 @@ import pandas as pd
 from . import config
 from .common import log
 from .taxonomy import DIMENSIONS, subscore_specs
+from .validation_stats import pearson_corr as _corr
+from .validation_stats import weighted_corr as _wcorr
+from .validation_stats import within_residual as _within
 
 METRICS = config.PROCESSED / "metrics.parquet"
 NY_PQI_SOCRATA = "https://health.data.ny.gov/resource/5q8c-d6xq.json"
@@ -131,39 +134,6 @@ def _fetch_ny_pqi() -> pd.DataFrame:
                                 nyears=("year", "nunique")).reset_index()
     g["oe"] = g["obs"] / g["exp"].replace(0, np.nan)  # risk-standardized: removes age/sex mix
     return g
-
-
-def _corr(a: np.ndarray, b: np.ndarray) -> float:
-    a, b = np.asarray(a, float), np.asarray(b, float)
-    m = ~(np.isnan(a) | np.isnan(b))
-    if m.sum() < 50:
-        return float("nan")
-    a, b = a[m] - a[m].mean(), b[m] - b[m].mean()
-    s = np.sqrt((a @ a) * (b @ b))
-    return float(a @ b / s) if s > 0 else float("nan")
-
-
-def _within(j: pd.DataFrame, col: str) -> np.ndarray:
-    """Residual after removing the per-county mean (county fixed effect)."""
-    s = pd.to_numeric(j[col], errors="coerce")
-    return (s - s.groupby(j["county_fips"]).transform("mean")).to_numpy()
-
-
-def _wcorr(a: np.ndarray, b: np.ndarray, w: np.ndarray) -> float:
-    """Precision-weighted Pearson. Small ZCTAs carry the largest sampling error and ATTENUATE the
-    unweighted within-county correlation; weighting by population down-weights that noise and shifts
-    the estimand to where people actually live. A legitimate recovery of attenuated signal (corrects
-    measurement noise, fits nothing) - the biggest free gain at sub-county resolution. VALIDATION §7d."""
-    a, b, w = np.asarray(a, float), np.asarray(b, float), np.asarray(w, float)
-    m = ~(np.isnan(a) | np.isnan(b) | np.isnan(w)) & (w > 0)
-    if m.sum() < 50:
-        return float("nan")
-    a, b, w = a[m], b[m], w[m]
-    W = w.sum()
-    am, bm = (a * w).sum() / W, (b * w).sum() / W
-    cov = (w * (a - am) * (b - bm)).sum()
-    va, vb = (w * (a - am) ** 2).sum(), (w * (b - bm) ** 2).sum()
-    return float(cov / np.sqrt(va * vb)) if va > 0 and vb > 0 else float("nan")
 
 
 def run(extra_csv: str | None = None) -> dict:

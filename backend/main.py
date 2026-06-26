@@ -22,7 +22,13 @@ ZCTA_RE = re.compile(r"^\d{5}$")
 # Vite dev origin. "*" allows any origin (use only if the API is genuinely public + read-only).
 _DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 _origins_env = os.environ.get("ALLOWED_ORIGINS")
-ALLOWED_ORIGINS = [o.strip() for o in (_origins_env or _DEFAULT_ORIGINS).split(",") if o.strip()]
+
+
+def _parse_origins(raw: str | None) -> list[str]:
+    return [origin.strip() for origin in (raw or _DEFAULT_ORIGINS).split(",") if origin.strip()]
+
+
+ALLOWED_ORIGINS = _parse_origins(_origins_env)
 if not _origins_env:
     # Loud warning: an unset ALLOWED_ORIGINS in a real deploy means the browser app on its prod
     # origin gets opaque CORS failures against the localhost-only default. Better a log line at

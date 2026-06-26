@@ -1,6 +1,6 @@
 # Keep build contexts small + reproducible. NOTE: data/processed/metrics.parquet and
-# frontend/public/{metrics.json,zcta.geojson} are intentionally NOT ignored - the images
-# need them (they are produced by `make data`).
+# frontend/public/{metrics.json,zcta_overview.geojson,zcta.pmtiles} are intentionally NOT ignored -
+# the images need them (they are produced by `make data`).
 .git
 .venv
 **/__pycache__
