@@ -283,7 +283,7 @@ export default function MethodologyPanel() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-[11px] leading-snug">
               <div>
                 <div className="font-medium text-ink">Access gap</div>
-                <div className="text-graphite">Default screen: combined need, vulnerability, and barriers.</div>
+                <div className="text-graphite">Default screen: relative access disadvantage - need, vulnerability, and barriers combined (not need minus supply).</div>
               </div>
               <div>
                 <div className="font-medium text-ink">Within-state rank</div>

@@ -11,7 +11,7 @@ const BINS = 44;
 
 const LENS_HELP: Record<string, string> = {
   [COMPOSITE_METRIC]:
-    'Default descriptive screen: where need, vulnerability, and barriers combine into the largest access gap.',
+    'Relative access disadvantage: how far this ZIP trails the U.S. on need, vulnerability, and barriers combined - NOT need minus supply. For barriers beyond what need predicts, switch to "barriers to care, net of deprivation".',
   [COMPOSITE_MULT_METRIC]:
     'Targeting lens: emphasizes places where high need and high barriers coincide, instead of letting one dimension fully offset another.',
   [ACCESS_RESID_METRIC]:
