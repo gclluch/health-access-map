@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, metricLabel } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, metricLabel } from '../lib/types';
 import Caret from './Caret';
 import MetricSelect from './MetricSelect';
 
@@ -112,7 +112,7 @@ export default function RankingsList() {
         <div className="flex items-center justify-between gap-2">
           <div className="text-[10px] text-graphite min-w-0 truncate">
             {end} {metricLabel(metric).toLowerCase()} · top {rows.length}{total > rows.length ? ` of ${total}` : ''}
-            {stateFilter ? ` · ${stateFilter}` : ''} · relative national rank
+            {stateFilter ? ` · ${stateFilter}` : ''} · relative {metric === WITHIN_STATE_METRIC ? 'within-state' : 'national'} rank
           </div>
           <button
             onClick={exportCsv}

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { accessGap, buildScoreIndex, percentileOf } from '../lib/scoring';
+import { accessGap, accessGapMult, buildScoreIndex, percentileOf } from '../lib/scoring';
 import { synthesize } from '../lib/synthesis';
-import { MODEL, SUBSCORE_EVIDENCE, type DimSpec, type SlimMetric } from '../lib/types';
+import {
+  MODEL, SUBSCORE_EVIDENCE, COMPOSITE_MULT_METRIC, ACCESS_RESID_METRIC, WITHIN_STATE_METRIC,
+  type DimSpec, type SlimMetric,
+} from '../lib/types';
 import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
 import { apiZcta } from '../lib/api';
@@ -381,7 +384,7 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
 }
 
 export default function DetailPanel() {
-  const { metrics, weights, selectedZcta } = useStore();
+  const { metrics, weights, selectedZcta, metric } = useStore();
   const select = useStore((s) => s.select);
   const compareZctas = useStore((s) => s.compareZctas);
   const addCompare = useStore((s) => s.addCompare);
@@ -445,6 +448,16 @@ export default function DetailPanel() {
   }, [selectedZcta]);
 
   const sortedScores = useMemo(() => buildScoreIndex(metrics.values(), weights), [metrics, weights]);
+  // National rank index for the coincidence lens (the slim payload has no precomputed mult
+  // percentile - it recomputes client-side, §RATIONALE). Only used when that lens is active.
+  const sortedMult = useMemo(() => {
+    const arr: number[] = [];
+    for (const mm of metrics.values()) {
+      const v = accessGapMult(mm, weights);
+      if (v != null && !Number.isNaN(v)) arr.push(v);
+    }
+    return arr.sort((a, b) => a - b);
+  }, [metrics, weights]);
 
   if (!m) return null;
   const score = accessGap(m, weights);
@@ -524,7 +537,40 @@ export default function DetailPanel() {
         )}
 
         {(() => {
-          const sev = score != null && scorePercentile != null ? severity(scorePercentile) : null;
+          if (score == null || scorePercentile == null) {
+            return (
+              <div className="text-[12px] text-graphite mt-1 leading-snug">
+                Insufficient reliable data to score this area.
+              </div>
+            );
+          }
+          // The headline tracks the active map lens so the number + copy match what's coloured on
+          // the map. (Bug fixed here: a within-state / coincidence / net-of-deprivation lens still
+          // read "worse than X% of U.S. ZIPs ... nationally".) The comparison grid + drivers below
+          // stay on the canonical national composite, so every framing remains visible.
+          const worst = (p: number) => Math.max(1, Math.round(100 - p));
+          const stateName = m.state_name ?? 'its state';
+          let hPct: number | null = scorePercentile;
+          let rankLabel = 'access-gap rank';
+          let sentence =
+            `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
+          if (metric === WITHIN_STATE_METRIC && m.access_gap_pctile_within_state != null) {
+            hPct = m.access_gap_pctile_within_state;
+            rankLabel = 'within-state rank';
+            sentence = `Higher = worse access. Within ${stateName}, this ZIP is worse than ${fmtScore(hPct)}% of ZIPs - among the worst ${worst(hPct)}% in its state. (National rank is in the grid below.)`;
+          } else if (metric === ACCESS_RESID_METRIC && m.care_access_resid_pctile != null) {
+            hPct = m.care_access_resid_pctile;
+            rankLabel = 'net-of-deprivation rank';
+            sentence = `Barriers to care after health need + social vulnerability are removed. This ZIP's structural access is worse than ${fmtScore(hPct)}% of U.S. ZIPs - i.e. barriers worse than its deprivation alone predicts.`;
+          } else if (metric === COMPOSITE_MULT_METRIC) {
+            const mp = percentileOf(sortedMult, accessGapMult(m, weights));
+            if (mp != null) {
+              hPct = mp;
+              rankLabel = 'coincidence rank';
+              sentence = `Where high need and high barriers coincide (geometric blend). This ZIP is worse than ${fmtScore(hPct)}% of U.S. ZIPs on the coincidence lens - one-dimensional highs are down-weighted.`;
+            }
+          }
+          const sev = hPct != null ? severity(hPct) : null;
           return (
             <>
               <div className="flex items-baseline gap-2 flex-wrap">
@@ -532,9 +578,9 @@ export default function DetailPanel() {
                   className="num text-[34px] font-semibold leading-none"
                   style={{ color: sev ? sev.color : undefined }}
                 >
-                  {fmtScore(scorePercentile)}
+                  {fmtScore(hPct)}
                 </span>
-                <span className="text-[12px] text-graphite">/ 100 · access-gap rank</span>
+                <span className="text-[12px] text-graphite">/ 100 · {rankLabel}</span>
                 {sev && (
                   <span
                     className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
@@ -545,12 +591,8 @@ export default function DetailPanel() {
                   </span>
                 )}
               </div>
-              <div className="text-[12px] text-graphite mt-1 leading-snug">
-                {score == null || scorePercentile == null
-                  ? 'Insufficient reliable data to score this area.'
-                  : `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${Math.max(1, Math.round(100 - scorePercentile))}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`}
-              </div>
-              {score != null && scorePercentile != null && <ComparisonFrame m={m} scorePercentile={scorePercentile} />}
+              <div className="text-[12px] text-graphite mt-1 leading-snug">{sentence}</div>
+              <ComparisonFrame m={m} scorePercentile={scorePercentile} />
             </>
           );
         })()}
