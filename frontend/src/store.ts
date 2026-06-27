@@ -3,6 +3,7 @@ import { loadData, type FeatureCollection } from './lib/data';
 import { track } from './lib/observability';
 import { parseWeightParam } from './lib/scoring';
 import {
+  ALL_METRICS,
   COMPOSITE_METRIC,
   DEFAULT_WEIGHTS,
   parseAnchors,
@@ -76,7 +77,7 @@ function readUrl(): Partial<Pick<AppState, 'metric' | 'weights' | 'selectedZcta'
   const p = new URLSearchParams(location.search);
   const out: Partial<Pick<AppState, 'metric' | 'weights' | 'selectedZcta'>> = {};
   const m = p.get('metric');
-  if (m) out.metric = m;
+  if (m && ALL_METRICS.includes(m)) out.metric = m;
   const z = p.get('zip');
   if (z && /^\d{5}$/.test(z)) out.selectedZcta = z;
   const weights = parseWeightParam(p.get('w'));

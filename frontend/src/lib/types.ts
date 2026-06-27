@@ -1,5 +1,5 @@
 // Slim metric record from join_and_score (_write_slim_json): geography + the
-// composite + 3 dimension percentiles + 11 sub-score percentiles + flags. Raw
+// composite + 3 dimension percentiles + 14 sub-score percentiles + flags. Raw
 // measures are fetched per-ZIP from the API for the drill-down.
 export interface SlimMetric {
   zcta5: string;
@@ -39,6 +39,7 @@ export interface SlimMetric {
   shortage_designation_pctile: number | null;
   safetynet_access_pctile: number | null;
   insurance_pctile: number | null;
+  medical_debt_pctile: number | null;
   preventive_use_pctile: number | null;
   [k: string]: string | number | boolean | null;
 }

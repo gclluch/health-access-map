@@ -223,7 +223,7 @@ function ComparisonFrame({
     {
       label: 'National',
       value: ordinal(scorePercentile),
-      detail: `tier ${Math.ceil(scorePercentile / 10)} of 10; worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs under current weights`,
+      detail: `tier ${Math.min(10, Math.max(1, Math.ceil(scorePercentile / 10)))} of 10; worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs under current weights`,
     },
     m.access_gap_pctile_within_state != null
       ? {
@@ -447,7 +447,8 @@ export default function DetailPanel() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') select(null);
+      // Don't deselect the ZIP when Escape is closing the methodology modal stacked on top.
+      if (e.key === 'Escape' && !useStore.getState().showMethodology) select(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -506,7 +507,7 @@ export default function DetailPanel() {
           <div className="h-10 w-1 rounded-full bg-hairline group-hover:bg-accent transition-colors" />
         </div>
       )}
-      <div className="panel rounded-md w-full max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto">
+      <div role="region" aria-label="ZIP detail" className="panel rounded-md w-full max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto">
       <div className="px-4 pt-3 pb-2 border-b border-hairline sticky top-0 bg-surface z-10">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
@@ -702,7 +703,7 @@ export default function DetailPanel() {
             Outcome - life expectancy at birth:{' '}
             <span className="num text-ink font-medium">{m.life_expectancy} yrs</span>
             {m.life_expectancy_pctile != null
-              ? ` (lower than ${fmtScore(m.life_expectancy_pctile)}% of U.S. ZIPs)`
+              ? ` (lower than ${fmtScore(Math.min(99, m.life_expectancy_pctile))}% of U.S. ZIPs)`
               : ''}
             <span className="text-graphite"> · CDC USALEEP, independent of the score</span>
           </div>

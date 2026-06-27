@@ -38,6 +38,7 @@ export function makeMetric(over: Partial<SlimMetric> = {}): SlimMetric {
     shortage_designation_pctile: null,
     safetynet_access_pctile: null,
     insurance_pctile: null,
+    medical_debt_pctile: null,
     preventive_use_pctile: null,
     ...over,
   };

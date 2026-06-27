@@ -46,6 +46,7 @@ export default function WeightSliders() {
   const [local, setLocal] = useState<Weights>(storeWeights);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => setLocal(storeWeights), [storeWeights]); // sync preset/reset
+  useEffect(() => () => clearTimeout(timer.current), []); // drop pending commit on unmount
   const commit = (w: Weights) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setWeights(w), 80);
