@@ -38,8 +38,34 @@ async function getJson<T>(path: string): Promise<T> {
 export const apiHealth = () =>
   getJson<{ status: string; zcta_count: number; states: string[] }>('/api/health');
 
-// Full per-ZIP record (all ~55 raw measures) for the drill-down's deepest level.
-export const apiZcta = (z: string) => getJson<Record<string, unknown>>(`/api/zcta/${z}`);
+// Full per-ZIP record (all raw measures + national percentiles) for the drill-down's deepest
+// level and the Who-lives-here block. Two sources, transparent to callers:
+//  - If VITE_API_BASE is set, a real FastAPI backend is hosted -> hit /api/zcta/{z}.
+//  - Otherwise (the static Netlify deploy) read a pre-built per-ZIP3 shard from /zcta/{zip3}.json
+//    (pipeline/build_shards.py). One shard (~150 KB) is fetched per prefix and cached, so the
+//    static site mirrors the backend with no server. A rejected shard is evicted so a transient
+//    failure can retry on the next click.
+const shardCache = new Map<string, Promise<Record<string, Record<string, unknown>>>>();
+
+function loadShard(zip3: string): Promise<Record<string, Record<string, unknown>>> {
+  let p = shardCache.get(zip3);
+  if (!p) {
+    p = getJson<Record<string, Record<string, unknown>>>(`/zcta/${zip3}.json`).catch((e) => {
+      shardCache.delete(zip3);
+      throw e;
+    });
+    shardCache.set(zip3, p);
+  }
+  return p;
+}
+
+export async function apiZcta(z: string): Promise<Record<string, unknown>> {
+  if (API_BASE) return getJson<Record<string, unknown>>(`/api/zcta/${z}`);
+  const shard = await loadShard(z.slice(0, 3));
+  const rec = shard[z];
+  if (!rec) throw new Error(`404 /zcta/${z}`);
+  return rec;
+}
 
 export const apiCompare = (zips: string[]) =>
   getJson<{ results: ApiZcta[] }>(`/api/compare?zips=${encodeURIComponent(zips.join(','))}`);

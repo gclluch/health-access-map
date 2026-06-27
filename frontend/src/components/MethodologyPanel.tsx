@@ -70,7 +70,8 @@ function ValidationTable() {
       <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
         Validation against independent outcomes
       </div>
-      <table className="w-full text-[11px] num">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[20rem] text-[11px] num whitespace-nowrap">
         <thead>
           <tr className="text-graphite text-left">
             <th className="font-normal py-0.5">Outcome</th>
@@ -92,6 +93,7 @@ function ValidationTable() {
           ))}
         </tbody>
       </table>
+      </div>
       <p className="text-[10px] text-graphite mt-2 leading-snug">
         Weights ∝ each dimension's correlation with the outcome. A pure regression (NNLS)
         shifts weight onto health need for the disease-dominated mortality rulers (53-77%), but
@@ -102,7 +104,8 @@ function ValidationTable() {
       </p>
       <div className="text-[10px] text-graphite mt-2 leading-snug">
         <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>
-        <table className="w-full num mt-1">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[26rem] num mt-1 whitespace-nowrap">
           <thead>
             <tr className="text-left">
               <th className="font-normal" />
@@ -127,6 +130,7 @@ function ValidationTable() {
             ))}
           </tbody>
         </table>
+        </div>
         <p className="mt-1 leading-snug">
           Medical debt is the strongest scored care barrier (up to +0.58 vs amenable mortality);
           after the variable-catchment fix provider supply tracks the mortality outcomes, correctly

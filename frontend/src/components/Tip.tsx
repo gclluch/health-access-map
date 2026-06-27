@@ -1,4 +1,4 @@
-import { useId, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 // Instant help popover. Hover still works for mouse users, while focus/tap opens
@@ -30,6 +30,24 @@ export default function Tip({
     setPinned(false);
     setBox(null);
   };
+
+  // The popover is position:fixed at the anchor's viewport coords captured on open. It has no
+  // way to follow a scroll, so once the user scrolls (e.g. down the detail panel) it would hang
+  // at a stale spot until the section is collapsed. Dismiss it on any scroll/resize instead -
+  // capture:true so scrolling a nested panel (not just window) also closes it.
+  useEffect(() => {
+    if (!box) return;
+    const dismiss = () => {
+      setPinned(false);
+      setBox(null);
+    };
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [box]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape') close();

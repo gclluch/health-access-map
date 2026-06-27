@@ -49,9 +49,22 @@ function ResolutionBadge({ subKey }: { subKey: string }) {
 // Deepest level: individual measures for a sub-score, from the full API record.
 // Each row shows the RAW value (real-world units) and, where it exists, that value's
 // national percentile oriented so higher = worse access (same scale as the sub-scores).
-function Measures({ subKey, rec }: { subKey: string; rec: Record<string, unknown> | null }) {
+function Measures({
+  subKey,
+  rec,
+  recLoading,
+}: {
+  subKey: string;
+  rec: Record<string, unknown> | null;
+  recLoading: boolean;
+}) {
   const measures = SUBSCORE_MEASURES[subKey] ?? [];
-  if (!rec) return <div className="px-3 py-1.5 text-[10px] text-graphite">Loading measures…</div>;
+  if (!rec)
+    return (
+      <div className="px-3 py-1.5 text-[10px] text-graphite">
+        {recLoading ? 'Loading measures…' : 'Detailed measures are unavailable for this ZIP.'}
+      </div>
+    );
   const anyPct = measures.some((mm) => typeof rec[`${mm.col}_natpct`] === 'number');
   return (
     <div className="px-3 py-1.5 bg-paper/60">
@@ -97,12 +110,14 @@ function SubScoreRow({
   label,
   pct,
   rec,
+  recLoading,
   scored = true,
 }: {
   subKey: string;
   label: string;
   pct: number | null | undefined;
   rec: Record<string, unknown> | null;
+  recLoading: boolean;
   scored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -138,7 +153,7 @@ function SubScoreRow({
           <PctBar pct={pct} />
         </span>
       </button>
-      {open && <Measures subKey={subKey} rec={rec} />}
+      {open && <Measures subKey={subKey} rec={rec} recLoading={recLoading} />}
     </div>
   );
 }
@@ -147,10 +162,12 @@ function Dimension({
   dim,
   m,
   rec,
+  recLoading,
 }: {
   dim: DimSpec;
   m: SlimMetric;
   rec: Record<string, unknown> | null;
+  recLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const dimPct = m[`${dim.key}_pctile`] as number | null;
@@ -181,6 +198,7 @@ function Dimension({
               scored={s.scored !== false}
               pct={m[`${s.key}_pctile`] as number | null}
               rec={rec}
+              recLoading={recLoading}
             />
           ))}
         </div>
@@ -392,6 +410,7 @@ export default function DetailPanel() {
   const inCompare = selectedZcta != null && compareZctas.includes(selectedZcta);
   const m = selectedZcta ? metrics.get(selectedZcta) : undefined;
   const [rec, setRec] = useState<Record<string, unknown> | null>(null);
+  const [recLoading, setRecLoading] = useState(false);
 
   // Desktop-only resizable width (drag the left edge). Persisted across selections.
   const [width, setWidth] = useState<number>(() => {
@@ -439,9 +458,20 @@ export default function DetailPanel() {
     setRec(null);
     if (!selectedZcta) return;
     let live = true;
+    setRecLoading(true);
     apiZcta(selectedZcta)
-      .then((r) => live && setRec(r))
-      .catch(() => live && setRec(null));
+      .then((r) => {
+        if (live) {
+          setRec(r);
+          setRecLoading(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setRec(null);
+          setRecLoading(false);
+        }
+      });
     return () => {
       live = false;
     };
@@ -613,7 +643,7 @@ export default function DetailPanel() {
             Explore the layers <span className="text-graphite">(tap to drill in)</span>
           </div>
           {MODEL.map((dim) => (
-            <Dimension key={dim.key} dim={dim} m={m} rec={rec} />
+            <Dimension key={dim.key} dim={dim} m={m} rec={rec} recLoading={recLoading} />
           ))}
         </div>
 
