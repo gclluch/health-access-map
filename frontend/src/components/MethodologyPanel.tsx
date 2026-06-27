@@ -74,21 +74,21 @@ function ValidationTable() {
       <table className="w-full min-w-[20rem] text-[11px] num whitespace-nowrap">
         <thead>
           <tr className="text-graphite text-left">
-            <th className="font-normal py-0.5">Outcome</th>
-            <th className="font-normal text-right">Need</th>
-            <th className="font-normal text-right">Vuln</th>
-            <th className="font-normal text-right">Access</th>
-            <th className="font-normal text-right">R²</th>
+            <th className="font-normal py-0.5 pr-4">Outcome</th>
+            <th className="font-normal text-right pl-4">Need</th>
+            <th className="font-normal text-right pl-4">Vuln</th>
+            <th className="font-normal text-right pl-4">Access</th>
+            <th className="font-normal text-right pl-4">R²</th>
           </tr>
         </thead>
         <tbody className="text-ink">
           {anchors.map((a) => (
             <tr key={a.key} className="border-t border-hairline/60">
-              <td className="py-0.5 pr-1">{a.label}</td>
-              <td className="text-right">{a.weights.health_need}</td>
-              <td className="text-right">{a.weights.social_vulnerability}</td>
-              <td className="text-right font-medium">{a.weights.care_access}</td>
-              <td className="text-right text-graphite">{a.fit ? a.fit.r2 : '–'}</td>
+              <td className="py-0.5 pr-4">{a.label}</td>
+              <td className="text-right pl-4">{a.weights.health_need}</td>
+              <td className="text-right pl-4">{a.weights.social_vulnerability}</td>
+              <td className="text-right font-medium pl-4">{a.weights.care_access}</td>
+              <td className="text-right text-graphite pl-4">{a.fit ? a.fit.r2 : '–'}</td>
             </tr>
           ))}
         </tbody>
@@ -110,18 +110,18 @@ function ValidationTable() {
             <tr className="text-left">
               <th className="font-normal" />
               {anchors.map((a) => (
-                <th key={a.key} className="font-normal text-right">{a.key.split('_')[0]}</th>
+                <th key={a.key} className="font-normal text-right pl-4">{a.key.split('_')[0]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {careRows.map(([key, label]) => (
               <tr key={key}>
-                <td className="pr-1 text-ink">{label}</td>
+                <td className="pr-4 text-ink">{label}</td>
                 {anchors.map((a) => {
                   const r = subCorr[a.key]?.[key];
                   return (
-                    <td key={a.key} className={'text-right ' + (r != null && r < 0 ? 'text-rose-500' : '')}>
+                    <td key={a.key} className={'text-right pl-4 ' + (r != null && r < 0 ? 'text-rose-500' : '')}>
                       {fmt(r)}
                     </td>
                   );
