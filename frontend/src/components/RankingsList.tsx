@@ -84,6 +84,7 @@ export default function RankingsList() {
               ariaLabel="Rank by metric"
               value={metric}
               onChange={setMetric}
+              includeWithinState
               className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5"
             />
             <Caret
@@ -124,6 +125,11 @@ export default function RankingsList() {
         </div>
       </div>
       <div className="overflow-y-auto flex-1">
+        {rows.length === 0 && (
+          <div className="px-3 py-4 text-[11px] text-graphite">
+            No ranked ZIPs for this selection.
+          </div>
+        )}
         {rows.map((r, i) => {
           const sel = r.z === selectedZcta;
           return (

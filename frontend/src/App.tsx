@@ -169,7 +169,7 @@ function AppInner() {
       {/* left rail (desktop) / bottom sheet (mobile): rankings + customize */}
       {status === "ready" && (
         <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[282px] max-[520px]:bottom-1">
-          <div className="panel rounded-md overflow-hidden flex flex-col max-h-[38vh] sm:max-h-[calc(100vh-150px)] max-[520px]:max-h-[34px]">
+          <div className={`panel rounded-md overflow-hidden flex flex-col max-h-[38vh] sm:max-h-[calc(100vh-150px)] ${railOpen ? '' : 'max-[520px]:max-h-[34px]'}`}>
             <button
               onClick={() => setRailOpen((v) => !v)}
               aria-expanded={railOpen}
