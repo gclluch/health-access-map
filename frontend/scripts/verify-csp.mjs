@@ -75,7 +75,7 @@ const violations = [];
 const blocked = [];
 page.on('console', (m) => {
   const t = m.text();
-  if (/content security policy|refused to (load|connect|apply)/i.test(t)) violations.push(t);
+  if (/content security policy|refused to (load|connect|apply|create)/i.test(t)) violations.push(t);
 });
 page.on('pageerror', (e) => violations.push('pageerror: ' + e.message));
 page.on('requestfailed', (r) => {
@@ -85,11 +85,38 @@ page.on('requestfailed', (r) => {
 let carto = 0;
 page.on('requestfinished', (r) => { if (r.url().includes('cartocdn.com')) carto += 1; });
 
+// Catch the z>=6 regression class directly: (1) vector tiles actually streaming from the pmtiles
+// archive, and (2) any attempt to pull a decoder worker from a CDN. loaders.gl loads its MVT
+// worker from unpkg/jsdelivr unless worker:false; the prod CSP (worker-src/script-src 'self')
+// blocks it, so tiles silently fail to colour above the overview hand-off. A load-only check
+// never sees this because the low-zoom choropleth uses the inline overview GeoJSON.
+const pmtilesReqs = [];
+const workerCdnReqs = [];
+page.on('request', (r) => {
+  const u = r.url();
+  if (u.includes('.pmtiles')) pmtilesReqs.push(u);
+  if (/unpkg\.com|jsdelivr\.net|cdn\.jsdelivr|loaders\.gl/i.test(u)) workerCdnReqs.push(`${r.resourceType()} ${u}`);
+});
+
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-await page.waitForTimeout(8000); // let the basemap + tiles load under the policy
+await page.waitForTimeout(8000); // let the basemap + low-zoom overview load under the policy
 
 // The map canvas must exist and have painted (deck/maplibre WebGL canvas).
 const canvasOk = await page.evaluate(() => {
+  const c = document.querySelector('canvas');
+  return !!c && c.width > 0 && c.height > 0;
+});
+
+// Zoom past the overview->PMTiles hand-off (DETAIL_ZOOM=6 in MapView) so the vector-tile path
+// actually runs under the CSP. Wheel over the map centre; each tick zooms ~1 level, so 9 ticks
+// clears z6 from the national fit. Without this the decoder worker is never invoked and a broken
+// prod policy passes (the bug that shipped: colour dropped only on zoom, only when deployed).
+const cbox = await (await page.$('canvas')).boundingBox();
+await page.mouse.move(cbox.x + cbox.width / 2, cbox.y + cbox.height / 2);
+for (let i = 0; i < 9; i++) { await page.mouse.wheel(0, -400); await page.waitForTimeout(450); }
+await page.waitForTimeout(7000); // let per-viewport tiles range-fetch + decode + paint
+
+const canvasOkZoomed = await page.evaluate(() => {
   const c = document.querySelector('canvas');
   return !!c && c.width > 0 && c.height > 0;
 });
@@ -100,12 +127,15 @@ await new Promise((r) => server.close(r));
 const problems = [];
 if (violations.length) problems.push(`${violations.length} CSP violation(s): ${violations.slice(0, 4).join(' | ')}`);
 if (blocked.length) problems.push(`${blocked.length} blocked dependency request(s): ${blocked.slice(0, 4).join(' | ')}`);
+if (workerCdnReqs.length) problems.push(`${workerCdnReqs.length} off-origin tile-decoder worker request(s) (must bundle main-thread via worker:false - the prod CSP blocks these): ${workerCdnReqs.slice(0, 3).join(' | ')}`);
 if (!carto) problems.push('Carto basemap tiles never loaded (0 cartocdn requests) - basemap likely blocked');
-if (!canvasOk) problems.push('map canvas did not render');
+if (!canvasOk) problems.push('map canvas did not render at overview zoom');
+if (pmtilesReqs.length < 2) problems.push(`PMTiles vector tiles did not stream on zoom-in (${pmtilesReqs.length} .pmtiles requests) - the z>=6 tile path was not exercised`);
+if (!canvasOkZoomed) problems.push('map canvas blank after zoom-in');
 
 if (problems.length) {
   console.error('CSP VERIFY FAILED:\n - ' + problems.join('\n - '));
   process.exit(1);
 }
-console.log(`CSP VERIFY PASSED: 0 violations, ${carto} Carto tile requests OK, fonts OK, canvas rendered.`);
+console.log(`CSP VERIFY PASSED: 0 violations, ${carto} Carto tile requests OK, fonts OK, canvas rendered, ${pmtilesReqs.length} PMTiles tiles streamed at z>=6 with no off-origin worker.`);
 console.log('Policy:', CSP.slice(0, 90) + '...');
