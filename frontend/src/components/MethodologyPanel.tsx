@@ -18,7 +18,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 77% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
@@ -93,9 +93,12 @@ function ValidationTable() {
         </tbody>
       </table>
       <p className="text-[10px] text-graphite mt-2 leading-snug">
-        Weights ∝ each dimension's correlation with the outcome. A pure regression instead
-        loads ~75-90% onto health need and floors access at ~5% - because the dimensions are
-        collinear and area outcomes are disease-dominated, not because access doesn't matter.
+        Weights ∝ each dimension's correlation with the outcome. A pure regression (NNLS)
+        shifts weight onto health need for the disease-dominated mortality rulers (53-77%), but
+        care access stays substantial everywhere (18-65%) and is never the floored dimension - it
+        even dominates flu &amp; mammography (~64%). The 5% floor lands on social vulnerability
+        (or health need for mammography), because the dimensions are collinear, not because
+        access doesn't matter.
       </p>
       <div className="text-[10px] text-graphite mt-2 leading-snug">
         <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>
@@ -125,11 +128,12 @@ function ValidationTable() {
           </tbody>
         </table>
         <p className="mt-1 leading-snug">
-          Medical debt is the strongest scored care barrier; provider supply tracks infant
-          mortality (+) but is ~0 vs life expectancy. Safety-net (FQHC) reads wrong-signed (red) -
-          clinics sit in the highest-need areas, and it is wrong-signed <i>within</i> counties in
-          85% of states, so it is shown for context but <b>excluded from the composite</b>
-          (computed + displayed, not scored).
+          Medical debt is the strongest scored care barrier (up to +0.58 vs amenable mortality);
+          after the variable-catchment fix provider supply tracks the mortality outcomes, correctly
+          signed (infant +0.39, life expectancy +0.16). Safety-net (FQHC) is correctly signed
+          <i>between</i> counties but wrong-signed <i>within</i> counties in 85% of states (clinics
+          sit in the highest-need areas), so it is shown for context but <b>excluded from the
+          composite</b> (computed + displayed, not scored).
         </p>
       </div>
     </div>
