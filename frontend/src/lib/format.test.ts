@@ -26,8 +26,8 @@ describe('ordinal', () => {
 
 describe('severity', () => {
   it('maps the access-gap percentile to a band (higher = worse), null on no data', () => {
-    expect(severity(95)?.label).toBe('Severe gap');
-    expect(severity(80)?.label).toBe('Severe gap');
+    expect(severity(95)?.label).toBe('Highest gap');
+    expect(severity(80)?.label).toBe('Highest gap');
     expect(severity(70)?.label).toBe('High gap');
     expect(severity(50)?.label).toBe('Moderate gap');
     expect(severity(25)?.label).toBe('Below average');

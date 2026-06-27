@@ -22,7 +22,7 @@ export const fmtPer1k = (v: number | null | undefined) =>
 // on white) so the colored score number and band labels stay legible as text, not just decoration.
 export function severity(p: number | null | undefined): { label: string; color: string } | null {
   if (p == null || Number.isNaN(p)) return null;
-  if (p >= 80) return { label: 'Severe gap', color: '#B0382E' }; // red, 6.08:1
+  if (p >= 80) return { label: 'Highest gap', color: '#B0382E' }; // red, 6.08:1
   if (p >= 60) return { label: 'High gap', color: '#AF6024' }; // orange, 4.63:1
   if (p >= 40) return { label: 'Moderate gap', color: '#907021' }; // amber, 4.64:1
   if (p >= 20) return { label: 'Below average', color: '#547F3E' }; // olive-green, 4.67:1

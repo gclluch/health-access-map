@@ -11,21 +11,25 @@ export function synthesize(m: SlimMetric, w: Weights): string {
   const access = band(m.care_access_pctile);
 
   const contrib = dimensionContributions(m, w);
-  let driver = 'multiple factors';
+  let tail = 'driven by several factors together';
   if (contrib) {
-    const entries = Object.entries(contrib) as Array<
+    const entries = (Object.entries(contrib) as Array<
       ['health_need' | 'social_vulnerability' | 'care_access', number]
-    >;
-    entries.sort((a, b) => b[1] - a[1]);
-    driver = {
+    >).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+    const label = {
       health_need: 'health need',
       social_vulnerability: 'social vulnerability',
       care_access: 'barriers to care',
     }[entries[0][0]];
+    // The dimensions are collinear and weights near-equal, so shares are often ~even; only call
+    // out a single driver when the top one materially leads (>=10 share points over the next).
+    const topLead = entries[0][1] / total - (entries[1]?.[1] ?? 0) / total;
+    tail = topLead >= 0.1 ? `driven mostly by ${label}` : 'driven roughly equally across the dimensions';
   }
 
   return (
     `${need[0].toUpperCase()}${need.slice(1)} health need, ${vuln} social vulnerability, ` +
-    `and ${access} barriers to care. The access gap here is driven mostly by ${driver}.`
+    `and ${access} barriers to care. The access gap here is ${tail}.`
   );
 }

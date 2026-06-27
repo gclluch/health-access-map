@@ -98,9 +98,9 @@ function ValidationTable() {
         Weights ∝ each dimension's correlation with the outcome. A pure regression (NNLS)
         shifts weight onto health need for the disease-dominated mortality rulers (53-77%), but
         care access stays substantial everywhere (18-65%) and is never the floored dimension - it
-        even dominates flu &amp; mammography (~64%). The 5% floor lands on social vulnerability
-        (or health need for mammography), because the dimensions are collinear, not because
-        access doesn't matter.
+        even leads on flu &amp; mammography (~64%), though those double as engagement measures and
+        aren't trusted validators. The 5% floor lands on social vulnerability (or health need for
+        mammography), because the dimensions are collinear, not because access doesn't matter.
       </p>
       <div className="text-[10px] text-graphite mt-2 leading-snug">
         <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>

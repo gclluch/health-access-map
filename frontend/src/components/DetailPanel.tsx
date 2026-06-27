@@ -223,7 +223,7 @@ function ComparisonFrame({
     {
       label: 'National',
       value: ordinal(scorePercentile),
-      detail: `tier ${Math.min(10, Math.max(1, Math.ceil(scorePercentile / 10)))} of 10; worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs under current weights`,
+      detail: `tier ${Math.min(10, Math.max(1, Math.ceil(scorePercentile / 10)))} of 10; worse than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs under current weights`,
     },
     m.access_gap_pctile_within_state != null
       ? {
@@ -596,21 +596,21 @@ export default function DetailPanel() {
           let hPct: number | null = scorePercentile;
           let rankLabel = 'access-gap rank';
           let sentence =
-            `Higher = worse access. This ZIP is worse than ${fmtScore(scorePercentile)}% of U.S. ZIPs - among the worst ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
+            `Higher = more access disadvantage (need + vulnerability + barriers combined). This ZIP's access gap is wider than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the worst ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
           if (metric === WITHIN_STATE_METRIC && m.access_gap_pctile_within_state != null) {
             hPct = m.access_gap_pctile_within_state;
             rankLabel = 'within-state rank';
-            sentence = `Higher = worse access. Within ${stateName}, this ZIP is worse than ${fmtScore(hPct)}% of ZIPs - among the worst ${worst(hPct)}% in its state. (National rank is in the grid below.)`;
+            sentence = `Higher = more access disadvantage. Within ${stateName}, this ZIP's access gap is wider than ${fmtScore(Math.min(99, hPct))}% of ZIPs - among the worst ${worst(hPct)}% in its state. (National rank is in the grid below.)`;
           } else if (metric === ACCESS_RESID_METRIC && m.care_access_resid_pctile != null) {
             hPct = m.care_access_resid_pctile;
             rankLabel = 'net-of-deprivation rank';
-            sentence = `Barriers to care after health need + social vulnerability are removed. This ZIP's structural access is worse than ${fmtScore(hPct)}% of U.S. ZIPs - i.e. barriers worse than its deprivation alone predicts.`;
+            sentence = `Barriers to care after health need + social vulnerability are removed. This ZIP's structural access is worse than ${fmtScore(Math.min(99, hPct))}% of U.S. ZIPs - i.e. barriers worse than its deprivation alone predicts.`;
           } else if (metric === COMPOSITE_MULT_METRIC) {
             const mp = percentileOf(sortedMult, accessGapMult(m, weights));
             if (mp != null) {
               hPct = mp;
               rankLabel = 'coincidence rank';
-              sentence = `Where high need and high barriers coincide (geometric blend). This ZIP is worse than ${fmtScore(hPct)}% of U.S. ZIPs on the coincidence lens - one-dimensional highs are down-weighted.`;
+              sentence = `Where high need and high barriers coincide (geometric blend). This ZIP is worse than ${fmtScore(Math.min(99, hPct))}% of U.S. ZIPs on the coincidence lens - one-dimensional highs are down-weighted.`;
             }
           }
           const sev = hPct != null ? severity(hPct) : null;
@@ -668,15 +668,15 @@ export default function DetailPanel() {
                 Spatial primary-care access (2SFCA):{' '}
                 <span className="num text-ink">{(rec.primary_2sfca as number).toFixed(1)}/1k</span>
                 {typeof rec.primary_people_per_provider === 'number'
-                  ? ` · ≈1 per ${fmtInt(rec.primary_people_per_provider as number)} reachable`
+                  ? ` · ≈1 per ${fmtInt(rec.primary_people_per_provider as number)} within 16 km`
                   : ''}
                 {rec.primary_shortage === true ? (
                   <span className="text-accent font-medium">
                     {' '}
-                    · below HRSA 3,500:1 - a real provider shortage
+                    · below the HRSA 3,500:1 benchmark - likely a primary-care shortage (spatial access, not an HPSA designation)
                   </span>
                 ) : (
-                  ' · above HRSA 3,500:1 shortage threshold'
+                  ' · above the HRSA 3,500:1 benchmark'
                 )}
               </div>
             )}
@@ -688,7 +688,7 @@ export default function DetailPanel() {
                     <span className="num text-ink">{fmtInt(rec.fqhc_sites_reachable as number)}</span>{' '}
                     FQHC site{rec.fqhc_sites_reachable === 1 ? '' : 's'} within ~16 km
                     {typeof rec.nearest_fqhc_km === 'number'
-                      ? `, nearest ${(rec.nearest_fqhc_km as number).toFixed(1)} km`
+                      ? `, nearest ${(rec.nearest_fqhc_km as number).toFixed(1)} km (straight-line)`
                       : ''}{' '}
                     (sliding-fee clinics serving the uninsured)
                   </span>

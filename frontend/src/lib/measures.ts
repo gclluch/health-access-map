@@ -17,7 +17,7 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
   chronic_disease: [
     { col: 'diabetes_pct', label: 'Diabetes', unit: 'pct', desc: `Adults 18+ ever told they have diabetes (excludes gestational / pre-diabetes). ${PLACES}` },
     { col: 'bphigh_pct', label: 'High blood pressure', unit: 'pct', desc: `Adults 18+ ever told they have high blood pressure. ${PLACES}` },
-    { col: 'highchol_pct', label: 'High cholesterol', unit: 'pct', desc: `Adults 18+ (ever screened) told they have high cholesterol. ${PLACES}` },
+    { col: 'highchol_pct', label: 'High cholesterol', unit: 'pct', desc: `Adults 18+ (screened in the past 5 years) told they have high cholesterol. ${PLACES}` },
     { col: 'chd_pct', label: 'Coronary heart disease', unit: 'pct', desc: `Adults 18+ ever told they have coronary heart disease or angina. ${PLACES}` },
     { col: 'stroke_pct', label: 'Stroke', unit: 'pct', desc: `Adults 18+ ever told they had a stroke. ${PLACES}` },
     { col: 'copd_pct', label: 'COPD', unit: 'pct', desc: `Adults 18+ ever told they have COPD, emphysema, or chronic bronchitis. ${PLACES}` },

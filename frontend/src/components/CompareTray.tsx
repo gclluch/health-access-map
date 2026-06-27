@@ -140,6 +140,18 @@ export default function CompareTray() {
               })}
             </tr>
             <tr className="border-b border-hairline/60">
+              <td className="px-2 py-1 text-[11px] text-graphite">Reliable range</td>
+              {cols.map(({ z, m }) => {
+                const lo = num(m?.access_gap_rank_lo);
+                const hi = num(m?.access_gap_rank_hi);
+                return (
+                  <td key={z} className={cell + ' text-graphite'}>
+                    {lo != null && hi != null ? `${Math.round(lo)}-${Math.round(hi)}` : '--'}
+                  </td>
+                );
+              })}
+            </tr>
+            <tr className="border-b border-hairline/60">
               <td className="px-2 py-1 text-[11px] text-graphite">Tier (1-10)</td>
               {cols.map(({ z, m }) => (
                 <td key={z} className={cell}>{m?.tier ?? '--'}</td>
@@ -170,7 +182,9 @@ export default function CompareTray() {
         </table>
       </div>
       <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite leading-snug">
-        Rank, tier and the three dimensions are national percentiles - higher = worse access.
+        Rank, tier and the three dimensions are national percentiles - higher = more access
+        disadvantage. ZIPs are reliably different only ~10-15 percentile points apart (see the
+        reliable range); smaller gaps may be noise.
       </div>
     </div>
   );
