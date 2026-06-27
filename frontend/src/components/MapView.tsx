@@ -40,7 +40,13 @@ async function getTileData(tile: {
   try {
     const t = await PM.getZxy(z, x, y, tile.signal);
     if (!t) return null;
+    // worker: false -> parse the tile on the main thread. loaders.gl otherwise loads its MVT
+    // worker from the unpkg CDN, which the production CSP (worker-src/script-src 'self') blocks -
+    // tiles then silently fail to decode and the choropleth loses all colour at z>=6 (it only
+    // showed up in the deployed build, never in CSP-less dev). Main-thread parse is same-origin
+    // and fast enough for the handful of per-viewport tiles.
     const gj = await parse(t.data, MVTLoader, {
+      worker: false,
       mvt: { coordinates: 'wgs84', tileIndex: { x, y, z }, layerProperty: 'layerName' },
     });
     return (gj as { features?: ZctaFeature[] }).features ?? (gj as unknown as ZctaFeature[]);
