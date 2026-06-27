@@ -33,14 +33,18 @@ export default function DriversSection({
   if (!contrib || score == null) return null;
 
   const wsum = weights.health_need + weights.social_vulnerability + weights.care_access || 1;
-  const present = DIMS.map(([key, label]) => ({
+  const presentDims = DIMS.map(([key, label]) => ({
     key,
     label,
     pct: m[`${key}_pctile`] as number | null,
     c: contrib[key],
-    wpct: Math.round((weights[key] / wsum) * 100),
   })).filter((r) => r.pct != null);
-  if (!present.length) return null;
+  if (!presentDims.length) return null;
+
+  // Per-row weight % is renormalized over the dimensions actually present for this ZIP, so it
+  // shares a denominator with the driver shares below (both sum to 100% on a 2-of-3-dim ZIP).
+  const presentWsum = presentDims.reduce((a, r) => a + weights[r.key], 0) || 1;
+  const present = presentDims.map((r) => ({ ...r, wpct: Math.round((weights[r.key] / presentWsum) * 100) }));
 
   const total = present.reduce((a, r) => a + r.c, 0) || 1;
   const rows = present

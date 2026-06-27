@@ -48,8 +48,10 @@ export function accessGapMult(m: SlimMetric, w: Weights): number | null {
 
 // Parse a "w=h,s,c" URL param into Weights, rejecting anything malformed: must be exactly 3
 // finite, non-negative numbers that don't all sum to 0. Negatives would invert a dimension and
-// render a misleading map from a crafted link, so they're refused (returns null -> caller keeps
-// defaults). Pure + exported so it can be unit-tested without the store's side effects.
+// render a misleading map from a crafted link, so they're refused; all-zero is refused too because
+// accessGap can't renormalize a zero weight-sum (it returns null -> an all-gray map), so the
+// recipient is better served by the default. Returns null -> caller keeps defaults. Pure +
+// exported so it can be unit-tested without the store's side effects.
 export function parseWeightParam(w: string | null): Weights | null {
   if (!w) return null;
   const parts = w.split(',').map(Number);

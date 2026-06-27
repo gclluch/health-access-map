@@ -499,10 +499,22 @@ export default function DetailPanel() {
       {isDesktop && (
         <div
           onPointerDown={startResize}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            const maxW = Math.min(720, Math.round(window.innerWidth * 0.6));
+            setWidth((w) => {
+              const next = Math.max(320, Math.min(maxW, w + (e.key === 'ArrowLeft' ? 24 : -24))); // left = wider
+              try { localStorage.setItem('ham_detail_width', String(next)); } catch { /* ignore */ }
+              return next;
+            });
+          }}
+          tabIndex={0}
           role="separator"
-          aria-label="Drag to resize panel"
+          aria-orientation="vertical"
+          aria-label="Resize panel (arrow keys)"
           title="Drag to resize"
-          className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group"
+          className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <div className="h-10 w-1 rounded-full bg-hairline group-hover:bg-accent transition-colors" />
         </div>

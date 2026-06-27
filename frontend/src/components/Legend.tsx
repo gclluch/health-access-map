@@ -24,7 +24,7 @@ const LENS_HELP: Record<string, string> = {
 // metric's axis, ramp beneath, and a marker for where the selected ZIP falls.
 // The whole product is about *relative position*; the legend says it directly.
 export default function Legend() {
-  const { metrics, metric, weights, selectedZcta } = useStore();
+  const { metrics, metric, weights, selectedZcta, stateFilter } = useStore();
   const setMetric = useStore((s) => s.setMetric);
   const showWeights = useStore((s) => s.showWeights);
   const toggleWeights = useStore((s) => s.toggleWeights);
@@ -66,7 +66,7 @@ export default function Legend() {
             className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
             value={metric}
             onChange={setMetric}
-            includeWithinState
+            includeWithinState={!!stateFilter}
           />
           <Caret
             open
@@ -83,7 +83,17 @@ export default function Legend() {
         </p>
       )}
 
-      <svg viewBox={`0 0 ${BINS} 30`} preserveAspectRatio="none" className="w-full h-[42px] max-[520px]:h-[32px]">
+      <svg
+        viewBox={`0 0 ${BINS} 30`}
+        preserveAspectRatio="none"
+        className="w-full h-[42px] max-[520px]:h-[32px]"
+        role="img"
+        aria-label={
+          selValue != null
+            ? `Distribution of scored ZIPs; ${selectedZcta} sits at ${fmtScore(selValue)} out of 100`
+            : 'Distribution of scored ZIPs along the selected metric'
+        }
+      >
         {hist.map((c, i) => (
           <rect
             key={i}
@@ -133,20 +143,24 @@ export default function Legend() {
       </div>
 
       {/* Weighting control - sibling of the metric selector above. Expands the sliders
-          upward (rendered above this panel by App). Shows the live weights at a glance. */}
-      <button
-        onClick={toggleWeights}
-        aria-expanded={showWeights}
-        className="mt-2 pt-2 w-full flex items-center justify-between border-t border-hairline text-[12px] font-medium text-accent hover:text-accent-soft max-[520px]:mt-1.5 max-[520px]:pt-1.5"
-      >
-        <span>
-          Adjust weighting
-          <span className="num text-graphite font-normal">
-            {' · '}{weights.health_need}/{weights.social_vulnerability}/{weights.care_access}
+          upward (rendered above this panel by App). Shows the live weights at a glance.
+          Hidden while the sliders are open - the WeightSliders header is then the sole
+          collapse affordance (avoids two identical "Adjust weighting" toggles at once). */}
+      {!showWeights && (
+        <button
+          onClick={toggleWeights}
+          aria-expanded={showWeights}
+          className="mt-2 pt-2 w-full flex items-center justify-between border-t border-hairline text-[12px] font-medium text-accent hover:text-accent-soft max-[520px]:mt-1.5 max-[520px]:pt-1.5"
+        >
+          <span>
+            Adjust weighting
+            <span className="num text-graphite font-normal">
+              {' · '}{weights.health_need}/{weights.social_vulnerability}/{weights.care_access}
+            </span>
           </span>
-        </span>
-        <Caret open={showWeights} size={15} className="text-accent" />
-      </button>
+          <Caret open={showWeights} size={15} className="text-accent" />
+        </button>
+      )}
     </div>
   );
 }
