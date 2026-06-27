@@ -5,6 +5,7 @@ import { parseWeightParam } from './lib/scoring';
 import {
   ALL_METRICS,
   COMPOSITE_METRIC,
+  WITHIN_STATE_METRIC,
   DEFAULT_WEIGHTS,
   parseAnchors,
   PRESETS,
@@ -253,6 +254,9 @@ export const useStore = create<AppState>((set, get) => ({
   setRankOrder: (o) => set({ rankOrder: o }),
   jumpToState: (s) => {
     set({ stateFilter: s });
+    // The within-state lens is only meaningful inside a chosen state; clearing the state filter
+    // would leave it selected but no longer offered, so snap back to the national composite.
+    if (!s && get().metric === WITHIN_STATE_METRIC) set({ metric: COMPOSITE_METRIC });
     const b = s ? get().stateBounds.get(s) : get().bounds;
     if (b) set({ fitTarget: { bounds: b, nonce: Date.now() } });
   },

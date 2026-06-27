@@ -32,7 +32,9 @@ export default function MetricSelect({
       <option value={COMPOSITE_METRIC}>Access gap (composite)</option>
       <option value={COMPOSITE_MULT_METRIC}>Access gap (coincidence lens)</option>
       <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
-      {includeWithinState && <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>}
+      {(includeWithinState || value === WITHIN_STATE_METRIC) && (
+        <option value={WITHIN_STATE_METRIC}>Access gap (within-state rank)</option>
+      )}
       {MODEL.map((d) => (
         <optgroup key={d.key} label={d.label}>
           <option value={`${d.key}_pctile`}>{d.label} (overall)</option>

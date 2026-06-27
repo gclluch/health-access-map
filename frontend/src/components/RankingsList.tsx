@@ -84,7 +84,7 @@ export default function RankingsList() {
               ariaLabel="Rank by metric"
               value={metric}
               onChange={setMetric}
-              includeWithinState
+              includeWithinState={!!stateFilter}
               className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5"
             />
             <Caret
