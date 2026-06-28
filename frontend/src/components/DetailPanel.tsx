@@ -223,11 +223,11 @@ function ComparisonFrame({
     {
       label: 'National',
       value: ordinal(scorePercentile),
-      detail: `tier ${Math.min(10, Math.max(1, Math.ceil(scorePercentile / 10)))} of 10; worse than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs under current weights`,
+      detail: `tier ${Math.min(10, Math.max(1, Math.ceil(scorePercentile / 10)))} of 10; more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs under current weights`,
     },
     m.access_gap_pctile_within_state != null
       ? {
-          label: 'Within state',
+          label: 'Within-state',
           value: ordinal(m.access_gap_pctile_within_state),
           detail: 'default-weight rank among ZIPs in this state',
         }
@@ -241,7 +241,7 @@ function ComparisonFrame({
       : null,
     m.care_access_resid_pctile != null
       ? {
-          label: 'Access net of deprivation',
+          label: 'Net of deprivation',
           value: ordinal(m.care_access_resid_pctile),
           detail: 'barriers worse than need + vulnerability predict',
         }

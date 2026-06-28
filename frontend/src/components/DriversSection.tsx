@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dimensionContributions } from '../lib/scoring';
-import { fmtScore, ordinal } from '../lib/format';
+import { ordinal } from '../lib/format';
 import { DEFAULT_WEIGHTS, type SlimMetric, type Weights } from '../lib/types';
 
 const DIMS = [
@@ -140,8 +140,8 @@ export default function DriversSection({
           Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)} · Access{' '}
           {pctOf(weights.care_access)}
         </span>
-        ), the three dimensions combine to this ZIP's national composite rank of{' '}
-        <span className="num">{fmtScore(scorePercentile)}</span>/100 (the "National" figure above).
+        ), the three dimensions combine to this ZIP's national composite rank:{' '}
+        <span className="num">{ordinal(scorePercentile)}</span> (the "National" figure above).
         Re-tune under <span className="text-ink">"Adjust weighting"</span> - but the dimensions are
         strongly correlated (~1.6 effective dimensions), so the rank usually shifts only a few points.
       </div>

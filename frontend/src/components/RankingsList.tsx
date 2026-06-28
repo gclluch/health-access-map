@@ -112,7 +112,7 @@ export default function RankingsList() {
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="text-[10px] text-graphite min-w-0 truncate">
-            {end} {metricLabel(metric).toLowerCase()} · top {rows.length}{total > rows.length ? ` of ${total}` : ''}
+            {metricLabel(metric)} · {end.toLowerCase()} first · top {rows.length}{total > rows.length ? ` of ${total}` : ''}
             {stateFilter ? ` · ${stateFilter}` : ''} · relative {metric === WITHIN_STATE_METRIC ? 'within-state' : 'national'} rank
           </div>
           <button

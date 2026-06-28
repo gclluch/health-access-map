@@ -250,7 +250,7 @@ export default function MethodologyPanel() {
           <p className="text-[13px] text-ink leading-relaxed mb-3">
             The Access Disadvantage Score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
             HRSA, and the Urban Institute roll up into sub-scores, then 3 dimensions (health need, social
-            vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher disadvantage; deep
+            vulnerability, barriers to care), then one 0-100 relative national rank. Brighter yellow = higher disadvantage; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
           </p>
@@ -320,7 +320,7 @@ export default function MethodologyPanel() {
               <li>
                 <b>Dimensions</b> (3) = the average of their sub-scores, re-ranked:{' '}
                 <span className="num">health need</span>, <span className="num">social
-                vulnerability</span>, <span className="num">care access</span>.
+                vulnerability</span>, <span className="num">barriers to care</span>.
               </li>
               <li className="pt-1 border-t border-hairline">
                 <b>Access disadvantage</b> ={' '}
