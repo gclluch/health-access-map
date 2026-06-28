@@ -135,17 +135,15 @@ export default function DriversSection({
       <div className="text-[11px] text-graphite mt-2 leading-snug">
         Segment width = how much each dimension <span className="text-ink">drives</span> this score
         (its share); hover a segment for that dimension's <span className="text-ink">severity</span>{' '}
-        (national percentile) and weight. Two different 0-100 numbers: weighting the dimensions by{' '}
-        {isDefault ? 'the default' : 'your'} mix (
+        (national percentile) and weight. Under {isDefault ? 'the default' : 'your'} mix (
         <span className="num">
           Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)} · Access{' '}
           {pctOf(weights.care_access)}
         </span>
-        ) blends them into a raw index of <span className="num">{fmtScore(score)}</span>/100; ranked
-        against every U.S. ZIP, that lands at the{' '}
-        <span className="num">{fmtScore(scorePercentile)}</span> percentile shown above. Re-tune under{' '}
-        <span className="text-ink">"Adjust weighting"</span> - but the dimensions are strongly
-        correlated (~1.6 effective dimensions), so the rank usually shifts only a few points.
+        ), the three dimensions combine to this ZIP's national composite rank of{' '}
+        <span className="num">{fmtScore(scorePercentile)}</span>/100 (the "National" figure above).
+        Re-tune under <span className="text-ink">"Adjust weighting"</span> - but the dimensions are
+        strongly correlated (~1.6 effective dimensions), so the rank usually shifts only a few points.
       </div>
     </div>
   );

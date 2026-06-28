@@ -64,7 +64,7 @@ function ValidationTable() {
     ['medical_debt', 'Medical debt'],
     ['safetynet_access', 'Safety-net (FQHC)'],
   ];
-  const fmt = (n: number | null | undefined) => (n == null ? '–' : n.toFixed(2));
+  const fmt = (n: number | null | undefined) => (n == null ? '--' : n.toFixed(2));
   return (
     <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
       <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
@@ -88,7 +88,7 @@ function ValidationTable() {
               <td className="text-right pl-4">{a.weights.health_need}</td>
               <td className="text-right pl-4">{a.weights.social_vulnerability}</td>
               <td className="text-right font-medium pl-4">{a.weights.care_access}</td>
-              <td className="text-right text-graphite pl-4">{a.fit ? a.fit.r2 : '–'}</td>
+              <td className="text-right text-graphite pl-4">{a.fit ? a.fit.r2 : '--'}</td>
             </tr>
           ))}
         </tbody>
@@ -282,7 +282,7 @@ export default function MethodologyPanel() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-[11px] leading-snug">
               <div>
-                <div className="font-medium text-ink">Access gap</div>
+                <div className="font-medium text-ink">Access disadvantage</div>
                 <div className="text-graphite">Default screen: relative access disadvantage - need, vulnerability, and barriers combined (not need minus supply).</div>
               </div>
               <div>

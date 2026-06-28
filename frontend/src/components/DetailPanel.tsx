@@ -75,7 +75,7 @@ function Measures({
       {measures.map((mm) => {
         const natpct = rec[`${mm.col}_natpct`];
         const hasPct = typeof natpct === 'number';
-        const tip = `${mm.label}${mm.desc ? ` — ${mm.desc}` : ''}${
+        const tip = `${mm.label}${mm.desc ? ` - ${mm.desc}` : ''}${
           hasPct
             ? ` · This area ranks ${ordinal(Math.round(natpct as number))} nationally (higher = worse access).`
             : ''

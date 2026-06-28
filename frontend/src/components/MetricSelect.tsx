@@ -29,11 +29,11 @@ export default function MetricSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value={COMPOSITE_METRIC}>Access disadvantage (composite)</option>
-      <option value={COMPOSITE_MULT_METRIC}>Access disadvantage (coincidence lens)</option>
-      <option value={ACCESS_RESID_METRIC}>Barriers to care, net of deprivation</option>
+      <option value={COMPOSITE_METRIC}>Access disadvantage</option>
+      <option value={COMPOSITE_MULT_METRIC}>Coincidence lens</option>
+      <option value={ACCESS_RESID_METRIC}>Net of deprivation</option>
       {(includeWithinState || value === WITHIN_STATE_METRIC) && (
-        <option value={WITHIN_STATE_METRIC}>Access disadvantage (within-state rank)</option>
+        <option value={WITHIN_STATE_METRIC}>Within-state rank</option>
       )}
       {MODEL.map((d) => (
         <optgroup key={d.key} label={d.label}>

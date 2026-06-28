@@ -123,7 +123,7 @@ export function parseAnchors(raw: RawWeights): AnchorPreset[] {
   }));
 }
 
-// The hierarchy, mirroring pipeline/taxonomy.py — drives the Color-by menu,
+// The hierarchy, mirroring pipeline/taxonomy.py - drives the Color-by menu,
 // the drill-down panel, and the rankings selector.
 export interface SubSpec { key: string; label: string; scored?: boolean }
 export interface DimSpec { key: DimKey; label: string; blurb: string; subs: SubSpec[] }
@@ -247,7 +247,7 @@ export const MODEL: DimSpec[] = [
 ];
 
 // Any colorable / rankable metric column = the composite, a dimension, a sub-score,
-// or an outcome (life expectancy, which is NOT in the composite — outcomes are the
+// or an outcome (life expectancy, which is NOT in the composite - outcomes are the
 // result, not a driver; kept separate à la County Health Rankings).
 export const COMPOSITE_METRIC = 'access_gap_score';
 // The multiplicative "coincidence" lens: weighted GEOMETRIC mean of the 3 dimensions
@@ -270,9 +270,9 @@ export const OUTCOME_METRICS: SubSpec[] = [
 
 export function metricLabel(metric: string): string {
   if (metric === COMPOSITE_METRIC) return 'Access disadvantage';
-  if (metric === COMPOSITE_MULT_METRIC) return 'Access disadvantage (coincidence lens)';
-  if (metric === ACCESS_RESID_METRIC) return 'Barriers to care, net of deprivation';
-  if (metric === WITHIN_STATE_METRIC) return 'Access disadvantage (within-state rank)';
+  if (metric === COMPOSITE_MULT_METRIC) return 'Coincidence lens';
+  if (metric === ACCESS_RESID_METRIC) return 'Net of deprivation';
+  if (metric === WITHIN_STATE_METRIC) return 'Within-state rank';
   const base = metric.replace(/_pctile$/, '');
   for (const d of MODEL) {
     if (d.key === base) return d.label;
