@@ -38,7 +38,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Why these weights (35 / 30 / 35), and the outcome-anchored alternatives',
-    'The default is a conceptual value judgment (as in County Health Rankings) - need and barriers to care, the two sides of the gap, sit slightly above vulnerability; all near-equal. Care access is kept meaningful by deliberate choice because it is the actionable lever - exactly as County Health Rankings weights clinical care at 20% even though it predicts less outcome variance than social factors. The "Weight by what tracks an outcome" presets are an empirical alternative: each weights the dimensions by how strongly they correlate with an independent outcome. Across every outcome and method, care access lands modest (it is collinear with need, and area outcomes are disease-dominated) - that is a real finding about outcomes, not proof access is irrelevant.',
+    'The default is a conceptual value judgment (as in County Health Rankings) - need and barriers to care, the two sides of access, sit slightly above vulnerability; all near-equal. Care access is kept meaningful by deliberate choice because it is the actionable lever - exactly as County Health Rankings weights clinical care at 20% even though it predicts less outcome variance than social factors. The "Weight by what tracks an outcome" presets are an empirical alternative: each weights the dimensions by how strongly they correlate with an independent outcome. Across every outcome and method, care access lands modest (it is collinear with need, and area outcomes are disease-dominated) - that is a real finding about outcomes, not proof access is irrelevant.',
   ],
   [
     'Outcomes layer (independent of the score, used only to validate it)',
@@ -248,9 +248,9 @@ export default function MethodologyPanel() {
         </div>
         <div className="px-5 py-4">
           <p className="text-[13px] text-ink leading-relaxed mb-3">
-            The Access Gap Score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
+            The Access Disadvantage Score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
             HRSA, and the Urban Institute roll up into sub-scores, then 3 dimensions (health need, social
-            vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher gap; deep
+            vulnerability, care access), then one 0-100 relative national rank. Brighter yellow = higher disadvantage; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
             in the detail panel to drill down to the underlying measures.
           </p>
@@ -323,7 +323,7 @@ export default function MethodologyPanel() {
                 vulnerability</span>, <span className="num">care access</span>.
               </li>
               <li className="pt-1 border-t border-hairline">
-                <b>Access gap</b> ={' '}
+                <b>Access disadvantage</b> ={' '}
                 <span className="num">0.35·need + 0.30·vulnerability + 0.35·access</span> - a{' '}
                 <i>relative composite index</i>, re-ranked so "worse than X%" is a true percentile.
                 Weights re-tunable with the sliders.

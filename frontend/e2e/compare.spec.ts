@@ -21,5 +21,5 @@ test('pin a ZIP from the rankings list into the comparison tray', async ({ page 
   await compareBtn.click({ force: true });
   const tray = page.getByRole('region', { name: 'ZIP comparison' });
   await expect(tray).toBeVisible();
-  await expect(tray.getByText('National access-gap rank')).toBeVisible();
+  await expect(tray.getByText('National disadvantage rank')).toBeVisible();
 });

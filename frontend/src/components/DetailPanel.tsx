@@ -13,7 +13,7 @@ import { fmtInt, fmtScore, ordinal, severity } from '../lib/format';
 import Tip from './Tip';
 import Caret from './Caret';
 
-// A percentile bar (0-100). Higher = worse (more gap), so more fill = worse.
+// A percentile bar (0-100). Higher = worse (more disadvantage), so more fill = worse.
 function PctBar({ pct }: { pct: number | null | undefined }) {
   if (pct == null) return <div className="h-1.5 bg-hairline rounded-full" />;
   return (
@@ -266,7 +266,7 @@ function ComparisonFrame({
 }
 
 // Demographics shown purely as context for "who lives here" - independent of the
-// access-gap score. Every value comes from the full API record (Census ACS 5-year),
+// access-disadvantage score. Every value comes from the full API record (Census ACS 5-year),
 // except population which is already in the slim metric. Cells with no data are dropped.
 function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> | null }) {
   const [open, setOpen] = useState(false);
@@ -290,7 +290,7 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
       label: 'Median income',
       value: `$${Math.round(income).toLocaleString('en-US')}`,
       scored: true,
-      tip: 'Median household income. Census ACS 5-year (B19013). This is the one field here that also feeds the access-gap score (socioeconomic sub-score) - everything else is context only.',
+      tip: 'Median household income. Census ACS 5-year (B19013). This is the one field here that also feeds the access-disadvantage score (socioeconomic sub-score) - everything else is context only.',
     });
   const medicaid = pct(rec?.medicaid_rate);
   if (medicaid)
@@ -594,13 +594,13 @@ export default function DetailPanel() {
           const worst = (p: number) => Math.max(1, Math.round(100 - p));
           const stateName = m.state_name ?? 'its state';
           let hPct: number | null = scorePercentile;
-          let rankLabel = 'access-gap rank';
+          let rankLabel = 'disadvantage rank';
           let sentence =
-            `Higher = more access disadvantage (need + vulnerability + barriers combined). This ZIP's access gap is wider than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the worst ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
+            `Higher = more access disadvantage (need + vulnerability + barriers combined). This ZIP is more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the most disadvantaged ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
           if (metric === WITHIN_STATE_METRIC && m.access_gap_pctile_within_state != null) {
             hPct = m.access_gap_pctile_within_state;
             rankLabel = 'within-state rank';
-            sentence = `Higher = more access disadvantage. Within ${stateName}, this ZIP's access gap is wider than ${fmtScore(Math.min(99, hPct))}% of ZIPs - among the worst ${worst(hPct)}% in its state. (National rank is in the grid below.)`;
+            sentence = `Higher = more access disadvantage. Within ${stateName}, this ZIP is more disadvantaged than ${fmtScore(Math.min(99, hPct))}% of ZIPs - among the most disadvantaged ${worst(hPct)}% in its state. (National rank is in the grid below.)`;
           } else if (metric === ACCESS_RESID_METRIC && m.care_access_resid_pctile != null) {
             hPct = m.care_access_resid_pctile;
             rankLabel = 'net-of-deprivation rank';

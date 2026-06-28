@@ -177,7 +177,7 @@ function AppInner() {
               className="px-3 py-2 flex items-center justify-between text-[13px] font-medium text-ink border-b border-hairline max-[520px]:py-1.5 max-[520px]:text-[12px]"
             >
               <span>
-                Top access gaps
+                Most disadvantaged
                 <span className="ml-1 font-normal text-[11px] text-graphite max-[520px]:hidden">
                   ranked ZIPs
                 </span>

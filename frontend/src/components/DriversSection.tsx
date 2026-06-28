@@ -12,7 +12,7 @@ const DIMS = [
 // Kept dark enough that the white share-% label stays legible on the lightest segment (a11y).
 const SHADES = ['bg-accent', 'bg-accent/80', 'bg-accent/60'];
 
-// "What drives the gap": a 100%-stacked driver-share bar (each segment = that dimension's SHARE
+// "What drives the score": a 100%-stacked driver-share bar (each segment = that dimension's SHARE
 // of the score, summing to 100% - the attribution view) above a key listing all dimensions. At
 // rest the key shows only share + severity numbers; hovering/focusing a segment or row expands
 // that dimension's SEVERITY bar (national percentile, 0-100) plus its weight - so the default view
@@ -60,7 +60,7 @@ export default function DriversSection({
   return (
     <div className="mt-3 pt-2.5 border-t border-hairline">
       <div className="flex items-baseline justify-between mb-1.5">
-        <span className="text-[12px] uppercase tracking-wide text-graphite">What drives the gap</span>
+        <span className="text-[12px] uppercase tracking-wide text-graphite">What drives the score</span>
         <span className="text-[11px] text-graphite">share of the score · hover for detail</span>
       </div>
 
@@ -68,7 +68,7 @@ export default function DriversSection({
       <div
         className="flex h-6 rounded overflow-hidden border border-hairline"
         role="group"
-        aria-label="What drives the gap - share of the score by dimension"
+        aria-label="What drives the score - share by dimension"
       >
         {rows.map((r, i) => (
           <button
@@ -135,16 +135,17 @@ export default function DriversSection({
       <div className="text-[11px] text-graphite mt-2 leading-snug">
         Segment width = how much each dimension <span className="text-ink">drives</span> this score
         (its share); hover a segment for that dimension's <span className="text-ink">severity</span>{' '}
-        (national percentile) and weight. The dimensions weight to an index of{' '}
-        <span className="num">{fmtScore(score)}</span> → the{' '}
-        <span className="num">{fmtScore(scorePercentile)}</span> rank above, under{' '}
+        (national percentile) and weight. Two different 0-100 numbers: weighting the dimensions by{' '}
         {isDefault ? 'the default' : 'your'} mix (
         <span className="num">
           Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)} · Access{' '}
           {pctOf(weights.care_access)}
         </span>
-        ). Re-tune under <span className="text-ink">"Adjust weighting"</span> - but the dimensions are
-        strongly correlated (~1.6 effective dimensions), so the rank usually shifts only a few points.
+        ) blends them into a raw index of <span className="num">{fmtScore(score)}</span>/100; ranked
+        against every U.S. ZIP, that lands at the{' '}
+        <span className="num">{fmtScore(scorePercentile)}</span> percentile shown above. Re-tune under{' '}
+        <span className="text-ink">"Adjust weighting"</span> - but the dimensions are strongly
+        correlated (~1.6 effective dimensions), so the rank usually shifts only a few points.
       </div>
     </div>
   );

@@ -25,13 +25,13 @@ describe('ordinal', () => {
 });
 
 describe('severity', () => {
-  it('maps the access-gap percentile to a band (higher = worse), null on no data', () => {
-    expect(severity(95)?.label).toBe('Highest gap');
-    expect(severity(80)?.label).toBe('Highest gap');
-    expect(severity(70)?.label).toBe('High gap');
-    expect(severity(50)?.label).toBe('Moderate gap');
-    expect(severity(25)?.label).toBe('Below average');
-    expect(severity(5)?.label).toBe('Low gap');
+  it('maps the access-disadvantage percentile to a band (higher = worse), null on no data', () => {
+    expect(severity(95)?.label).toBe('Highest');
+    expect(severity(80)?.label).toBe('Highest');
+    expect(severity(70)?.label).toBe('High');
+    expect(severity(50)?.label).toBe('Moderate');
+    expect(severity(25)?.label).toBe('Low');
+    expect(severity(5)?.label).toBe('Lowest');
     expect(severity(null)).toBeNull();
     expect(severity(NaN)).toBeNull();
   });

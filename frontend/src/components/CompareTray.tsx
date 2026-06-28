@@ -70,7 +70,7 @@ export default function CompareTray() {
       zip: z,
       place: m?.city ?? m?.county_name ?? '',
       state: m?.state ?? '',
-      access_gap_rank: pct != null ? Math.round(pct) : '',
+      access_disadvantage_rank: pct != null ? Math.round(pct) : '',
       tier: m?.tier ?? '',
       health_need_pctile: m?.health_need_pctile ?? '',
       social_vulnerability_pctile: m?.social_vulnerability_pctile ?? '',
@@ -80,7 +80,7 @@ export default function CompareTray() {
       poverty_rate: num(ex?.poverty_rate) ?? '',
       uninsured_rate: num(ex?.uninsured_rate) ?? '',
     }));
-    downloadCsv(`access-gap-compare-${compareZctas.join('-')}.csv`, rows);
+    downloadCsv(`access-disadvantage-compare-${compareZctas.join('-')}.csv`, rows);
   };
 
   const cell = 'px-2 py-1 text-right num text-[11px] tabular-nums border-l border-hairline/60';
@@ -129,7 +129,7 @@ export default function CompareTray() {
           </thead>
           <tbody className="text-ink">
             <tr className="border-b border-hairline/60 bg-paper/40">
-              <td className="px-2 py-1 text-[11px] text-graphite">National access-gap rank</td>
+              <td className="px-2 py-1 text-[11px] text-graphite">National disadvantage rank</td>
               {cols.map(({ z, pct }) => {
                 const sev = severity(pct);
                 return (

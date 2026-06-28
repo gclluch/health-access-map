@@ -16,17 +16,19 @@ export const fmtScore = (v: number | null | undefined) =>
 export const fmtPer1k = (v: number | null | undefined) =>
   v == null || Number.isNaN(v) ? '--' : v.toFixed(1);
 
-// Severity of an access-gap percentile (higher = worse access): a plain word + an intuitive
-// green->amber->red tint. Single source so the detail headline and the compare table signal
-// "higher = worse" identically. Every hue is darkened to clear WCAG 1.4.3 AA contrast (>=4.5:1
-// on white) so the colored score number and band labels stay legible as text, not just decoration.
+// Severity of an access-disadvantage percentile (higher = more disadvantage): a plain word + an
+// intuitive green->amber->red tint. Single source so the detail headline and the compare table
+// signal "higher = worse" identically. Every hue is darkened to clear WCAG 1.4.3 AA contrast
+// (>=4.5:1 on white) so the colored score number and band labels stay legible as text, not just
+// decoration. The badge sits next to the "/ 100 · disadvantage rank" headline, so the word alone
+// (no noun) reads as the magnitude of disadvantage.
 export function severity(p: number | null | undefined): { label: string; color: string } | null {
   if (p == null || Number.isNaN(p)) return null;
-  if (p >= 80) return { label: 'Highest gap', color: '#B0382E' }; // red, 6.08:1
-  if (p >= 60) return { label: 'High gap', color: '#AF6024' }; // orange, 4.63:1
-  if (p >= 40) return { label: 'Moderate gap', color: '#907021' }; // amber, 4.64:1
-  if (p >= 20) return { label: 'Below average', color: '#547F3E' }; // olive-green, 4.67:1
-  return { label: 'Low gap', color: '#2A8365' }; // teal-green, 4.63:1
+  if (p >= 80) return { label: 'Highest', color: '#B0382E' }; // red, 6.08:1
+  if (p >= 60) return { label: 'High', color: '#AF6024' }; // orange, 4.63:1
+  if (p >= 40) return { label: 'Moderate', color: '#907021' }; // amber, 4.64:1
+  if (p >= 20) return { label: 'Low', color: '#547F3E' }; // olive-green, 4.67:1
+  return { label: 'Lowest', color: '#2A8365' }; // teal-green, 4.63:1
 }
 
 // "worse than 78% of ZIPs" reading for a percentile (correct st/nd/rd/th suffix).

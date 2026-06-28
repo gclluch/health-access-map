@@ -11,7 +11,7 @@ const BINS = 44;
 
 const LENS_HELP: Record<string, string> = {
   [COMPOSITE_METRIC]:
-    'Relative access disadvantage: how far this ZIP trails the U.S. on need, vulnerability, and barriers combined - NOT need minus supply. For barriers beyond what need predicts, switch to "barriers to care, net of deprivation".',
+    'Relative access disadvantage: where this ZIP ranks against all other U.S. ZIPs on need, vulnerability, and barriers combined - a national percentile, not need minus supply. For barriers beyond what need predicts, switch to "barriers to care, net of deprivation".',
   [COMPOSITE_MULT_METRIC]:
     'Targeting lens: emphasizes places where high need and high barriers coincide, instead of letting one dimension fully offset another.',
   [ACCESS_RESID_METRIC]:
@@ -126,13 +126,13 @@ export default function Legend() {
         ))}
       </div>
       <div className="flex justify-between gap-2 text-[10px] num text-graphite -mt-1">
-        <span>lower gap</span>
+        <span>lower disadvantage</span>
         {selValue != null && (
           <span className="text-accent font-medium">
             {selectedZcta} · {fmtScore(selValue)}
           </span>
         )}
-        <span>higher gap</span>
+        <span>higher disadvantage</span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-graphite">
         <span className="inline-flex items-center gap-1.5">

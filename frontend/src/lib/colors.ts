@@ -3,8 +3,8 @@ import { interpolateCividis } from 'd3-scale-chromatic';
 
 // Cividis: perceptually-uniform AND optimized for color-vision deficiency
 // (§14.2). Rainbow/jet are forbidden -- they imply false thresholds.
-// Direction: 0 -> deep blue (low), 100 -> bright yellow (high). For the access gap,
-// higher = worse, so BRIGHTER YELLOW = more gap and DEEP BLUE = less gap.
+// Direction: 0 -> deep blue (low), 100 -> bright yellow (high). For access disadvantage,
+// higher = worse, so BRIGHTER YELLOW = more disadvantage and DEEP BLUE = less.
 export const RAMP = (t: number) => interpolateCividis(t);
 
 export const NO_DATA_RGB: [number, number, number] = [202, 206, 212]; // hairline-gray

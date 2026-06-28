@@ -269,10 +269,10 @@ export const OUTCOME_METRICS: SubSpec[] = [
 ];
 
 export function metricLabel(metric: string): string {
-  if (metric === COMPOSITE_METRIC) return 'Access gap';
-  if (metric === COMPOSITE_MULT_METRIC) return 'Access gap (coincidence lens)';
+  if (metric === COMPOSITE_METRIC) return 'Access disadvantage';
+  if (metric === COMPOSITE_MULT_METRIC) return 'Access disadvantage (coincidence lens)';
   if (metric === ACCESS_RESID_METRIC) return 'Barriers to care, net of deprivation';
-  if (metric === WITHIN_STATE_METRIC) return 'Access gap (within-state rank)';
+  if (metric === WITHIN_STATE_METRIC) return 'Access disadvantage (within-state rank)';
   const base = metric.replace(/_pctile$/, '');
   for (const d of MODEL) {
     if (d.key === base) return d.label;

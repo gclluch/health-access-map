@@ -42,7 +42,7 @@ export default function RankingsList() {
   const exportCsv = () => {
     const rows = [];
     for (const r of metricsRows()) rows.push(r);
-    downloadCsv(`access-gap-${metric}${stateFilter ? '-' + stateFilter : ''}.csv`, rows);
+    downloadCsv(`access-disadvantage-${metric}${stateFilter ? '-' + stateFilter : ''}.csv`, rows);
   };
   // full export rows (not capped at 100): the ranked, filtered set with its dimension breakdown
   function* metricsRows() {

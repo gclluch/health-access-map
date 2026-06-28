@@ -1,6 +1,6 @@
 import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, type SlimMetric, type Weights } from './types';
 
-// Client-side Access Gap = weighted mean of the 3 dimension percentiles
+// Client-side access disadvantage = weighted mean of the 3 dimension percentiles
 // (health need, social vulnerability, care access), renormalized over whichever
 // dimensions are present. Mirrors the pipeline composite; the sliders re-weight live.
 export function accessGap(m: SlimMetric, w: Weights): number | null {

@@ -30,6 +30,6 @@ export function synthesize(m: SlimMetric, w: Weights): string {
 
   return (
     `${need[0].toUpperCase()}${need.slice(1)} health need, ${vuln} social vulnerability, ` +
-    `and ${access} barriers to care. The access gap here is ${tail}.`
+    `and ${access} barriers to care. The access disadvantage here is ${tail}.`
   );
 }
