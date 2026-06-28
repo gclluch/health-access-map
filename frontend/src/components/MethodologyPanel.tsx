@@ -34,7 +34,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Why social vulnerability is access, not a descriptor',
-    'Access ≠ supply. A provider you can\'t afford, reach, or communicate with isn\'t accessible. Per the 5 A\'s of access (Penchansky & Thomas) and Andersen\'s enabling factors, affordability (income), accessibility (transportation), and acceptability (language) are dimensions of access. The federal Medically Underserved formula itself uses % poverty + % elderly alongside provider supply. Proof it isn\'t just a descriptor: we DO have descriptors (age, % minority) and score them zero.',
+    'Access ≠ supply. A provider you can\'t afford, reach, or communicate with isn\'t accessible. Per the 5 A\'s of access (Penchansky & Thomas) and Andersen\'s enabling factors, affordability (income), accessibility (transportation), and acceptability (language) are dimensions of access. The federal Medically Underserved formula itself uses % poverty + % elderly alongside provider supply. Proof it isn\'t just a descriptor: we DO have descriptors (age, race/ethnicity) and score them zero.',
   ],
   [
     'Why these weights (35 / 30 / 35), and the outcome-anchored alternatives',
@@ -283,7 +283,7 @@ export default function MethodologyPanel() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-[11px] leading-snug">
               <div>
                 <div className="font-medium text-ink">Access disadvantage</div>
-                <div className="text-graphite">Default screen: relative access disadvantage - need, vulnerability, and barriers combined (not need minus supply).</div>
+                <div className="text-graphite">Default screen: relative access disadvantage - need, vulnerability, and barriers combined (not need minus supply). A high score can reflect heavy health need as much as hard-to-reach care.</div>
               </div>
               <div>
                 <div className="font-medium text-ink">Within-state rank</div>
@@ -291,7 +291,7 @@ export default function MethodologyPanel() {
               </div>
               <div>
                 <div className="font-medium text-ink">Net of deprivation</div>
-                <div className="text-graphite">Shows access barriers worse than health need + vulnerability predict.</div>
+                <div className="text-graphite">Barriers relative to need: access barriers worse than health need + vulnerability predict.</div>
               </div>
               <div>
                 <div className="font-medium text-ink">Coincidence lens</div>

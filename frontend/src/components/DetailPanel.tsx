@@ -306,16 +306,16 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
       value: lep,
       tip: 'Households where no one 14+ speaks English "very well." Census ACS 5-year (C16002).',
     });
-  // Minority = 1 - non-Hispanic White. Placed last (bottom-right) so it sits directly above the
-  // race breakdown it summarizes. Derived from the RAW White share when available so it ties out
-  // with that breakdown; falls back to the (shrunk) pct_minority otherwise.
+  // People of color = 1 - non-Hispanic White. Placed last (bottom-right) so it sits directly above
+  // the race breakdown it summarizes. Derived from the RAW White share when available so it ties
+  // out with that breakdown; falls back to the (shrunk) pct_minority field otherwise.
   const white = num(rec?.pct_white);
   const minority = white != null ? `${Math.round((1 - white) * 100)}%` : pct(rec?.pct_minority);
   if (minority)
     cells.push({
-      label: 'Minority',
+      label: 'People of color',
       value: minority,
-      tip: 'Share who are not non-Hispanic White (the total of the race breakdown below). Census ACS 5-year (B03002).',
+      tip: 'Share who are not non-Hispanic White (the total of the race & ethnicity breakdown below). Census ACS 5-year (B03002).',
     });
 
   // Race & ethnicity composition (Census ACS B03002) - non-Hispanic single-race buckets plus

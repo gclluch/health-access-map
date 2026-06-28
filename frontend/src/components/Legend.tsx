@@ -11,11 +11,11 @@ const BINS = 44;
 
 const LENS_HELP: Record<string, string> = {
   [COMPOSITE_METRIC]:
-    'Relative access disadvantage: where this ZIP ranks against all other U.S. ZIPs on need, vulnerability, and barriers combined - a national percentile, not need minus supply. For barriers beyond what need predicts, switch to "barriers to care, net of deprivation".',
+    'Relative access disadvantage: where this ZIP ranks against all other U.S. ZIPs on need, vulnerability, and barriers combined - a national percentile, not need minus supply. A high score can reflect heavy health need as much as hard-to-reach care; for barriers relative to need, switch to "barriers to care, net of deprivation".',
   [COMPOSITE_MULT_METRIC]:
     'Targeting lens: emphasizes places where high need and high barriers coincide, instead of letting one dimension fully offset another.',
   [ACCESS_RESID_METRIC]:
-    'Structural-access lens: barriers to care after health need + social vulnerability are statistically removed.',
+    'Barriers relative to need: care barriers left after health need + social vulnerability are statistically removed - the part worse than the area\'s deprivation alone predicts.',
   [WITHIN_STATE_METRIC]:
     'Decision-context lens: ranks each ZIP against peers in the same state, useful for state programs and grant targeting.',
 };
