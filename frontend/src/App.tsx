@@ -7,6 +7,7 @@ import SearchBox from "./components/SearchBox";
 import TopControls from "./components/TopControls";
 import SiteCredits from "./components/SiteCredits";
 import Caret from "./components/Caret";
+import { COMPOSITE_METRIC, metricLabel } from "./lib/types";
 
 // Interaction-gated panels: none are needed for first paint (the rail starts collapsed, the
 // detail/compare panels appear only on selection, methodology only when opened). Code-splitting
@@ -115,6 +116,22 @@ function AppInner() {
   const showWeights = useStore((s) => s.showWeights);
   const showMethodology = useStore((s) => s.showMethodology);
   const toggleMethodology = useStore((s) => s.toggleMethodology);
+  const metric = useStore((s) => s.metric);
+  const rankOrder = useStore((s) => s.rankOrder);
+  // The rail header must track the rankings' active metric + sort direction; "Most disadvantaged"
+  // is only correct on the default (composite, highest-first) view.
+  const rankTitle =
+    metric === COMPOSITE_METRIC
+      ? rankOrder === "desc"
+        ? "Most disadvantaged"
+        : "Least disadvantaged"
+      : metricLabel(metric);
+  const rankSub =
+    metric === COMPOSITE_METRIC
+      ? "ranked ZIPs"
+      : rankOrder === "desc"
+        ? "highest first"
+        : "lowest first";
   const [isCompactHeight, setCompactHeight] = useState(
     () => window.innerHeight < 520,
   );
@@ -177,9 +194,9 @@ function AppInner() {
               className="px-3 py-2 flex items-center justify-between text-[13px] font-medium text-ink border-b border-hairline max-[520px]:py-1.5 max-[520px]:text-[12px]"
             >
               <span>
-                Most disadvantaged
+                {rankTitle}
                 <span className="ml-1 font-normal text-[11px] text-graphite max-[520px]:hidden">
-                  ranked ZIPs
+                  {rankSub}
                 </span>
               </span>
               <Caret open={railOpen} size={14} className="text-graphite" />

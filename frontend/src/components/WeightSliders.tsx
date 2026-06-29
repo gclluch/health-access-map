@@ -4,8 +4,10 @@ import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, PRESETS, type
 import Caret from './Caret';
 
 // Weights only change the composite metrics (additive + the geometric lens, both weight-driven).
-// If the user is viewing a sub-score/outcome, snap to the additive composite so the weight change
-// is visible; if they're already on either composite, leave them there (don't kick lens users off).
+// If the user is viewing anything else - a sub-score, an outcome, or a non-weighted lens
+// (within-state / net-of-deprivation, both server-computed at default weights) - snap to the
+// additive composite so the weight change is visible; if they're already on either composite,
+// leave them there (don't kick lens users off).
 const ensureCompositeVisible = (metric: string, setMetric: (m: string) => void) => {
   if (metric !== COMPOSITE_METRIC && metric !== COMPOSITE_MULT_METRIC) setMetric(COMPOSITE_METRIC);
 };
@@ -157,9 +159,9 @@ export default function WeightSliders() {
       ))}
 
       <div className="num text-[11px] text-graphite mt-1.5">
-        Need {weights.health_need} · Vuln {weights.social_vulnerability} · Access{' '}
+        Need {weights.health_need} · Vuln {weights.social_vulnerability} · Barriers{' '}
         {weights.care_access}
-        <span className="ml-1 text-graphite">(normalized)</span>
+        <span className="ml-1 text-graphite">· renormalized, so only the ratio matters</span>
       </div>
 
       <p className="text-[10px] text-graphite mt-2 leading-snug border-t border-hairline pt-2">

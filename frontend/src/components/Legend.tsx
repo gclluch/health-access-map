@@ -11,7 +11,7 @@ const BINS = 44;
 
 const LENS_HELP: Record<string, string> = {
   [COMPOSITE_METRIC]:
-    'Relative access disadvantage: where this ZIP ranks against all other U.S. ZIPs on need, vulnerability, and barriers combined - a national percentile, not need minus supply. A high score can reflect heavy health need as much as hard-to-reach care; for barriers relative to need, switch to "barriers to care, net of deprivation".',
+    'Relative access disadvantage: where this ZIP ranks against all other U.S. ZIPs on need, vulnerability, and barriers combined - a national percentile, not need minus supply. A high score can reflect heavy health need as much as hard-to-reach care; for barriers relative to need, switch to the "Net of deprivation" lens.',
   [COMPOSITE_MULT_METRIC]:
     'Targeting lens: emphasizes places where high need and high barriers coincide, instead of letting one dimension fully offset another.',
   [ACCESS_RESID_METRIC]:

@@ -137,7 +137,7 @@ export default function DriversSection({
         (its share); hover a segment for that dimension's <span className="text-ink">severity</span>{' '}
         (national percentile) and weight. Under {isDefault ? 'the default' : 'your'} mix (
         <span className="num">
-          Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)} · Access{' '}
+          Need {pctOf(weights.health_need)} · Vuln {pctOf(weights.social_vulnerability)} · Barriers{' '}
           {pctOf(weights.care_access)}
         </span>
         ), the three dimensions combine to this ZIP's national composite rank:{' '}

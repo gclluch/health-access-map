@@ -18,7 +18,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 77% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
@@ -42,7 +42,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Outcomes layer (independent of the score, used only to validate it)',
-    'Independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) validate - never build - the composite: the four we trust are preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. Flu vaccination and mammography are also tracked, but treated cautiously - they double as healthcare-engagement measures, so judging access inputs against them would be circular. We also run a sub-county gate (NY ZIP-level ACSC + national life expectancy, county fixed-effects) because ~25% of the index varies within counties, invisible to county-level outcomes. Outcomes are shown as separate layers, never in the composite (the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks the mortality outcomes, correctly signed (it was ~uncorrelated with life expectancy under the old fixed radius).',
+    'Independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) validate - never build - the composite: the five we trust are amenable (treatable) mortality, preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. Flu vaccination and mammography are also tracked, but treated cautiously - they double as healthcare-engagement measures, so judging access inputs against them would be circular. We also run a sub-county gate (NY ZIP-level ACSC + national life expectancy, county fixed-effects) because ~25% of the index varies within counties, invisible to county-level outcomes. Outcomes are shown as separate layers, never in the composite (the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks the mortality outcomes, correctly signed (it was ~uncorrelated with life expectancy under the old fixed radius).',
   ],
   [
     'Different vintages & universes',
@@ -248,7 +248,7 @@ export default function MethodologyPanel() {
         </div>
         <div className="px-5 py-4">
           <p className="text-[13px] text-ink leading-relaxed mb-3">
-            The Access Disadvantage Score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
+            The access disadvantage score is a hierarchy: ≈50 measures from CDC PLACES, Census ACS, CMS NPPES,
             HRSA, and the Urban Institute roll up into sub-scores, then 3 dimensions (health need, social
             vulnerability, barriers to care), then one 0-100 relative national rank. Brighter yellow = higher disadvantage; deep
             blue = lower (cividis, colorblind-safe). Tap any layer
@@ -324,7 +324,7 @@ export default function MethodologyPanel() {
               </li>
               <li className="pt-1 border-t border-hairline">
                 <b>Access disadvantage</b> ={' '}
-                <span className="num">0.35·need + 0.30·vulnerability + 0.35·access</span> - a{' '}
+                <span className="num">0.35·need + 0.30·vulnerability + 0.35·barriers</span> - a{' '}
                 <i>relative composite index</i>, re-ranked so "worse than X%" is a true percentile.
                 Weights re-tunable with the sliders.
               </li>

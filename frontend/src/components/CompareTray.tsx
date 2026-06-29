@@ -182,9 +182,9 @@ export default function CompareTray() {
         </table>
       </div>
       <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite leading-snug">
-        Rank, tier and the three dimensions are national percentiles - higher = more access
-        disadvantage. ZIPs are reliably different only ~10-15 percentile points apart (see the
-        reliable range); smaller gaps may be noise.
+        Rank and the three dimensions are national percentiles (tier is the matching 1-10 decile) -
+        higher = more access disadvantage. ZIPs are reliably different only ~10-15 percentile points
+        apart (see the reliable range); smaller gaps may be noise.
       </div>
     </div>
   );

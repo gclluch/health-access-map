@@ -70,7 +70,7 @@ function Measures({
     <div className="px-3 py-1.5 bg-paper/60">
       <div className="flex justify-between text-[10px] uppercase tracking-wide text-graphite pb-1 border-b border-hairline/60 mb-0.5">
         <span>Measure</span>
-        <span>{anyPct ? 'value · natl %ile' : 'value'}</span>
+        <span>{anyPct ? 'value · natl pctile' : 'value'}</span>
       </div>
       {measures.map((mm) => {
         const natpct = rec[`${mm.col}_natpct`];
@@ -147,7 +147,7 @@ function SubScoreRow({
         </Tip>
         <ResolutionBadge subKey={subKey} />
         <span className="num text-[10px] text-graphite w-14 text-right">
-          {pct == null ? 'no data' : `${ordinal(pct)} pct`}
+          {pct == null ? 'no data' : `${ordinal(pct)} pctile`}
         </span>
         <span className="w-16">
           <PctBar pct={pct} />
@@ -587,10 +587,12 @@ export default function DetailPanel() {
               </div>
             );
           }
-          // The headline tracks the active map lens so the number + copy match what's coloured on
-          // the map. (Bug fixed here: a within-state / coincidence / net-of-deprivation lens still
-          // read "worse than X% of U.S. ZIPs ... nationally".) The comparison grid + drivers below
-          // stay on the canonical national composite, so every framing remains visible.
+          // The headline tracks the active composite-family lens (composite / within-state /
+          // net-of-deprivation / coincidence) so the number + copy match what's coloured on the
+          // map. (Bug fixed here: those lenses used to read "worse than X% of U.S. ZIPs ...
+          // nationally" regardless.) For a sub-score or outcome metric it falls back to the national
+          // composite. The comparison grid below shows every framing at once and the drivers stay on
+          // the national composite, so the canonical national rank is always visible.
           const worst = (p: number) => Math.max(1, Math.round(100 - p));
           const stateName = m.state_name ?? 'its state';
           let hPct: number | null = scorePercentile;
