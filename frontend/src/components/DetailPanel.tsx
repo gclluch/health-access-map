@@ -229,7 +229,7 @@ function ComparisonFrame({
       ? {
           label: 'Within-state',
           value: ordinal(m.access_gap_pctile_within_state),
-          detail: 'default-weight rank among ZIPs in this state',
+          detail: 'default-weight percentile among ZIPs in this state',
         }
       : null,
     range
@@ -249,18 +249,27 @@ function ComparisonFrame({
   ].filter((x): x is { label: string; value: string; detail: string } => x != null);
 
   return (
-    <div className="mt-2 grid grid-cols-2 gap-1.5">
-      {cells.map((c) => (
-        <Tip
-          key={c.label}
-          tip={c.detail}
-          className="rounded border border-hairline bg-paper/70 px-2.5 py-2 cursor-help"
-        >
-          <div className="text-[10px] uppercase tracking-wide text-graphite">{c.label}</div>
-          <div className="num text-[14px] font-semibold text-ink">{c.value}</div>
-          <div className="text-[11px] text-graphite leading-tight">{c.detail}</div>
-        </Tip>
-      ))}
+    <div className="mt-2">
+      <div className="grid grid-cols-2 gap-1.5">
+        {cells.map((c) => (
+          <Tip
+            key={c.label}
+            tip={c.detail}
+            className="rounded border border-hairline bg-paper/70 px-2.5 py-2 cursor-help"
+          >
+            <div className="text-[10px] uppercase tracking-wide text-graphite">{c.label}</div>
+            <div className="num text-[14px] font-semibold text-ink">
+              {c.value}
+              <span className="text-[10px] font-normal text-graphite"> pctile</span>
+            </div>
+            <div className="text-[11px] text-graphite leading-tight">{c.detail}</div>
+          </Tip>
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] text-graphite leading-snug">
+        Each value is a percentile (0-100, higher = more disadvantage) - national, except
+        "Within-state".
+      </p>
     </div>
   );
 }
