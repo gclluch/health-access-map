@@ -15,7 +15,7 @@ test('boots, loads data, and renders core chrome', async ({ page }) => {
 test('access-beyond-deprivation lens colors the map and explains itself', async ({ page }) => {
   await page.goto('/?metric=care_access_resid_pctile');
   // the lens-specific caption (Legend LENS_HELP) only renders when that metric is active
-  await expect(page.getByText(/Structural-access lens/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Barriers relative to need/)).toBeVisible({ timeout: 20_000 });
 });
 
 test('methodology panel opens and states the collinearity caveat', async ({ page }) => {
