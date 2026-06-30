@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { buildQuantile, quantileBreaks, QUANTILE_COLORS, CHROME } from '../lib/colors';
-import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC } from '../lib/types';
+import { ACCESS_RESID_METRIC, COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, isCompositeFamily, isPartialScore } from '../lib/types';
 import { fmtScore } from '../lib/format';
 import Caret from './Caret';
 import MetricSelect from './MetricSelect';
@@ -29,13 +29,17 @@ export default function Legend() {
   const showWeights = useStore((s) => s.showWeights);
   const toggleWeights = useStore((s) => s.toggleWeights);
 
-  const { hist, max, selValue, selBin, breaks, noData } = useMemo(() => {
+  const gatePartial = isCompositeFamily(metric);
+  const { hist, max, selValue, selBin, breaks, noData, partial } = useMemo(() => {
     const vals: number[] = [];
     let missing = 0;
+    let partialN = 0;
     for (const m of metrics.values()) {
       const v = metricValue(m, metric, weights);
-      if (v != null && !Number.isNaN(v)) vals.push(v);
-      else missing += 1;
+      if (v != null && !Number.isNaN(v)) {
+        vals.push(v);
+        if (gatePartial && isPartialScore(m)) partialN += 1;
+      } else missing += 1;
     }
     const h = new Array(BINS).fill(0);
     for (const v of vals) {
@@ -53,8 +57,9 @@ export default function Legend() {
       selBin: sb,
       breaks: quantileBreaks(scale),
       noData: missing,
+      partial: partialN,
     };
-  }, [metrics, metric, weights, selectedZcta]);
+  }, [metrics, metric, weights, selectedZcta, gatePartial]);
 
   return (
     <div className="panel rounded-md px-3 py-2.5 w-full max-[520px]:py-2">
@@ -141,6 +146,13 @@ export default function Legend() {
         </span>
         <span className="num">8 quantile bands</span>
       </div>
+      {gatePartial && partial > 0 && (
+        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-graphite">
+          <span className="inline-block h-2.5 w-4 rounded-sm border border-hairline bg-accent/40 opacity-50" />
+          partial score (2 of 3 dimensions)<span className="num"> · {partial.toLocaleString()}</span> - faded,
+          out of the headline rank
+        </div>
+      )}
 
       {/* Weighting control - sibling of the metric selector above. Expands the sliders
           upward (rendered above this panel by App). Shows the live weights at a glance.

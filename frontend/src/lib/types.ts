@@ -273,6 +273,23 @@ export const OUTCOME_METRICS: SubSpec[] = [
   { key: 'life_expectancy', label: 'Low life expectancy' }, // colors by life_expectancy_pctile
 ];
 
+// The composite and its derived lenses all inherit the 2-of-3 renormalization, so a partial
+// (2-dim) score is a weaker, non-comparable estimate on these (T2). A bare dimension / sub-score
+// percentile that is itself present stays comparable, so the partial-score gate applies only here.
+export const COMPOSITE_FAMILY: ReadonlySet<string> = new Set([
+  COMPOSITE_METRIC,
+  COMPOSITE_MULT_METRIC,
+  ACCESS_RESID_METRIC,
+  WITHIN_STATE_METRIC,
+  'access_gap_pctile',
+]);
+export const isCompositeFamily = (metric: string): boolean => COMPOSITE_FAMILY.has(metric);
+
+// A 2-of-3 composite, built from collinear dimensions over a non-random (MNAR: rural, tiny,
+// low-confidence) subset - held out of the headline band on composite-family lenses.
+export const isPartialScore = (m: SlimMetric): boolean =>
+  m.n_dims_scored != null && m.n_dims_scored < 3;
+
 export function metricLabel(metric: string): string {
   if (metric === COMPOSITE_METRIC) return 'Access disadvantage';
   if (metric === COMPOSITE_MULT_METRIC) return 'Coincidence lens';

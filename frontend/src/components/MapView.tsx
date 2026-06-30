@@ -12,7 +12,7 @@ import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { buildQuantile, colorFor, SELECT_LINE, CHROME, HOVER_LINE, IDLE_LINE } from '../lib/colors';
 import { fmtScore } from '../lib/format';
-import { metricLabel } from '../lib/types';
+import { isCompositeFamily, isPartialScore, metricLabel } from '../lib/types';
 
 // Carto Positron - quiet light basemap. Mirrors pipeline/config.py BASEMAP_STYLE
 // (cross-language, so it cannot be a shared import); keep the two in sync if changed.
@@ -145,14 +145,17 @@ export default function MapView() {
 
   // Shared fill/line accessors - identical join + colour for both the overview GeoJsonLayer and
   // the per-tile sublayers, so the choropleth looks the same across the hand-off.
+  const gatePartial = isCompositeFamily(metric);
   const fillColor = (f: ZctaFeature): [number, number, number, number] => {
     const m = metrics.get(f.properties.zcta5);
     const v = m ? metricValue(m, metric, weights) : null;
     const [r, g, b] = colorFor(v, scale);
     // semi-transparent so the basemap (roads, place names) shows through; "no reliable
-    // data" recedes further (quiet gray, §15.5).
-    const alpha = v == null || Number.isNaN(v) ? 55 : 158;
-    return [r, g, b, alpha];
+    // data" recedes further (quiet gray, §15.5). A 2-of-3 partial composite sits between:
+    // coloured but desaturated (lower alpha), out of the reliable band on composite lenses (T2).
+    if (v == null || Number.isNaN(v)) return [r, g, b, 55];
+    if (gatePartial && m && isPartialScore(m)) return [r, g, b, 80];
+    return [r, g, b, 158];
   };
   const lineColor = (f: ZctaFeature): [number, number, number, number] => {
     if (f.properties.zcta5 === selectedZcta) return SELECT_LINE;

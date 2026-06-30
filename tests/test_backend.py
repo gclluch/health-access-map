@@ -83,6 +83,27 @@ def test_rankings_limit_out_of_range_rejected(client):
     assert client.get("/api/rankings", params={"limit": 99999}).status_code == 422
 
 
+def test_rankings_excludes_partial_dims_by_default(client):
+    # The headline (min_dims=3) holds out 2-of-3 partial composites; min_dims=2 surfaces them. The
+    # gate is composite-family only, so dropping it can only ADD rows, never remove.
+    from backend import data
+
+    full = data.rankings("access_gap_score", None, 500, "desc", False, 3)
+    assert all((r.get("n_dims_scored") or 0) >= 3 for r in full)
+    with_partial = data.rankings("access_gap_score", None, 500, "desc", False, 2)
+    assert len(with_partial) >= len(full)
+
+
+def test_rankings_partial_gate_is_composite_only(client):
+    # A bare dimension percentile that is itself present stays comparable, so the n_dims gate must
+    # NOT touch sub-score/dimension rankings: min_dims=3 and =2 return the same set there.
+    from backend import data
+
+    at3 = data.rankings("care_access_pctile", None, 500, "desc", False, 3)
+    at2 = data.rankings("care_access_pctile", None, 500, "desc", False, 2)
+    assert len(at3) == len(at2)
+
+
 def test_rankings_is_cached(client):
     # The lru_cache makes the second identical call return the same cached payload object.
     from backend import data

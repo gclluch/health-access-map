@@ -87,10 +87,13 @@ def get_rankings(
     limit: int = Query(50, ge=1, le=500),
     order: str = Query("desc", pattern="^(asc|desc)$"),
     include_low_confidence: bool = False,
+    # 3 = headline (full 3-of-3 scores only); 2 surfaces the weaker partial (2-of-3) composites,
+    # which are flagged in the UI. Only gates the composite family (see data.rankings).
+    min_dims: int = Query(3, ge=2, le=3),
 ) -> dict:
     if metric not in data.RANKABLE_METRICS:
         raise HTTPException(422, detail=f"metric must be one of {sorted(data.RANKABLE_METRICS)}")
-    rows = data.rankings(metric, state, limit, order, include_low_confidence)
+    rows = data.rankings(metric, state, limit, order, include_low_confidence, min_dims)
     return {"metric": metric, "state": state, "order": order, "count": len(rows), "results": rows}
 
 

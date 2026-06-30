@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, metricLabel, type SlimMetric } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, isCompositeFamily, isPartialScore, metricLabel, type SlimMetric } from '../lib/types';
 import Caret from './Caret';
 import MetricSelect from './MetricSelect';
 
@@ -24,17 +24,21 @@ export default function RankingsList() {
 
   // One pass: the scoreable/filtered set scored under the live weights, sorted by the chosen
   // direction. The top-100 view and the (uncapped) CSV are both derived from this.
+  const gatePartial = isCompositeFamily(metric);
   const ranked = useMemo(() => {
     const all: Array<{ m: SlimMetric; v: number }> = [];
     for (const m of metrics.values()) {
       if (!m.scoreable || m.low_confidence || m.institutional) continue;
+      // 2-of-3 composites are a weaker, non-comparable estimate, so they are out of the headline
+      // band on composite-family lenses (T2). Still visible/clickable on the map (flagged there).
+      if (gatePartial && isPartialScore(m)) continue;
       if (stateFilter && m.state !== stateFilter) continue;
       const v = metricValue(m, metric, weights);
       if (v != null && !Number.isNaN(v)) all.push({ m, v });
     }
     all.sort((a, b) => (rankOrder === 'desc' ? b.v - a.v : a.v - b.v));
     return all;
-  }, [metrics, metric, weights, stateFilter, rankOrder]);
+  }, [metrics, metric, weights, stateFilter, rankOrder, gatePartial]);
 
   const rows = ranked.slice(0, 100).map(({ m, v }) => ({
     z: m.zcta5,
