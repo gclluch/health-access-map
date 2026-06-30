@@ -22,8 +22,10 @@ The model is a two-way fixed-effects event study:
   * gamma_t (year fixed effect) absorbs the statewide secular ACSC trend.
   * barrier_z is the ZIP's standardized insurance barrier (higher = more uninsured).
   * beta_k traces the effect of +1 SD baseline barrier on ACSC in year k, relative to 2013. The
-    PRE-2014 betas test parallel trends (they should be ~flat); the POST-2014 betas are the
-    quasi-experiment - a negative, growing post-2014 path is the access lever moving the outcome.
+    PRE-2014 betas test parallel trends and are subjected to an explicit joint Wald test (`_pre_trends_test`):
+    only if that test FAILS to reject flat pre-trends could a negative post-2014 path even be considered.
+    The verdict is computed from the test, not asserted - and the cross-state control (`run_cross_state`)
+    falsifies the affordability arm regardless. This validator is DESCRIPTIVE-ONLY, not a causal claim.
 
 Honest limits, stated in the output:
   * The barrier is proxied by the CURRENT (ACS 2023, post-expansion) uninsured rate, because that
@@ -47,6 +49,7 @@ import urllib.request
 
 import numpy as np
 import pandas as pd
+from scipy.stats import chi2
 
 from . import config
 from .common import log
@@ -179,6 +182,43 @@ def _cluster_bootstrap(panel: pd.DataFrame, estimator, n: int) -> tuple[float, f
     return float(np.percentile(betas, 2.5)), float(np.percentile(betas, 97.5)), float(betas.mean())
 
 
+def _pre_trends_test(j: pd.DataFrame, years: list[int], n_boot: int = N_BOOT) -> dict:
+    """Explicit, DATA-DRIVEN parallel-trends test: are the PRE-2014 event-study coefficients JOINTLY
+    zero? (They must be flat for the DiD to be read as causal.) Bootstraps the pre-period beta vector
+    over ZIP clusters, forms a Wald statistic b'Σ⁻¹b against the bootstrap covariance, and returns the
+    χ² p-value. A SMALL p REJECTS parallel trends - the pre-period is not flat, so the DiD is
+    contaminated by pre-existing convergence and cannot be interpreted as a causal lever. This replaces
+    the old eyeballed `pre_rms < |did|/2` rule with a proper joint hypothesis test."""
+    kyears = [y for y in years if str(y) != BASE_YEAR]
+    pre = [i for i, y in enumerate(kyears) if y < EXPANSION_YEAR]
+    if len(pre) < 2:
+        return {"pre_trend_chi2": None, "pre_trend_df": len(pre), "pre_trend_p": None,
+                "parallel_trends_pass": None}
+    point, _, _ = _event_study(j, years)
+    b = np.array([point[kyears[i]] for i in pre])
+    zips = j["zcta5"].unique()
+    groups = {z: g for z, g in j.groupby("zcta5")}
+    rng = np.random.default_rng(20260625)
+    draws = []
+    for _ in range(n_boot):
+        pick = rng.choice(zips, size=len(zips), replace=True)
+        boot = pd.concat([groups[z].assign(zcta5=f"{z}__{i}") for i, z in enumerate(pick)],
+                         ignore_index=True)
+        try:
+            bb, _, _ = _event_study(boot, years)
+            draws.append([bb[kyears[i]] for i in pre])
+        except Exception:  # noqa: BLE001 - singular resample, skip
+            continue
+    sigma = np.atleast_2d(np.cov(np.array(draws), rowvar=False))
+    try:
+        wald = float(b @ np.linalg.solve(sigma, b))
+    except np.linalg.LinAlgError:
+        wald = float(b @ np.linalg.pinv(sigma) @ b)
+    p = float(chi2.sf(wald, len(pre)))
+    return {"pre_trend_chi2": round(wald, 2), "pre_trend_df": len(pre),
+            "pre_trend_p": round(p, 4), "parallel_trends_pass": bool(p > 0.05)}
+
+
 def run() -> dict:
     j, years = _build_panel()
     nz, nyr = j["zcta5"].nunique(), len(years)
@@ -213,13 +253,28 @@ def run() -> dict:
         "post_mean_beta": round(post_mean, 2),
         "did_drop2009": round(did_drop09, 2),
     }
-    # honest parallel-trends verdict: the pre-period betas being comparable in size to the DiD
-    # itself means pre-existing convergence contaminates the estimate - so this is SUGGESTIVE, not
-    # clean-causal. We say so rather than letting "CI excludes 0" imply more than it earns.
-    clean = pre_rms < abs(did) / 2 and rep["did_excludes_zero"] and did_drop09 < 0
-    rep["verdict"] = ("suggestive lever effect (pre-trends imperfect)" if rep["did_excludes_zero"]
-                      and did_drop09 < 0 else "no credible lever effect")
-    rep["parallel_trends_clean"] = bool(clean)
+    # parallel-trends is now a COMPUTED hypothesis test (joint Wald on the pre-2014 betas), not an
+    # eyeballed ratio. The verdict follows the test: if parallel trends are REJECTED the DiD is not
+    # interpretable as a causal lever, full stop - regardless of whether its CI excludes 0. (And even
+    # when not rejected, the cross-state falsification in run_cross_state overturns the affordability
+    # arm - see VALIDATION §7e.) No "step toward causal" language: the test decides.
+    pt = _pre_trends_test(j, years)
+    rep.update(pt)
+    rep["parallel_trends_clean"] = pt["parallel_trends_pass"]
+    # The verdict NEVER asserts a causal lever (T6). Even when the joint test fails to reject flat
+    # pre-trends, this single-state DiD is only DESCRIPTIVE: the cross-state falsification
+    # (run_cross_state / VALIDATION §7e) shows TX - which never expanded - declined the same, so the
+    # NY association is secular convergence, not the coverage shock.
+    if not rep["did_excludes_zero"] or did_drop09 >= 0:
+        rep["verdict"] = "no credible lever effect (DiD CI includes 0 or flips dropping 2009)"
+    elif pt["parallel_trends_pass"] is False:
+        rep["verdict"] = (f"DESCRIPTIVE ONLY - parallel-trends REJECTED "
+                          f"(pre-trend joint p={pt['pre_trend_p']}); the DiD rides pre-existing "
+                          f"convergence and is not a causal lever")
+    else:
+        rep["verdict"] = (f"INCONCLUSIVE / descriptive only - pre-trends not statistically rejected "
+                          f"(joint p={pt['pre_trend_p']}) but the pre-period point estimates are not "
+                          f"flat, and the cross-state control (§7e) falsifies the lever; no causal read")
 
     rep["barrier_source"] = getattr(_build_panel, "barrier_src", "?")
     print("\n=== TEMPORAL quasi-experiment: ACSC vs the 2014 ACA coverage expansion (NY) ===")
@@ -232,19 +287,19 @@ def run() -> dict:
         bar = "#" * min(40, int(abs(betas[y]) / 3))
         sign = "-" if betas[y] < 0 else "+"
         print(f"  {y:>6d} {betas[y]:+9.1f}   {era:<22s} {sign}{bar}")
-    print(f"\n  pre-2014 RMS beta  = {pre_rms:6.1f}  (parallel-trends: small RELATIVE to the DiD => clean)")
+    print(f"\n  pre-2014 RMS beta  = {pre_rms:6.1f}  (the joint pre-trends test below is the authority)")
     print(f"  post-2014 mean beta= {post_mean:6.1f}")
     print(f"  POST x barrier DiD = {did:+.1f}/100k per +1 SD  "
           f"CI [{lo:+.1f}, {hi:+.1f}]  {'EXCLUDES 0' if rep['did_excludes_zero'] else 'straddles 0'}")
     print(f"  DiD dropping 2009  = {did_drop09:+.1f}/100k  (robustness to the one non-flat pre-year)")
-    print(f"  VERDICT: {rep['verdict']}; parallel-trends clean = {rep['parallel_trends_clean']}")
-    print("\n  Reading: most POST-2014 betas are negative (mean {:+.1f}) vs a positive pre-period -\n"
-          "  ACSC fell MORE where the PRE-EXPANSION uninsured rate was highest, after coverage\n"
-          "  expanded. The ZIP fixed effect removes the deprivation that makes the cross-section a\n"
-          "  poverty map, so this is a real step from correlational toward causal. HONESTY: the\n"
-          "  pre-period betas are not perfectly flat (a 2009 spike), so pre-existing convergence\n"
-          "  inflates the DiD somewhat - hence SUGGESTIVE, not proof. One state, quasi-experimental."
-          .format(post_mean))
+    print(f"  pre-trends joint test: chi2({rep['pre_trend_df']})={rep['pre_trend_chi2']}, "
+          f"p={rep['pre_trend_p']}  =>  parallel-trends {'NOT rejected' if rep['parallel_trends_clean'] else 'REJECTED'}")
+    print(f"  VERDICT: {rep['verdict']}")
+    print("\n  Reading: the joint Wald test on the PRE-2014 betas is the gate. If it REJECTS flat\n"
+          "  pre-trends (small p), the post-2014 DiD is riding pre-existing convergence and CANNOT be\n"
+          "  read as a causal lever - it stays a descriptive within-unit association. Even when not\n"
+          "  rejected, the cross-state falsification (run_cross_state: TX never expanded yet declined\n"
+          "  the same) overturns the affordability arm. This validator is descriptive-only by design.")
     return rep
 
 
@@ -347,10 +402,17 @@ def run_cross_state(years=(2011, 2012, 2013, 2014, 2015)) -> dict:
         print(f"  {k:>6d} {betas_ny[k]:+13.1f} {betas_tx[k]:+13.1f}   {era}")
     print(f"\n  TRIPLE-DIFF (barrier x post x NY) = {tdid:+.1f}  CI [{lo:+.1f}, {hi:+.1f}]  "
           f"{'EXCLUDES 0' if rep['excludes_zero'] else 'straddles 0'}")
-    print("\n  Reading: NY post-2014 betas going negative WHILE TX stays flat = the high-barrier ACSC\n"
-          "  drop is specific to the state that expanded coverage. The triple-diff nets out any secular\n"
-          "  high-barrier convergence common to both states - the confound the NY-only study couldn't\n"
-          "  rule out. A negative coefficient excluding 0 is treated-vs-control causal evidence.")
+    # Decision rule stated up front, then the ACTUAL outcome - no declarative causal claim either way.
+    verdict = ("treated-vs-control lever supported (triple-diff < 0, CI excludes 0)"
+               if rep["excludes_zero"] and tdid < 0 else
+               "lever NOT supported - triple-diff CI includes 0: the NY-only decline is secular "
+               "high-barrier convergence common to TX (which never expanded), so the §7b hint is falsified")
+    rep["verdict"] = verdict
+    print("\n  Reading: the triple-diff nets out any secular high-barrier convergence common to both\n"
+          "  states - the confound the NY-only study couldn't rule out. Decision rule: a negative\n"
+          "  coefficient whose CI excludes 0 would be treated-vs-control causal evidence; a CI that\n"
+          "  includes 0 leaves the lever unsupported.")
+    print(f"  VERDICT: {verdict}")
     return rep
 
 

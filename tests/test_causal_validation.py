@@ -76,6 +76,43 @@ def test_event_study_omits_base_year_and_is_flat_pre_when_no_pretrend():
     assert np.mean(post) < -15                                # the planted post effect shows up
 
 
+def _panel(barrier_pre_slope: float, post_effect: float, seed: int, noise: float = 6.0):
+    """Synthetic NY-style panel. `barrier_pre_slope` plants a barrier x (year) trend in the PRE-2014
+    years (0 = parallel trends hold); `post_effect` is the barrier x post-2014 jump."""
+    rng = np.random.default_rng(seed)
+    zips = [f"z{i}" for i in range(70)]
+    years = list(range(2009, 2024))
+    barrier = {z: rng.normal() for z in zips}
+    rows = []
+    for z in zips:
+        zfe, b = rng.normal(0, 40), barrier[z]
+        for y in years:
+            pre = barrier_pre_slope * b * (y - 2009) if y < vt.EXPANSION_YEAR else 0.0
+            post = post_effect * b if y >= vt.EXPANSION_YEAR else 0.0
+            rows.append({"zcta5": z, "year": y, "barrier": b,
+                         "rate": 1500 + zfe + pre + post + rng.normal(0, noise)})
+    return pd.DataFrame(rows), years
+
+
+def test_pre_trends_test_does_not_reject_when_trends_are_parallel():
+    """No pre-trend planted (POST-only effect): the joint Wald test should FAIL to reject flat
+    pre-trends, so parallel_trends_pass is True and the p-value is large."""
+    j, years = _panel(barrier_pre_slope=0.0, post_effect=-30.0, seed=3)
+    pt = vt._pre_trends_test(j, years, n_boot=200)
+    assert pt["parallel_trends_pass"] is True
+    assert pt["pre_trend_p"] > 0.05
+
+
+def test_pre_trends_test_rejects_a_planted_pretrend():
+    """A strong barrier x year PRE-2014 trend (parallel trends violated): the joint Wald test must
+    REJECT, driving the data-driven verdict to descriptive-only."""
+    j, years = _panel(barrier_pre_slope=18.0, post_effect=-30.0, seed=4)
+    pt = vt._pre_trends_test(j, years, n_boot=200)
+    assert pt["parallel_trends_pass"] is False
+    assert pt["pre_trend_p"] < 0.05
+    assert pt["pre_trend_df"] >= 2
+
+
 def test_demean2_removes_both_factors():
     """The iterative two-way transform must drive both the ZIP mean AND the state-year mean to ~0."""
     rng = np.random.default_rng(10)

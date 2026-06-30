@@ -597,7 +597,7 @@ free data allows. The honest answer, after running them all: **the index is a we
 | Rung | Design | Result | What it means |
 |---|---|---|---|
 | §7a | Negative control (placebo outcome) | **null** (diff +0.007, CI crosses 0) | cross-sectionally indistinguishable from a poverty map |
-| §7b | NY-only event study around 2014 | suggestive (-36.5) but **pre-trends imperfect** | a hint, not proof - high-barrier ZIPs may already be converging |
+| §7b | NY-only event study around 2014 | **inconclusive** (-36.5; joint pre-trends test χ²(4)=9.28, p=0.055 - borderline, point estimates not flat) | not a causal read on its own - high-barrier ZIPs may already be converging |
 | §7e | **Cross-state DiD-in-DiD** (NY vs TX control) | **falsified** (triple-diff +10.3, CI crosses 0) | TX never expanded yet declined the same → the §7b hint was secular convergence, not the expansion |
 | §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
 | §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **borderline** (-35.5/100k, CI [-71.7, +2.2] just includes 0) | the *supply* arm is a powered "almost" - right-signed, dose-responsive, robust to spillover, but short of significance and pre-trends not fully clean |
@@ -641,7 +641,7 @@ at county scale with a curated treatable-mortality list, a different and weaker 
 prediction*. But it **bounds** the cross-sectional access claim honestly, and it is exactly why the
 temporal test below is the better question.
 
-### 7b. Temporal quasi-experiment - the access barrier behaves like a lever over time (`pipeline.validate_temporal`)
+### 7b. Temporal quasi-experiment - inconclusive on its own, then overturned by the cross-state control (`pipeline.validate_temporal`)
 
 Cross-sectional differential prediction is an extremely hard bar (everything bad loads on the same
 gradient). A within-unit fixed-effects **event study** around a real access shock escapes it. NY
@@ -659,20 +659,23 @@ event study (DiD: Card & Krueger 1994; two-way-FE / event-study framing: Angrist
   the 2012 rate, because expansion compressed it - so using the true pre-period barrier is essential
   (the contemporary proxy badly mismeasures who faced a high barrier).
 
-Result (1,265 NY ZIPs × 15 years): the pre-period interaction coefficients are roughly flat
-(≈ +35/100k, a 2009 spike aside) and the **post-2014 coefficients shift negative** (mean -6.8). The
+Result (1,265 NY ZIPs × 15 years): the **post-2014 coefficients shift negative** (mean -6.8) and the
 average post-expansion DiD is **-36.5/100k per +1 SD baseline barrier, ZIP-cluster bootstrap CI
-[-60.3, -11.3]** (excludes 0), and it survives dropping the one non-flat pre-year (2009): **-30.6**.
-In words: **ACSC fell more, after coverage expanded, in the ZIPs that had been most uninsured** -
-the access barrier moving the outcome over time, with deprivation differenced out.
+[-60.3, -11.3]** (excludes 0), surviving dropping the one non-flat pre-year (2009): **-30.6**. Read
+naively this looks like ACSC falling more, after coverage expanded, in the ZIPs that had been most
+uninsured.
 
-**Honesty about what this is and is not.** The pre-period coefficients are *not perfectly flat* (RMS
-38.8, comparable to the DiD itself), so pre-existing convergence inflates the estimate somewhat -
-`parallel_trends_clean = False`. It is **one state**, and NY's pre-ACA childless-adult waiver made its
-2014 shock milder than a non-expansion state's would be (conservative). So this is **suggestive, not
-proof**: a genuine step from correlational toward quasi-causal, not a randomized trial. The strongest
-honest claim free data supports is *"the access components respond to an access shock in the predicted
-direction"* - which is materially more than the cross-section can say, and the right ceiling to state.
+**The parallel-trends assumption is tested, not assumed - and it does not clear the bar.** The pre-2014
+betas are subjected to an explicit joint Wald test (`_pre_trends_test`: do the pre-period coefficients
+jointly equal zero?): **χ²(4) = 9.28, p = 0.055**. That only *barely* fails to reject at 5%, and the
+pre-period point estimates are plainly *not flat* (+53.6, +22.6, +35.4, +37.1/100k - a systematic
+positive level, RMS 38.8, comparable in size to the DiD itself). So the verdict the validator prints is
+computed, not editorial: **INCONCLUSIVE / descriptive only - no causal read.** It is also **one state**,
+and NY's pre-ACA childless-adult waiver muddies the shock. Crucially, the cross-state control (§7e)
+then **falsifies** the optimistic read outright: Texas, which never expanded Medicaid, shows the same
+post-2014 high-barrier decline. The strongest honest claim free data supports is therefore *descriptive*
+- the index describes where access is poor - **not** that the access components were shown to move the
+outcome. Any "step toward causal" framing is withdrawn.
 
 ### 7c. What §7 changes
 
