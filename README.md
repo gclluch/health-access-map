@@ -46,10 +46,15 @@ settle it.
 | **Don't trust it for** | Fine rank order. Two ZIPs are reliably different only ~10-15 percentile points apart (~7-10 tiers, not 33,000 ranks). If two reliable ranges overlap, treat the ZIPs as tied. |
 
 **What it is.** A transparent hierarchy (≈50 measures → sub-scores → 3 dimensions → one
-composite), validated against **6 independent outcomes** it never ingests (CMS claims + NCHS
-vital records, never the BRFSS/PLACES inputs): split-half reliability **0.95**; tracks life
-expectancy (+0.52), premature death (+0.49), and - against the access-sensitive ruler the field
-actually uses - treatable/amenable mortality net of deprivation (care-access partial r **+0.395**).
+composite). Two distinct claims, kept separate: it is **internally reliable** (split-half
+**0.95** - the ~50 measures cohere; this is internal consistency, *not* outcome validity), and it
+**tracks 6 independent outcomes** it never ingests (CMS claims + NCHS vital records, never the
+BRFSS/PLACES inputs): life expectancy (+0.52), premature death (+0.49), and - against the
+access-sensitive ruler the field actually uses - treatable/amenable mortality net of deprivation
+(care-access partial r **+0.395**, state-blocked 95% CI [0.33, 0.46]). Read those correlations'
+*precision, not their decimals*: 5 of the 6 outcomes are **county-level**, broadcast to ZCTAs, so
+the honest sample is ~3,225 counties / ~50 state blocks - **not** 33k ZIPs - and every CI here is
+spatially clustered to match (see [`docs/VALIDATION.md`](docs/VALIDATION.md) §1, §4).
 Sub-county discrimination is confirmed in **five states + nationally**.
 
 **What it is not - and read this before acting.** It is **descriptive, not causal.**
@@ -224,8 +229,9 @@ rather than silently producing a wrong column.
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
   over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. It also
   runs the **amenable-mortality focus**: care_access partial r vs CDC WONDER treatable mortality
-  (age-adjusted, 0-74, 2016-2020) is **+0.395 [0.368, 0.43]** - strong and net of the deprivation
-  gradient, vs only +0.125 against all-cause life expectancy. This is the field's gold-standard
+  (age-adjusted, 0-74, 2016-2020) is **+0.395** (county-clustered CI [0.37, 0.43]; state-blocked,
+  the conservative spatial bound, [0.33, 0.46]) - strong and net of the deprivation gradient, vs
+  only +0.125 against all-cause life expectancy. This is the field's gold-standard
   validation and confirms the care-access dimension is **descriptively** sound (`docs/VALIDATION.md`
   §4). Re-run with `make amenable`.
 - **Descriptive, not (yet) prescriptive - the honest causal ceiling** (`docs/VALIDATION.md` §7). The
