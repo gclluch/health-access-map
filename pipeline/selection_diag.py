@@ -94,6 +94,8 @@ def run() -> dict:
         "partial_share": round(float(partial.sum() / sc.sum()), 4),
         **{k: v for k, v in _compare(sub, partial, "2of3", "3of3").items()
            if k not in ("n_in", "n_out")},
+        # WHY the missingness is (or is not) ignorable: the mechanism, not just the outcome gap (T2).
+        "mechanism": _two_dim_mechanism(df, full, partial, pop),
     }
 
     # 3. validation-subset selection: among scoreable, outcome-present vs outcome-absent
@@ -122,6 +124,36 @@ def run() -> dict:
     write_provenance({"selection": report})
     _print(report)
     return report
+
+
+def _two_dim_mechanism(df: pd.DataFrame, full: np.ndarray, partial: np.ndarray,
+                       pop: pd.Series) -> dict:
+    """Characterize the 2-of-3 missingness MECHANISM, so the UI exclusion (T2) is evidence-based, not
+    assumed. Reports (a) WHICH dimension is the absent one, (b) whether 2-dim ZCTAs are systematically
+    smaller / low-confidence / sparser (the MNAR rural-data story). A 2-dim score whose missingness
+    tracks population is non-ignorable: those ZCTAs are not a random sample of the ranking."""
+    out: dict = {}
+    # (a) which dimension is missing among the 2-dim ZCTAs (exactly one of the three dim cols is NaN)
+    miss = {}
+    pmask = df.index[partial]
+    for c in DIM_COLS:
+        if c in df.columns:
+            absent = df.loc[pmask, c].isna().sum()
+            if absent:
+                miss[c[:-7]] = int(absent)   # strip "_pctile"
+    out["missing_dimension_counts"] = dict(sorted(miss.items(), key=lambda kv: -kv[1]))
+    # (b) population mechanism: median pop + low-confidence share, 2-dim vs 3-dim
+    popn = pop.to_numpy(float)
+    out["median_pop_2of3"] = round(float(np.nanmedian(popn[partial])), 0) if partial.any() else None
+    out["median_pop_3of3"] = round(float(np.nanmedian(popn[full])), 0) if full.any() else None
+    if "low_confidence" in df.columns:
+        lc = df["low_confidence"].astype(bool).to_numpy()
+        out["low_confidence_share_2of3"] = round(float(lc[partial].mean()), 3) if partial.any() else None
+        out["low_confidence_share_3of3"] = round(float(lc[full].mean()), 3) if full.any() else None
+    out["verdict"] = ("MNAR if 2-dim ZCTAs are systematically smaller / more low-confidence than 3-dim "
+                      "- then their ranks are not comparable to the full-score majority and must be "
+                      "flagged/excluded from the headline band, not silently co-ranked.")
+    return out
 
 
 def _member_completeness(df: pd.DataFrame, sc: np.ndarray) -> dict:
@@ -160,6 +192,12 @@ def _print(r: dict) -> None:
         if k.endswith("_d") and v is not None:
             flag = "  <-- non-trivial (|d|>=0.2)" if abs(v) >= 0.2 else ""
             print(f"     {k:32s} {v:+.3f}{flag}")
+    mech = dc.get("mechanism", {})
+    if mech:
+        print(f"   mechanism: missing dim = {mech.get('missing_dimension_counts')}")
+        print(f"     median pop 2of3 {mech.get('median_pop_2of3')} vs 3of3 {mech.get('median_pop_3of3')}; "
+              f"low-confidence share 2of3 {mech.get('low_confidence_share_2of3')} vs "
+              f"3of3 {mech.get('low_confidence_share_3of3')}")
     print(f"\n3. Validation-subset selection (outcome-absent vs present composite):")
     for o, v in r["validation_subset"].items():
         if "access_gap_pctile_d" in v:
