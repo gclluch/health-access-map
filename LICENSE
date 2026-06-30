@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-The MIT license above covers this project's source code. The underlying data
-is from public / U.S. government sources, each under its own terms; see the
-"Sources & license" credit in the app and docs/PRIMER.md for the full list.
-Map tiles are © CARTO and © OpenStreetMap contributors.
