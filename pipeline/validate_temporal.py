@@ -159,17 +159,22 @@ def _did_coefficient(j: pd.DataFrame) -> float:
     return float(beta[0])
 
 
-def _bootstrap_did(j: pd.DataFrame, n: int = N_BOOT) -> tuple[float, float, float]:
-    """ZIP-cluster bootstrap on the post-2014 DiD coefficient (resample whole ZIP time series)."""
-    zips = j["zcta5"].unique()
-    groups = {z: g for z, g in j.groupby("zcta5")}
+def _cluster_bootstrap(panel: pd.DataFrame, estimator, n: int) -> tuple[float, float, float]:
+    """ZIP-cluster bootstrap of `estimator` (resample whole ZIP time series with replacement, fixed
+    seed). Singular resamples are skipped - a no-op for the lstsq DiD coefficient (which never raises)
+    but needed for the triple-diff, where a degenerate draw can be rank-deficient."""
+    zips = panel["zcta5"].unique()
+    groups = {z: g for z, g in panel.groupby("zcta5")}
     rng = np.random.default_rng(20260625)
     betas = []
     for _ in range(n):
         pick = rng.choice(zips, size=len(zips), replace=True)
         boot = pd.concat([groups[z].assign(zcta5=f"{z}__{i}") for i, z in enumerate(pick)],
                          ignore_index=True)
-        betas.append(_did_coefficient(boot))
+        try:
+            betas.append(estimator(boot))
+        except Exception:  # noqa: BLE001 - singular resample, skip
+            continue
     betas = np.array(betas)
     return float(np.percentile(betas, 2.5)), float(np.percentile(betas, 97.5)), float(betas.mean())
 
@@ -182,7 +187,7 @@ def run() -> dict:
 
     betas, _, kyears = _event_study(j, years)
     did = _did_coefficient(j)
-    lo, hi, mean = _bootstrap_did(j)
+    lo, hi, _ = _cluster_bootstrap(j, _did_coefficient, N_BOOT)
 
     # parallel-trends diagnostic: mean magnitude of the PRE-2014 betas (should be small vs post)
     pre = [betas[y] for y in kyears if y < EXPANSION_YEAR]
@@ -275,24 +280,6 @@ def _triple_diff(panel: pd.DataFrame) -> float:
     return float(beta[1])  # coefficient on bpt (the triple interaction)
 
 
-def _bootstrap_triple(panel: pd.DataFrame, n: int = 600) -> tuple[float, float, float]:
-    """ZIP-cluster bootstrap on the triple-diff coefficient."""
-    zips = panel["zcta5"].unique()
-    groups = {z: g for z, g in panel.groupby("zcta5")}
-    rng = np.random.default_rng(20260625)
-    betas = []
-    for _ in range(n):
-        pick = rng.choice(zips, size=len(zips), replace=True)
-        boot = pd.concat([groups[z].assign(zcta5=f"{z}__{i}") for i, z in enumerate(pick)],
-                         ignore_index=True)
-        try:
-            betas.append(_triple_diff(boot))
-        except Exception:  # noqa: BLE001 - singular resample, skip
-            continue
-    betas = np.array(betas)
-    return float(np.percentile(betas, 2.5)), float(np.percentile(betas, 97.5)), float(betas.mean())
-
-
 def _state_panel(state: str, years) -> pd.DataFrame:
     """ACSC panel (zcta5, year, rate, barrier, state) for one state over `years`, barrier = the
     standardized PRE-2012 uninsured rate within that state. NY uses SPARCS PQI_90 (per-100k-pop rate);
@@ -343,7 +330,7 @@ def run_cross_state(years=(2011, 2012, 2013, 2014, 2015)) -> dict:
     betas_tx, _, _ = _event_study(tx, years)
     panel = pd.concat([ny, tx], ignore_index=True)
     tdid = _triple_diff(panel)
-    lo, hi, _ = _bootstrap_triple(panel)
+    lo, hi, _ = _cluster_bootstrap(panel, _triple_diff, 600)
 
     rep = {"years": years, "n_ny": int(ny["zcta5"].nunique()), "n_tx": int(tx["zcta5"].nunique()),
            "event_study_ny": {str(k): round(v, 2) for k, v in betas_ny.items()},

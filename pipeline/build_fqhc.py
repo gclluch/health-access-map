@@ -52,9 +52,9 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     radius = config.CATCHMENT_KM / config.EARTH_KM
     tree_site = BallTree(site_xy, metric="haversine")
 
-    s_ind = tree_site.query_radius(zcta_xy, r=radius)        # sites within the catchment
+    counts = tree_site.query_radius(zcta_xy, r=radius, count_only=True)  # sites within the catchment
     nearest_d, _ = tree_site.query(zcta_xy, k=1)             # distance to the nearest site
-    df["fqhc_sites_reachable"] = np.array([len(idx) for idx in s_ind], dtype="int64")
+    df["fqhc_sites_reachable"] = counts.astype("int64")
     df["nearest_fqhc_km"] = (nearest_d[:, 0] * config.EARTH_KM).round(1)
 
     out = df[["zcta5", "fqhc_sites_reachable", "nearest_fqhc_km"]].copy()

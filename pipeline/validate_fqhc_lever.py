@@ -43,6 +43,7 @@ import pandas as pd
 
 from . import config
 from .common import log
+from .validate_fqhc_power import SCENARIOS
 from .validate_temporal import _fetch_ny_panel
 
 OPENINGS = config.PROCESSED / "fqhc_openings.parquet"
@@ -324,12 +325,15 @@ def _verdict(ev: pd.DataFrame, ov: float, ov_ci: tuple[float, float]) -> tuple[s
 
 def _gate_band(n_treated: int) -> str:
     """Map the realized treated-N onto validate_fqhc_power's scenarios (the power gate, re-read at
-    the realized N per the build plan), so the verdict carries its own power context."""
+    the realized N per the build plan), so the verdict carries its own power context. The scenario
+    N's are pulled from validate_fqhc_power.SCENARIOS so this can't drift if the power analysis re-runs."""
+    scen_n = {label: n_t for label, n_t, *_ in SCENARIOS}
+    nyx, nyo = scen_n["NY+TX (real)"], scen_n["NY-only"]
     if n_treated >= 240:
-        return f"~NY+TX gate scenario (277, MDE 5%): powered for the likely effect (realized {n_treated})"
+        return f"~NY+TX gate scenario ({nyx}, MDE 5%): powered for the likely effect (realized {n_treated})"
     if n_treated >= 110:
-        return f"~NY-only gate scenario (135, upper-band only): PILOT power (realized {n_treated})"
-    return f"below the gate's NY-only scenario (135): underpowered (realized {n_treated})"
+        return f"~NY-only gate scenario ({nyo}, upper-band only): PILOT power (realized {n_treated})"
+    return f"below the gate's NY-only scenario ({nyo}): underpowered (realized {n_treated})"
 
 
 def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
@@ -393,7 +397,7 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
 
 
 if __name__ == "__main__":
-    argv = [a for a in sys.argv[1:]]
+    argv = sys.argv[1:]
     do_robust = "robust" in [a.lower() for a in argv]
     st = tuple(a.upper() for a in argv if a.lower() not in ("robust",)) or ("NY", "TX")
     run(states=st)

@@ -38,6 +38,7 @@ import pandas as pd
 from . import config
 from .diagnostics import OUTCOMES, _oriented
 from .taxonomy import DIMENSIONS, subscore_specs
+from .validation_stats import pearson_corr
 
 METRICS = config.PROCESSED / "metrics.parquet"
 OUT_JSON = config.PROCESSED / "gate_ci.json"
@@ -57,13 +58,8 @@ def _rank(v: np.ndarray) -> np.ndarray:
 
 
 def _corr(a: np.ndarray, b: np.ndarray) -> float:
-    m = ~(np.isnan(a) | np.isnan(b))
-    if m.sum() < 100:
-        return np.nan
-    a = a[m] - a[m].mean()
-    b = b[m] - b[m].mean()
-    s = np.sqrt((a @ a) * (b @ b))
-    return float(a @ b / s) if s > 0 else np.nan
+    # Stricter 100-pair floor than the shared default; Pearson math lives in validation_stats.
+    return pearson_corr(a, b, min_pairs=100)
 
 
 def _mean_r(series: np.ndarray, Y: np.ndarray) -> float:

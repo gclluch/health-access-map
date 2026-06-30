@@ -15,6 +15,7 @@ import pandas as pd
 from . import config
 from .join_and_score import _pct
 from .taxonomy import DIMENSIONS, subscore_specs
+from .validation_stats import pearson_corr
 
 METRICS = config.PROCESSED / "metrics.parquet"
 # outcome -> higher value is "better" (needs flipping to higher = worse) or "worse".
@@ -36,13 +37,9 @@ DIM_COLS = [f"{d}_pctile" for d in DIMENSIONS]
 
 
 def _corr(a: np.ndarray, b: np.ndarray) -> float:
-    a, b = np.asarray(a, float), np.asarray(b, float)
-    m = ~(np.isnan(a) | np.isnan(b))
-    if m.sum() < 100:
-        return float("nan")
-    a, b = a[m] - a[m].mean(), b[m] - b[m].mean()
-    s = np.sqrt((a @ a) * (b @ b))
-    return float(a @ b / s) if s > 0 else float("nan")
+    # Diagnostics use a stricter 100-pair floor than the shared default; the Pearson math itself
+    # lives in validation_stats so it is not copy-pasted across the gates.
+    return pearson_corr(a, b, min_pairs=100)
 
 
 def _oriented(df: pd.DataFrame) -> dict[str, np.ndarray]:

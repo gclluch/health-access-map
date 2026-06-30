@@ -43,22 +43,10 @@ PLACES_DATASET_ID_FALLBACKS = ["c7b2-4ecy", "c76y-7pzg"]  # 2023, 2022
 PLACES_CATALOG_URL = "https://data.cdc.gov/api/catalog/v1?q=PLACES%20ZCTA%20GIS&only=dataset"
 PLACES_EXPORT_TMPL = "https://data.cdc.gov/api/views/{id}/rows.csv?accessType=DOWNLOAD"
 
-# PLACES measure -> our scoring column. GIS-friendly format is already wide with
-# <MEASURE>_CrudePrev columns. Crude (not age-adjusted) prevalence for pop impact.
-PLACES_MEASURES = {
-    "DIABETES_CrudePrev": "diabetes_pct",
-    "COPD_CrudePrev": "copd_pct",
-    "CHD_CrudePrev": "chd_pct",
-    "CASTHMA_CrudePrev": "casthma_pct",
-    "DEPRESSION_CrudePrev": "depression_pct",
-}
-DISEASE_COLS = list(PLACES_MEASURES.values())
-
 # ---------------------------------------------------------------------------
 # CMS NPPES (provider supply) -- full monthly NPI file
+# Source: https://download.cms.gov/nppes/NPI_Files.html (NBER mirror: https://data.nber.org/npi/{year}/).
 # ---------------------------------------------------------------------------
-NPPES_PAGE = "https://download.cms.gov/nppes/NPI_Files.html"
-NPPES_NBER_MIRROR_TMPL = "https://data.nber.org/npi/{year}/"  # fallback
 # Confirmed header strings inside npidata_pfile_*.csv (brief 11.4):
 NPPES_COL_POSTAL = "Provider Business Practice Location Address Postal Code"
 NPPES_COL_TAXONOMY = "Healthcare Provider Taxonomy Code_1"
@@ -78,8 +66,6 @@ PRIMARY_CARE_CLASSIFICATIONS = {
     "Family Medicine", "Internal Medicine", "Pediatrics",
     "General Practice", "Geriatric Medicine",
 }
-# NP/PA primary-care providers (Grouping below) also count as primary care.
-PRIMARY_CARE_NPPA_GROUPING = "Physician Assistants & Advanced Practice Nursing Providers"
 MENTAL_HEALTH_GROUPING = "Behavioral Health & Social Service Providers"
 MENTAL_HEALTH_CLASSIFICATION = "Psychiatry & Neurology"  # narrowed to Psychiatry specialization
 PHYSICIAN_GROUPING = "Allopathic & Osteopathic Physicians"
@@ -94,7 +80,6 @@ ACS_BASE_DETAILED = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
 ACS_BASE_SUBJECT = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/subject"
 ACS_VARS_DETAILED = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/variables.json"
 ACS_VARS_SUBJECT = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/subject/variables.json"
-ACS_ZCTA_PREDICATE = "for=zip%20code%20tabulation%20area:*"  # nation-based since 2019
 
 # Expected detailed-table resolutions (asserted by label, not blindly trusted).
 ACS_VAR_MEDIAN_INCOME = "B19013_001E"
@@ -212,7 +197,6 @@ TIGER_ZCTA_FIELDS = ["ZCTA5CE20", "ZCTA5CE10"]
 # ---------------------------------------------------------------------------
 DEFAULT_WEIGHTS = {"disease": 0.40, "supply": 0.35, "econ": 0.25}
 POPULATION_FLOOR = 1000     # low_confidence flag below this
-RATE_UNIT = "fraction"      # poverty_rate / uninsured_rate in [0,1] project-wide
 
 # ---------------------------------------------------------------------------
 # Frontend basemap (free, no token) -- CARTO Positron (brief 14.1)

@@ -114,6 +114,13 @@ MIN_YEARS = 4           # require a near-full pool so a single noisy year can't 
 DIM_COLS = [f"{d}_pctile" for d in DIMENSIONS]
 
 
+def _score_cols(frame: pd.DataFrame) -> list[str]:
+    """The dimension + sub-score + composite columns present in `frame` (one source of truth so a
+    taxonomy change flows to every sub-county scorecard)."""
+    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
+    return [c for c in cols if c in frame.columns]
+
+
 def _fetch_ny_pqi() -> pd.DataFrame:
     """Pull PQI_90 (overall ACSC composite) by ZIP, pooled over POOL_YEARS, mean per ZIP."""
     years = ",".join(f"'{y}'" for y in POOL_YEARS)
@@ -157,8 +164,7 @@ def run(extra_csv: str | None = None) -> dict:
     j = j[j["county_fips"].isin(vc[vc >= 2].index)].copy()
     log("subcounty", f"{len(j)} ZCTAs across {j['county_fips'].nunique()} multi-ZCTA counties")
 
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in j.columns]
+    cols = _score_cols(j)
     yo_w, yoe_w = _within(j, "obs"), _within(j, "oe")
     report = {"n": len(j), "counties": int(j["county_fips"].nunique()), "pooled": {}, "within_county": {}}
 
@@ -331,8 +337,7 @@ def run_colorado() -> dict:
     j = j[j["county_fips"].isin(vc[vc >= 2].index)].copy()
     log("subcounty", f"CO: {len(j)} ZCTAs / {j['county_fips'].nunique()} multi-ZCTA counties")
 
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in j.columns]
+    cols = _score_cols(j)
     yw = _within(j, "diabetes")
     rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
            "outcome": "CO CDPHE diabetes ACSC hospitalization (age-adjusted, tract->ZCTA)",
@@ -373,8 +378,7 @@ def run_overdose_national() -> dict:
     j = j[j["county_fips"].isin(vc[vc >= 3].index)].copy()   # >=3 ZCTAs so within-county is defined
     log("subcounty", f"overdose: {len(j)} ZCTAs / {j['county_fips'].nunique()} counties")
 
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in j.columns]
+    cols = _score_cols(j)
     yw = _within(j, "overdose")
     rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
            "outcome": "CDC tract drug-overdose mortality (pooled 2022-2024, observed, tract->ZCTA)",
@@ -442,8 +446,7 @@ def run_california() -> dict:
         return out
 
     yw_adj = resid_age("rate")
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in j.columns]
+    cols = _score_cols(j)
     conf = _corr(_within(j, "rate"), _within(j, "age65_rate"))
     rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
            "outcome": "CA ACSC-cause mortality (diabetes/heart/COPD/stroke, 2019-2024), age-adjusted",
@@ -588,8 +591,7 @@ def run_texas() -> dict:
     j = j[j["county_fips"].isin(vc[vc >= 3].index)].copy()
     log("subcounty", f"TX: {len(j)} ZCTAs / {j['county_fips'].nunique()} counties")
 
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in j.columns]
+    cols = _score_cols(j)
     yw = _within(j, "rate")
     rep = {"n": len(j), "counties": int(j["county_fips"].nunique()),
            "outcome": "TX DSHS ACSC inpatient rate per 1k (patient ZIP, pooled 2019)",
@@ -668,8 +670,7 @@ def run_national() -> dict:
     vc = m["county_fips"].value_counts()
     m = m[m["county_fips"].isin(vc[vc >= 3].index)].copy()
     y = _within(m, "le_worse")
-    cols = DIM_COLS + [f"{s['key']}_pctile" for s in subscore_specs()] + ["access_gap_score"]
-    cols = [c for c in cols if c in m.columns]
+    cols = _score_cols(m)
     print("\n=== NATIONAL sub-county validation vs USALEEP life expectancy (need outcome) ===")
     print(f"  {len(m)} ZCTAs / {m['county_fips'].nunique()} counties (>=3 ZCTAs each)\n")
     rep = {"n": len(m), "counties": int(m["county_fips"].nunique()), "within_county": {}}
