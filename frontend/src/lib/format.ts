@@ -1,9 +1,3 @@
-export const fmtPct1 = (v: number | null | undefined, suffix = '%') =>
-  v == null || Number.isNaN(v) ? '--' : `${v.toFixed(1)}${suffix}`;
-
-export const fmtRatePct = (v: number | null | undefined) =>
-  v == null || Number.isNaN(v) ? '--' : `${(v * 100).toFixed(1)}%`;
-
 export const fmtInt = (v: number | null | undefined) =>
   v == null || Number.isNaN(v) ? '--' : Math.round(v).toLocaleString('en-US');
 
@@ -12,9 +6,6 @@ export const fmtMoney = (v: number | null | undefined) =>
 
 export const fmtScore = (v: number | null | undefined) =>
   v == null || Number.isNaN(v) ? '--' : v.toFixed(0);
-
-export const fmtPer1k = (v: number | null | undefined) =>
-  v == null || Number.isNaN(v) ? '--' : v.toFixed(1);
 
 // Severity of an access-disadvantage percentile (higher = more disadvantage): a plain word + an
 // intuitive green->amber->red tint. Single source so the detail headline and the compare table

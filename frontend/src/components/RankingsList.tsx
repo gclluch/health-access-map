@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../store';
 import { metricValue } from '../lib/scoring';
 import { downloadCsv } from '../lib/csv';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, metricLabel } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, WITHIN_STATE_METRIC, metricLabel, type SlimMetric } from '../lib/types';
 import Caret from './Caret';
 import MetricSelect from './MetricSelect';
 
@@ -22,32 +22,10 @@ export default function RankingsList() {
   const setMetric = useStore((s) => s.setMetric);
   const setRankOrder = useStore((s) => s.setRankOrder);
 
-  const { rows, total } = useMemo(() => {
-    const out: Array<{ z: string; v: number; label: string }> = [];
-    for (const m of metrics.values()) {
-      if (!m.scoreable || m.low_confidence || m.institutional) continue;
-      if (stateFilter && m.state !== stateFilter) continue;
-      const v = metricValue(m, metric, weights);
-      if (v != null && !Number.isNaN(v)) {
-        const label = m.city ? `${m.city}, ${m.state ?? ''}` : m.county_name ?? `ZIP ${m.zcta5}`;
-        out.push({ z: m.zcta5, v, label });
-      }
-    }
-    out.sort((a, b) => (rankOrder === 'desc' ? b.v - a.v : a.v - b.v));
-    return { rows: out.slice(0, 100), total: out.length };
-  }, [metrics, metric, weights, stateFilter, rankOrder]);
-
-  const end = rankOrder === 'desc' ? 'Highest' : 'Lowest';
-
-  const exportCsv = () => {
-    const rows = [];
-    for (const r of metricsRows()) rows.push(r);
-    downloadCsv(`access-disadvantage-${metric}${stateFilter ? '-' + stateFilter : ''}.csv`, rows);
-  };
-  // full export rows (not capped at 100): the ranked, filtered set with its dimension breakdown
-  function* metricsRows() {
-    let rank = 0;
-    const all: Array<{ m: ReturnType<typeof metrics.get>; v: number }> = [];
+  // One pass: the scoreable/filtered set scored under the live weights, sorted by the chosen
+  // direction. The top-100 view and the (uncapped) CSV are both derived from this.
+  const ranked = useMemo(() => {
+    const all: Array<{ m: SlimMetric; v: number }> = [];
     for (const m of metrics.values()) {
       if (!m.scoreable || m.low_confidence || m.institutional) continue;
       if (stateFilter && m.state !== stateFilter) continue;
@@ -55,24 +33,34 @@ export default function RankingsList() {
       if (v != null && !Number.isNaN(v)) all.push({ m, v });
     }
     all.sort((a, b) => (rankOrder === 'desc' ? b.v - a.v : a.v - b.v));
-    for (const { m, v } of all) {
-      rank += 1;
-      yield {
-        rank,
-        zip: m!.zcta5,
-        place: m!.city ?? m!.county_name ?? '',
-        state: m!.state ?? '',
-        metric,
-        value: Number(v.toFixed(1)),
-        tier: m!.tier ?? '',
-        n_dims_scored: m!.n_dims_scored ?? '',
-        health_need_pctile: m!.health_need_pctile ?? '',
-        social_vulnerability_pctile: m!.social_vulnerability_pctile ?? '',
-        care_access_pctile: m!.care_access_pctile ?? '',
-        population: m!.population ?? '',
-      };
-    }
-  }
+    return all;
+  }, [metrics, metric, weights, stateFilter, rankOrder]);
+
+  const rows = ranked.slice(0, 100).map(({ m, v }) => ({
+    z: m.zcta5,
+    v,
+    label: m.city ? `${m.city}, ${m.state ?? ''}` : m.county_name ?? `ZIP ${m.zcta5}`,
+  }));
+  const total = ranked.length;
+  const end = rankOrder === 'desc' ? 'Highest' : 'Lowest';
+
+  const exportCsv = () => {
+    const csvRows = ranked.map(({ m, v }, i) => ({
+      rank: i + 1,
+      zip: m.zcta5,
+      place: m.city ?? m.county_name ?? '',
+      state: m.state ?? '',
+      metric,
+      value: Number(v.toFixed(1)),
+      tier: m.tier ?? '',
+      n_dims_scored: m.n_dims_scored ?? '',
+      health_need_pctile: m.health_need_pctile ?? '',
+      social_vulnerability_pctile: m.social_vulnerability_pctile ?? '',
+      care_access_pctile: m.care_access_pctile ?? '',
+      population: m.population ?? '',
+    }));
+    downloadCsv(`access-disadvantage-${metric}${stateFilter ? '-' + stateFilter : ''}.csv`, csvRows);
+  };
 
   return (
     <div className="flex flex-col h-full">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtScore, ordinal, fmtRatePct, fmtInt, fmtMoney, severity } from './format';
+import { fmtScore, ordinal, fmtInt, fmtMoney, severity } from './format';
 
 describe('fmtScore', () => {
   it('rounds to a whole number and dashes on null/NaN', () => {
@@ -37,11 +37,10 @@ describe('severity', () => {
   });
 });
 
-describe('rate/int/money', () => {
-  it('formats fractions as percents and rounds counts', () => {
-    expect(fmtRatePct(0.123)).toBe('12.3%');
+describe('int/money', () => {
+  it('rounds counts and formats currency, dashes on null', () => {
     expect(fmtInt(12345)).toBe('12,345');
     expect(fmtMoney(54000)).toBe('$54,000');
-    expect(fmtRatePct(null)).toBe('--');
+    expect(fmtInt(null)).toBe('--');
   });
 });

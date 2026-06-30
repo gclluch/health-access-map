@@ -1,4 +1,5 @@
 import type { SlimMetric } from './types';
+import { centroid } from './geo';
 
 export interface FeatureCollection {
   type: 'FeatureCollection';
@@ -15,23 +16,6 @@ export interface LoadedData {
   // z>=6 streams from zcta.pmtiles in the map; this drives the dense national choropleth.
   overview: FeatureCollection;
   centroids: Map<string, [number, number]>;
-}
-
-function centroid(coords: unknown): [number, number] {
-  let sx = 0;
-  let sy = 0;
-  let n = 0;
-  const walk = (c: unknown) => {
-    if (Array.isArray(c) && typeof c[0] === 'number' && typeof c[1] === 'number') {
-      sx += c[0] as number;
-      sy += c[1] as number;
-      n += 1;
-    } else if (Array.isArray(c)) {
-      c.forEach(walk);
-    }
-  };
-  walk(coords);
-  return n ? [sx / n, sy / n] : [-119, 37];
 }
 
 const METRICS_URL = '/metrics.json';

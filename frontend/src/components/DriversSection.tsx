@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { dimensionContributions } from '../lib/scoring';
+import { dimensionContributions, isDefaultWeights } from '../lib/scoring';
 import { ordinal } from '../lib/format';
-import { DEFAULT_WEIGHTS, type SlimMetric, type Weights } from '../lib/types';
+import { type SlimMetric, type Weights } from '../lib/types';
 
 const DIMS = [
   ['health_need', 'Health need'],
@@ -51,10 +51,7 @@ export default function DriversSection({
     .sort((a, b) => b.c - a.c)
     .map((r, i) => ({ ...r, shade: SHADES[i] ?? 'bg-accent/50', share: (r.c / total) * 100 }));
 
-  const isDefault =
-    weights.health_need === DEFAULT_WEIGHTS.health_need &&
-    weights.social_vulnerability === DEFAULT_WEIGHTS.social_vulnerability &&
-    weights.care_access === DEFAULT_WEIGHTS.care_access;
+  const isDefault = isDefaultWeights(weights);
   const pctOf = (w: number) => Math.round((w / wsum) * 100);
 
   return (

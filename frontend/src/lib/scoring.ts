@@ -1,23 +1,42 @@
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, type SlimMetric, type Weights } from './types';
+import { bisectLeft } from 'd3-array';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, type SlimMetric, type Weights } from './types';
+
+type DimKey = 'health_need' | 'social_vulnerability' | 'care_access';
+
+// True when the weights equal the shipped defaults (used to show/hide the "reset" affordance).
+export function isDefaultWeights(w: Weights): boolean {
+  return (
+    w.health_need === DEFAULT_WEIGHTS.health_need &&
+    w.social_vulnerability === DEFAULT_WEIGHTS.social_vulnerability &&
+    w.care_access === DEFAULT_WEIGHTS.care_access
+  );
+}
+
+// Effective dimension weights (fall back to equal when the user zeroes them all out) paired with
+// each dimension percentile that is present. Shared by accessGap / accessGapMult / contributions.
+function presentParts(m: SlimMetric, w: Weights): Array<[DimKey, number, number]> {
+  const eff =
+    w.health_need + w.social_vulnerability + w.care_access <= 0
+      ? { health_need: 1, social_vulnerability: 1, care_access: 1 }
+      : w;
+  const parts: Array<[DimKey, number, number]> = [];
+  if (m.health_need_pctile != null) parts.push(['health_need', eff.health_need, m.health_need_pctile]);
+  if (m.social_vulnerability_pctile != null)
+    parts.push(['social_vulnerability', eff.social_vulnerability, m.social_vulnerability_pctile]);
+  if (m.care_access_pctile != null) parts.push(['care_access', eff.care_access, m.care_access_pctile]);
+  return parts;
+}
 
 // Client-side access disadvantage = weighted mean of the 3 dimension percentiles
 // (health need, social vulnerability, care access), renormalized over whichever
 // dimensions are present. Mirrors the pipeline composite; the sliders re-weight live.
 export function accessGap(m: SlimMetric, w: Weights): number | null {
   if (!m.scoreable) return null;
-  const eff =
-    w.health_need + w.social_vulnerability + w.care_access <= 0
-      ? { health_need: 1, social_vulnerability: 1, care_access: 1 }
-      : w;
-  const parts: Array<[number, number]> = [];
-  if (m.health_need_pctile != null) parts.push([eff.health_need, m.health_need_pctile]);
-  if (m.social_vulnerability_pctile != null)
-    parts.push([eff.social_vulnerability, m.social_vulnerability_pctile]);
-  if (m.care_access_pctile != null) parts.push([eff.care_access, m.care_access_pctile]);
+  const parts = presentParts(m, w);
   if (parts.length < 2) return null;
-  const wsum = parts.reduce((a, [pw]) => a + pw, 0);
+  const wsum = parts.reduce((a, [, pw]) => a + pw, 0);
   if (wsum <= 0) return null;
-  return parts.reduce((a, [pw, v]) => a + pw * v, 0) / wsum;
+  return parts.reduce((a, [, pw, v]) => a + pw * v, 0) / wsum;
 }
 
 // Multiplicative "coincidence" lens: weighted GEOMETRIC mean of the 3 dimension
@@ -27,20 +46,12 @@ export function accessGap(m: SlimMetric, w: Weights): number | null {
 // zero the product; renormalized over present dims. Same 0-100 scale as accessGap.
 export function accessGapMult(m: SlimMetric, w: Weights): number | null {
   if (!m.scoreable) return null;
-  const eff =
-    w.health_need + w.social_vulnerability + w.care_access <= 0
-      ? { health_need: 1, social_vulnerability: 1, care_access: 1 }
-      : w;
-  const parts: Array<[number, number]> = [];
-  if (m.health_need_pctile != null) parts.push([eff.health_need, m.health_need_pctile]);
-  if (m.social_vulnerability_pctile != null)
-    parts.push([eff.social_vulnerability, m.social_vulnerability_pctile]);
-  if (m.care_access_pctile != null) parts.push([eff.care_access, m.care_access_pctile]);
+  const parts = presentParts(m, w);
   if (parts.length < 2) return null;
-  const wsum = parts.reduce((a, [pw]) => a + pw, 0);
+  const wsum = parts.reduce((a, [, pw]) => a + pw, 0);
   if (wsum <= 0) return null;
   const lognum = parts.reduce(
-    (a, [pw, v]) => a + pw * Math.log(Math.min(1, Math.max(0.01, v / 100))),
+    (a, [, pw, v]) => a + pw * Math.log(Math.min(1, Math.max(0.01, v / 100))),
     0,
   );
   return Math.exp(lognum / wsum) * 100;
@@ -85,14 +96,7 @@ export function buildScoreIndex(metrics: Iterable<SlimMetric>, w: Weights): numb
 // National percentile of `score` within a sorted index from buildScoreIndex (binary search).
 export function percentileOf(sorted: number[], score: number | null): number | null {
   if (score == null || !sorted.length) return null;
-  let lo = 0;
-  let hi = sorted.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (sorted[mid] < score) lo = mid + 1;
-    else hi = mid;
-  }
-  return (lo / sorted.length) * 100;
+  return (bisectLeft(sorted, score) / sorted.length) * 100;
 }
 
 // Contribution of each dimension to the composite (weight-normalized; sums to score).
@@ -101,15 +105,7 @@ export function dimensionContributions(
   w: Weights,
 ): { health_need: number; social_vulnerability: number; care_access: number } | null {
   if (accessGap(m, w) == null) return null;
-  const eff =
-    w.health_need + w.social_vulnerability + w.care_access <= 0
-      ? { health_need: 1, social_vulnerability: 1, care_access: 1 }
-      : w;
-  const parts: Array<['health_need' | 'social_vulnerability' | 'care_access', number, number]> = [];
-  if (m.health_need_pctile != null) parts.push(['health_need', eff.health_need, m.health_need_pctile]);
-  if (m.social_vulnerability_pctile != null)
-    parts.push(['social_vulnerability', eff.social_vulnerability, m.social_vulnerability_pctile]);
-  if (m.care_access_pctile != null) parts.push(['care_access', eff.care_access, m.care_access_pctile]);
+  const parts = presentParts(m, w);
   const wsum = parts.reduce((a, [, pw]) => a + pw, 0) || 1;
   const out = { health_need: 0, social_vulnerability: 0, care_access: 0 };
   for (const [k, pw, v] of parts) out[k] = (pw / wsum) * v;

@@ -35,9 +35,6 @@ async function getJson<T>(path: string): Promise<T> {
   }
 }
 
-export const apiHealth = () =>
-  getJson<{ status: string; zcta_count: number; states: string[] }>('/api/health');
-
 // Full per-ZIP record (all raw measures + national percentiles) for the drill-down's deepest
 // level and the Who-lives-here block. Two sources, transparent to callers:
 //  - If VITE_API_BASE is set, a real FastAPI backend is hosted -> hit /api/zcta/{z}.

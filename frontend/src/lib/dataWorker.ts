@@ -4,22 +4,7 @@
 // (spinner keeps animating) during cold load. The heavy JSON.parse is the win moved off the
 // main thread. Detailed geometry is NOT parsed here - it streams as vector tiles (zcta.pmtiles).
 
-function centroid(coords: unknown): [number, number] {
-  let sx = 0;
-  let sy = 0;
-  let n = 0;
-  const walk = (c: unknown) => {
-    if (Array.isArray(c) && typeof c[0] === 'number' && typeof c[1] === 'number') {
-      sx += c[0] as number;
-      sy += c[1] as number;
-      n += 1;
-    } else if (Array.isArray(c)) {
-      c.forEach(walk);
-    }
-  };
-  walk(coords);
-  return n ? [sx / n, sy / n] : [-119, 37];
-}
+import { centroid } from './geo';
 
 interface GeoFeature {
   type: 'Feature';

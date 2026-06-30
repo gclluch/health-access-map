@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, PRESETS, type Weights } from '../lib/types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, PRESETS, type Weights } from '../lib/types';
+import { isDefaultWeights } from '../lib/scoring';
 import Caret from './Caret';
 
 // Weights only change the composite metrics (additive + the geometric lens, both weight-driven).
@@ -55,10 +56,7 @@ export default function WeightSliders() {
   };
   const weights = local;
 
-  const isDefault =
-    weights.health_need === DEFAULT_WEIGHTS.health_need &&
-    weights.social_vulnerability === DEFAULT_WEIGHTS.social_vulnerability &&
-    weights.care_access === DEFAULT_WEIGHTS.care_access;
+  const isDefault = isDefaultWeights(weights);
 
   return (
     <div className="px-3 py-2.5 border-t border-hairline">
