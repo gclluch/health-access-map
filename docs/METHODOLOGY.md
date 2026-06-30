@@ -81,7 +81,7 @@ transport barriers, unmet social needs. **This is access, not decoration:** affo
 (income), accessibility (transportation), acceptability (language) are the *enabling* axis of
 the 5 A's, and the federal **Medically Underserved Area** formula itself uses % poverty + %
 elderly alongside provider supply. Proof it is not a mere descriptor: we *do* carry pure
-descriptors (median age, % minority) and score them **zero**.
+descriptors (median age, % people of color) and score them **zero**.
 
 ### Barriers to care (availability + affordability of care)
 Four sub-scores: **low provider supply** (spatial, §4), **unmet safety-net need** (FQHC desert

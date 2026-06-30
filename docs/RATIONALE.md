@@ -73,7 +73,7 @@ accessible. The canonical definitions make vulnerability part of access:
 provider ratio, infant mortality, **% below poverty**, and **% age 65+** - i.e. the US
 government's own underservice score puts socioeconomic vulnerability co-equal with supply.
 
-**Proof it's not a passive descriptor:** we *have* descriptors - median age, % minority,
+**Proof it's not a passive descriptor:** we *have* descriptors - median age, % people of color,
 % under-5 - and we score them **zero** (context only). Social vulnerability is scored
 because its components *causally impede getting care* (cost-related avoidance, missed
 visits from no transport, language under-use), not merely correlate with disadvantage.

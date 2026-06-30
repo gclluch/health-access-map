@@ -256,7 +256,7 @@ CONTEXT_PLACES = {
 }
 CONTEXT_ACS = {
     "median_age": "Median age",
-    "pct_minority": "Racial/ethnic minority",  # context only, never scored (by design)
+    "pct_minority": "People of color",  # context only, never scored (by design)
     "pct_under5": "Under 5",
     "pct_over65_ctx": "65 and older",
     # Acceptability context: the Medicaid population faces provider-acceptance barriers. Shown,
