@@ -307,37 +307,83 @@ measurement-error band.
 **Accept.** Per-ZIP MOE interval stored + shown; overlapping bands read as tied. **Risk:** medium -
 MC×33k×B re-rank runtime (vectorize, cap B); band must not contradict the weight band. Coordinate cols w/ T8.
 
-### T8 - Kill the 30 MB JSON client parse  [L]  [independent]
-**Why.** `frontend/public/metrics.json` is 31.5 MB; `data.ts` fetches + `JSON.parse`s it whole
-(`METRICS_URL='/metrics.json'`). Hard scale ceiling on cellular.
-- **(c) stopgap, hours:** prune to client-used columns + reduce precision; lean on brotli. Ship first.
-- **(b) recommended:** typed-array "map frame" (zcta ids + ~5 percentile cols as Float32/Int8) for first
-  paint; lazy-load the rest per-ZIP via existing shards (`api.ts:apiZcta`).
-- **(a) most work:** Arrow IPC / DuckDB-WASM.
-1. Audit `data.ts` load path (recon found no worker file - confirm); baseline transfer + TTI on 4G.
-2. Emit `mapframe.bin` from the pipeline (sibling to `_write_slim_json`); keep `metrics.json` for non-default cols or drop.
-3. Rewrite `data.ts` to parse typed arrays; keep the store API unchanged.
-4. Verify e2e (`e2e/smoke.spec.ts`) + `verify-csp`; measure before/after.
-**Accept.** First-interactive < ~5 MB; TTI improved; drill-down intact. **Risk:** med-high (core load
-path) - do (c) behind (b). Coordinate w/ T4 (don't bloat frame) + T10 (data path).
+### T8 - Kill the 30 MB JSON client parse  [L]  [independent]  ← NEXT (start here)
+**Sizes (verified 2026-06-30 build):** `metrics.json` **30 MB** (33,791 records × 36 cols),
+`zcta_overview.geojson` **7.2 MB**, `zcta/` drill-down shards **135 MB total** (~150 KB per zip3).
+**Recon corrections (the original notes below were stale - re-verified):**
+- The parse is **already off-main-thread**: `data.ts:loadViaWorker` runs in `dataWorker.ts`, falling back to
+  `loadOnMainThread`. So the problem is the **30 MB transfer + parse memory/time on cellular**, NOT a blocked
+  UI thread. Frame the win as transfer bytes + TTI, not jank.
+- Drill-down shards **already exist and lazy-load**: `api.ts:loadShard` fetches `/zcta/{zip3}.json` per click
+  (static path, no backend). The DetailPanel's deepest measures already come from this `rec`, not the slim metric.
+- **CONSTRAINT (the trap):** the map can color by **any** metric in `ALL_METRICS` (`types.ts`), which includes the
+  **14 sub-score `_pctile` columns** (`MetricSelect`). `MapView`/`Legend`/`RankingsList` read them straight off the
+  in-memory slim `metrics` map (`metricValue → m[metric]`). So sub-score columns **cannot be naively dropped** -
+  doing so breaks every sub-score map/legend lens. They must be lazy-loaded *as map columns*, not just per-ZIP.
+
+**Plan.**
+1. **Baseline** transfer (brotli) + TTI on throttled 4G; record in provenance/PR.
+2. **(c) stopgap, ship first (~hours):** in `_write_slim_json`, quantize the percentile columns (`*_pctile`,
+   tier, band lo/hi) to integers (they're 0-100; already `round(1)`) - Int saves bytes + parses faster; keep
+   geography/flags. Lean on Netlify brotli. Measure. Expect a modest (~20-35%) cut, not the headline win.
+3. **(b) the real win - two-tier payload:**
+   - Emit a compact **map frame** (sibling to `_write_slim_json`) = first-paint columns only: `zcta5` + the 3
+     dimension pctiles + `access_gap_pctile`/`within_state`/`resid`/`tier` + flags (`scoreable`,`low_confidence`,
+     `institutional`,`n_dims_scored`) + label strings (`city`,`state`,`county_name`,`population`). As JSON-of-typed-
+     arrays or a binary blob (Int16 pctiles, Int8 flags). This is what the default map + rankings + legend need.
+   - Move the **14 sub-score `_pctile` columns** into a **separate columnar payload** (`subscores.json`/`.bin`)
+     fetched lazily the first time a sub-score map metric is selected (extend the store: `ensureSubscoreColumns()`
+     merges them into the `metrics` map). The DetailPanel drill-down already uses shards, so per-ZIP detail is
+     unaffected.
+   - Rewrite `data.ts`/`dataWorker.ts` to parse the map frame; **keep the store API (`SlimMetric` map) unchanged**
+     so `MapView`/`RankingsList`/`Legend`/`scoring.ts` don't change. Sub-score columns arrive later and are merged.
+4. **Verify:** `e2e/smoke.spec.ts` + `compare.spec.ts` + `make verify-csp` (worker-src/script-src `'self'` - keep
+   the binary same-origin, no CDN worker); measure transfer + TTI before/after.
+**Accept.** First-interactive transfer < ~5 MB; TTI improved on 4G; sub-score lenses + drill-down still work; e2e +
+verify-csp green. **Risk:** med-high (core load path). Do (c) first as a safe stopgap; land (b) behind it.
+**Coordinate:** T4 (don't bloat the frame - band lo/hi stay in the frame; the `rank_band` provenance block is build-
+side only) and T10 (the static shard path is the prod path).
+
+**Original (stale) notes:** ~~recon found no worker file~~ (wrong - `dataWorker.ts` exists); ~~prune to client-used
+columns~~ (most slim cols ARE client-used; the sub-score cols need lazy *column* loading, not deletion).
 
 ### T9 - Data deploy provenance / governance  [M stopgap / L full]  [independent]
-**Why.** No way to know what data is live or to reproduce a build.
-1. **Stamp** (`join_and_score._write_public_meta`): per-payload content hash + pipeline git SHA + provenance digest into `meta.json`.
-2. **`/version`:** static `version.json` in `frontend/public/` (and a `backend/main.py` `/version` route if the API is ever deployed - today it only carries `version="1.0.0"`).
-3. **Deploy record:** `deploy-manifest.json` (hashes + timestamp + SHA) and/or Netlify deploy message.
-4. **Lock** resolved dataset IDs/vintages per build (`config.PLACES_DATASET_ID` etc. resolve-at-runtime today).
-5. **(Optional, L)** scheduled CI: rebuild → `make acceptance`/`gate`/`verify-csp` → deploy (needs secrets + self-hosted runner).
-**Accept.** Live site exposes vintage + hash; manifest records what shipped; rollback traceable. **Risk:** low (additive).
+**Why.** No way to know what data is live or to reproduce a build. `meta.json` (`_write_public_meta`) today carries
+`generated` + `vintages` + counts, but **no content hash and no git SHA**; `backend/main.py` only has `version="1.0.0"`.
+1. **Stamp** (`join_and_score._write_public_meta`): add a sha256 per shipped payload (`metrics.json`, the new map
+   frame, `zcta_overview.geojson`, `zcta.pmtiles`), the pipeline **git SHA** (`git rev-parse HEAD`, or a build env
+   var so it works in CI), and a `provenance.json` digest. Write these into `meta.json` (already frontend-fetched
+   by `store.ts`) and surface a small "data vintage + build" line in the methodology panel / footer.
+2. **`/version`:** the `meta.json` above IS the static version doc; optionally add a `backend/main.py` `/version`
+   route returning the same dict (only if T10 deploys the API - otherwise skip).
+3. **Deploy record:** emit `deploy-manifest.json` (payload hashes + timestamp + SHA) and/or put the short SHA +
+   hashes in the Netlify deploy message so a live deploy is traceable to a data vintage.
+4. **Lock** resolved dataset IDs/vintages per build (`config.PLACES_DATASET_ID` etc. resolve-at-runtime with
+   assertions today) so a rebuild is reproducible given stable upstreams.
+5. **(Optional, L)** scheduled CI: rebuild → `make acceptance`/`gate`/`verify-csp` → deploy (needs API keys as
+   secrets + multi-GB downloads → self-hosted runner). Defer.
+**Accept.** Live site exposes vintage + content hash; a manifest records what shipped; rollback is traceable to a
+vintage. **Risk:** low (additive). **Note:** `data/processed/*` + `frontend/public/metrics.json` are **gitignored**
+(built locally), which is exactly why the stamp matters - the live bytes are otherwise untraceable to a commit.
 
 ### T10 - Resolve the dual data path  [S static / M deploy]  [deps: T8 decision]
-**Why.** `api.ts:apiZcta` has a dead `VITE_API_BASE` branch (backend not deployed); static shards always serve.
-- **Static-only (recommended):** drop the `API_BASE` branch from `api.ts`; mark `backend/` dev-only;
-  shards cover drill-down. Fully redundant if T8 goes DuckDB-WASM.
-- **Deploy API (alt):** scale-to-zero host, set `VITE_API_BASE`, enable the Netlify `/api` proxy, add
-  origin to CSP `connect-src`, add uptime monitoring.
-1. Remove the env branch from `api.ts` (static path). 2. Label `backend/` dev-only in README. 3. README states the model.
-**Accept.** One prod path; no dead branch; README unambiguous. **Risk:** low - do after the T8 direction is set.
+**Why.** `api.ts` has a dead `VITE_API_BASE` branch (the FastAPI backend is **not deployed**; `VITE_API_BASE` is
+unset). `apiZcta` (line ~60: `if (API_BASE) return getJson('/api/zcta/{z}')`) and `apiCompare` always fall through
+to the static `/zcta/{zip3}.json` shards. `netlify.toml` has the `/api/*` proxy + the API origin in `connect-src`
+**commented out**. So prod is already static-only; the API path is dead weight + a misleading affordance.
+- **Static-only (recommended):** delete the `API_BASE` env branch from `api.ts` (the `${API_BASE}` prefix in
+  `fetchJsonOnce` + the `if (API_BASE)` in `apiZcta`); keep the shard path as the single prod data path; mark
+  `backend/` clearly dev/test-only in the README (the FastAPI app is still exercised by `tests/test_backend.py`,
+  so keep it - just label it). Leave the commented netlify `/api` block as documented-but-off, or remove it.
+- **Deploy API (alt, only if a live dynamic API is actually wanted):** host on a scale-to-zero free tier, set
+  `VITE_API_BASE` at build, enable the netlify `/api` proxy, add the origin to CSP `connect-src`, add uptime
+  monitoring. More surface for no current need - **not recommended**.
+1. Remove the env branch from `api.ts`. 2. Label `backend/` dev-only in README ("Production & ops"). 3. README
+   states the static-only model unambiguously (it currently hedges).
+**Accept.** One prod data path; no dead branch in `api.ts`; README unambiguous. **Risk:** low. Do after T8 confirms
+the shard path stays the drill-down source (it does, in plan (b) above).
 
-**Sequence:** T2 → T5 → T4 (product); T8 (stopgap first) ∥ T9 → T10 (engineering). Then the one
-coordinated doc pass (README + VALIDATION.md) now that T1/T3/T6 have landed.
+**Sequence (remaining):** **T8 (stopgap c, then b)** → **T9** (stamp the new payloads once their names are final) →
+**T10** (collapse the dead API branch; the static shard path is then the sole, documented prod path). All three are
+Phase-3 engineering and touch **no published numbers**. Phase 2 (T1/T2/T3/T4/T5/T6/T7) + the coordinated doc pass are
+**done** (see status block at the top).
