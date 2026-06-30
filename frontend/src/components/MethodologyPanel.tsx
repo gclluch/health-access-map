@@ -5,6 +5,10 @@ import { SUBSCORE_EVIDENCE } from '../lib/types';
 // Limitations made first-class (§15.9): integrity hidden is integrity absent.
 const POINTS: Array<[string, string]> = [
   [
+    'One deprivation gradient, not three independent axes',
+    'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+  ],
+  [
     'Relative, not absolute',
     'A score of 95 means "worse access than 95% of U.S. ZIPs," not "objectively bad." A top-decile ZIP can still be fine in absolute terms.',
   ],
@@ -15,10 +19,6 @@ const POINTS: Array<[string, string]> = [
     [
     'Provider supply: spatial access, not capacity',
     'Supply uses E2SFCA (Luo & Qi 2009) with a VARIABLE catchment (McGrail & Humphreys 2009): each ZIP\'s bandwidth scales with local settlement density - small in cities, wide in sparse rural areas. This removes the urbanicity artifact of a single fixed radius and roughly doubled supply\'s correlation with independent mortality (e.g. it now tracks life expectancy, which it did not under a fixed 16 km radius). It is still a relative measure over NPPES registrations (which over-count active capacity and ignore Medicaid acceptance); we tested capacity-weighting by Medicare claims volume and it did not help, so it is not used. The HRSA 3,500:1 shortage flag is computed from a fixed 16 km service area (the interpretable benchmark).',
-  ],
-  [
-    'Collinear, weighted dimensions',
-    'Health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), so the weighted sum double-counts shared variance. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
   ],
   [
     'Small-area noise (and what we do about it)',
@@ -276,6 +276,22 @@ export default function MethodologyPanel() {
             </div>
           </div>
 
+          {/* The single most important caveat, promoted from a footnote to a primary callout (T3):
+              the index is ~one deprivation gradient, so the weight sliders are a sensitivity probe. */}
+          <div className="mb-4 rounded border border-accent/30 bg-accent/8 px-3 py-2.5">
+            <div className="text-[11px] uppercase tracking-wide text-accent mb-1">
+              One gradient, not three independent dials
+            </div>
+            <p className="text-[12px] text-ink leading-relaxed">
+              The three dimensions move together (correlations 0.59-0.73; PC1 holds <b>76%</b> of their
+              joint variance, <b>~1.6 effective dimensions</b>). The default weighted sum is, statistically,
+              that single gradient: it correlates <b>r ≈ 0.999</b> with the first principal component. So
+              one "general deprivation" axis drives almost the whole score, and re-weighting shifts ranks
+              only ~±6 points (Spearman ~0.999). <b>Treat the sliders as a sensitivity probe</b> - a way to
+              stress-test the ranking, not a knob that rewrites which places are disadvantaged.
+            </p>
+          </div>
+
           <div className="mb-4 rounded border border-hairline bg-paper/60 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
               Which lens to use
@@ -331,9 +347,10 @@ export default function MethodologyPanel() {
             </ul>
             <p className="text-[11px] text-graphite mt-2">
               Dimensions are strongly correlated (0.59-0.73; ~1.6 effective dimensions), so the
-              weighted sum partly double-counts shared variance. The sliders exist so that
-              value judgment is yours - but because the axes move together, re-weighting shifts
-              ranks only ~±6 points (Spearman ~0.999): a sensitivity probe, not a rewrite.
+              weighted sum partly double-counts shared variance - and in fact <i>is</i> the single
+              underlying gradient (it correlates r ≈ 0.999 with PC1; see the callout above). The sliders
+              exist so the value judgment is yours, but because the axes move together, re-weighting
+              shifts ranks only ~±6 points (Spearman ~0.999): a sensitivity probe, not a rewrite.
             </p>
           </div>
 

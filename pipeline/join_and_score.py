@@ -455,6 +455,29 @@ def _dimension_correlations(df: pd.DataFrame, dim_cols: list[str]) -> dict:
     return out
 
 
+def _composite_pc1_corr(dim_values: np.ndarray, composite: np.ndarray) -> float | None:
+    """|Pearson r| between the additive composite and PC1 of the standardized dimension matrix.
+    A value > 0.99 means the weighted sum IS, statistically, the first principal component: the
+    three "dimensions" collapse to one latent gradient, so the weights are a sensitivity probe, not
+    a choice among independent axes (T3). Pure kernel (no DataFrame) so it is unit-testable.
+
+    `dim_values` is an (n, k) array of the k dimension percentiles; `composite` is the (n,) score.
+    Rows with any NaN in either are dropped; returns None if < 10 complete rows or PC1 is degenerate."""
+    X = np.asarray(dim_values, float)
+    c = np.asarray(composite, float)
+    ok = ~np.isnan(c) & ~np.isnan(X).any(axis=1)
+    if ok.sum() < 10:
+        return None
+    X, c = X[ok], c[ok]
+    Xs = (X - X.mean(axis=0)) / X.std(axis=0, ddof=0)
+    # leading eigenvector of the correlation matrix -> PC1 scores (sign is arbitrary, so |r|)
+    w, V = np.linalg.eigh(np.corrcoef(Xs, rowvar=False))
+    pc1 = Xs @ V[:, int(np.argmax(w))]
+    if pc1.std() == 0 or c.std() == 0:
+        return None
+    return abs(float(np.corrcoef(pc1, c)[0, 1]))
+
+
 def _effective_dimensions(df: pd.DataFrame, dim_cols: list[str]) -> dict:
     """How many INDEPENDENT axes do the (collinear) dimensions really carry? Eigen-decompose
     their correlation matrix: PC1 share + participation ratio (Σλ)²/Σλ². ~1.6 here, i.e. the
@@ -465,13 +488,20 @@ def _effective_dimensions(df: pd.DataFrame, dim_cols: list[str]) -> dict:
     if len(sub) < 10:
         return {}
     ev = np.linalg.eigvalsh(sub.corr().to_numpy())[::-1]
-    return {
+    out = {
         "pc1_share": round(float(ev[0] / ev.sum()), 3),
         "participation_ratio": round(float(ev.sum() ** 2 / (ev ** 2).sum()), 2),
         "note": "eigen-decomposition of the dimension correlation matrix; participation_ratio "
                 "= effective number of independent dimensions (3 nominal). Low value => "
                 "re-weighting barely moves ranks; the sliders are a sensitivity probe.",
     }
+    # the decisive number: does the additive composite ~equal PC1? (T3 - composite ≈ PC1 proof)
+    if "access_gap_score" in df.columns:
+        cp = _composite_pc1_corr(df[dim_cols].to_numpy(), df["access_gap_score"].to_numpy())
+        if cp is not None:
+            out["composite_pc1_corr"] = round(cp, 4)
+            out["composite_is_pc1"] = bool(cp > 0.99)
+    return out
 
 
 def _lens_diag(df: pd.DataFrame) -> dict:

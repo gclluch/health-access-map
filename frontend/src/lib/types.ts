@@ -64,7 +64,12 @@ export interface BuildMeta {
   vintages: { places?: string; acs_year?: number; tiger_year?: number; nppes?: string | null };
   n_scored?: number;
   low_confidence?: number;
-  effective_dimensions?: { pc1_share?: number; participation_ratio?: number };
+  effective_dimensions?: {
+    pc1_share?: number;
+    participation_ratio?: number;
+    composite_pc1_corr?: number;   // |r| between the additive composite and PC1 (>0.99 => composite IS PC1)
+    composite_is_pc1?: boolean;
+  };
 }
 
 export type DimKey = 'health_need' | 'social_vulnerability' | 'care_access';

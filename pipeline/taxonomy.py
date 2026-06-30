@@ -19,8 +19,11 @@ national percentile reads uniformly: higher = worse.
 """
 from __future__ import annotations
 
-# measure: (column_in_parquet, direction, friendly_label)
-M = lambda col, d, label: {"col": col, "dir": d, "label": label}  # noqa: E731
+# measure: (column_in_parquet, direction, friendly_label[, resolution])
+# resolution: "zcta" (varies within county - the tool's native resolution) | "county" (a county
+# value broadcast to every ZCTA in the county, so its within-county r is ~0; see T3 / VALIDATION.md
+# §3). Defaults to "zcta"; only the genuinely county-broadcast inputs are tagged "county".
+M = lambda col, d, label, res="zcta": {"col": col, "dir": d, "label": label, "res": res}  # noqa: E731
 
 DIMENSIONS: dict = {
     "health_need": {
@@ -166,7 +169,7 @@ DIMENSIONS: dict = {
                 "label": "Official provider shortage (HPSA)",
                 "source": "hpsa",
                 "members": [
-                    M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)"),
+                    M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)", "county"),
                 ],
             },
             # COMPUTED + DISPLAYED but NOT SCORED (scored=False). need-relative: a raw FQHC-access
@@ -220,7 +223,7 @@ DIMENSIONS: dict = {
                 "label": "Medical debt burden",
                 "source": "medicaldebt",
                 "members": [
-                    M("medical_debt", 1, "Medical debt in collections (Urban Institute)"),
+                    M("medical_debt", 1, "Medical debt in collections (Urban Institute)", "county"),
                 ],
             },
             # REALIZED care use - computed + displayed but NOT SCORED (scored=False). This is
@@ -292,6 +295,21 @@ def scored_places_keys() -> list[str]:
     return sorted(keys)
 
 
+def subscore_resolution(members: list[dict]) -> str:
+    """The resolution at which a sub-score actually discriminates, derived from its members:
+      "zcta"   - every member varies within county (the tool's native resolution)
+      "county" - every member is a county value broadcast to ZCTAs (within-county r ~0)
+      "mixed"  - members span both
+    A sub-score tagged "county" helps rank BETWEEN counties but cannot distinguish ZIPs inside the
+    same county, so it must be excluded from any sub-county discrimination claim (T3)."""
+    res = {m.get("res", "zcta") for m in members}
+    if res == {"county"}:
+        return "county"
+    if "county" in res:
+        return "mixed"
+    return "zcta"
+
+
 def subscore_specs() -> list[dict]:
     """Flat list of sub-scores with their dimension + members, for scoring."""
     out = []
@@ -299,5 +317,6 @@ def subscore_specs() -> list[dict]:
         for skey, sub in dim["subscores"].items():
             out.append({"dim": dkey, "key": skey, "label": sub["label"],
                         "source": sub["source"], "members": sub["members"],
-                        "scored": sub.get("scored", True)})
+                        "scored": sub.get("scored", True),
+                        "resolution": subscore_resolution(sub["members"])})
     return out

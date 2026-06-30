@@ -4,7 +4,7 @@ import { accessGap, accessGapMult, buildScoreIndex, percentileOf } from '../lib/
 import { synthesize } from '../lib/synthesis';
 import {
   MODEL, SUBSCORE_EVIDENCE, COMPOSITE_MULT_METRIC, ACCESS_RESID_METRIC, WITHIN_STATE_METRIC,
-  type DimSpec, type SlimMetric,
+  type DimSpec, type SlimMetric, type SubSpec,
 } from '../lib/types';
 import DriversSection from './DriversSection';
 import { SUBSCORE_MEASURES, SUBSCORE_BLURB, fmtMeasure } from '../lib/measures';
@@ -190,17 +190,43 @@ function Dimension({
       {open && (
         <div>
           <div className="px-3 py-1 text-[10px] text-graphite">{dim.blurb}</div>
-          {dim.subs.map((s) => (
-            <SubScoreRow
-              key={s.key}
-              subKey={s.key}
-              label={s.label}
-              scored={s.scored !== false}
-              pct={m[`${s.key}_pctile`] as number | null}
-              rec={rec}
-              recLoading={recLoading}
-            />
-          ))}
+          {(() => {
+            // County-resolution sub-scores (e.g. HPSA, medical debt) carry a real BETWEEN-county
+            // signal but are broadcast county->ZIP, so within-county r ~0: they cannot distinguish two
+            // ZIPs in the same county (T3). Render them under their own labeled group so they are never
+            // read as sub-county discrimination, while staying visible + scored.
+            const isCounty = (s: SubSpec) => SUBSCORE_EVIDENCE[s.key]?.kind === 'county';
+            const local = dim.subs.filter((s) => !isCounty(s));
+            const county = dim.subs.filter(isCounty);
+            const row = (s: SubSpec) => (
+              <SubScoreRow
+                key={s.key}
+                subKey={s.key}
+                label={s.label}
+                scored={s.scored !== false}
+                pct={m[`${s.key}_pctile`] as number | null}
+                rec={rec}
+                recLoading={recLoading}
+              />
+            );
+            return (
+              <>
+                {local.map(row)}
+                {county.length > 0 && (
+                  <div className="px-3 pt-2 pb-0.5 border-t border-hairline/60">
+                    <Tip
+                      className="text-[10px] uppercase tracking-wide text-graphite cursor-help inline-block"
+                      tip="These are county-level inputs broadcast to every ZIP in the county. They sharpen the score BETWEEN counties but are identical for all ZIPs inside one county, so they do not distinguish nearby ZIPs. Scored for their between-county signal; not a sub-county difference."
+                      focusable={false}
+                    >
+                      Context · county-level (between-county only)<span className="text-graphite"> ⓘ</span>
+                    </Tip>
+                  </div>
+                )}
+                {county.map(row)}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
