@@ -7,6 +7,10 @@ Effort / Risk / Depends-on**. Effort is for one engineer; frontend (T2,T5,T8) an
 
 Legend: effort S (<1d), M (1-3d), L (3-5d), XL (>1w).
 
+**Status (2026-06-30): 4 of 10 done.** ✅ T7 (`4dfe789`), T1 (`c5f4178`), T3 (`44e2ac9`), T6 (`843301c`).
+Remaining: T2, T5, T4 (Phase 2 product); T8, T9, T10 (Phase 3 engineering). Code-anchored execution
+plans for the remaining six are in the **"Detailed execution plans"** section at the bottom of this doc.
+
 ---
 
 ## Phase 1 - Foundation (do first; unblocks safe methodology changes)
@@ -214,3 +218,86 @@ Phase 3:  T8 ─ T9 ─ T10  (independent; can run alongside Phase 2 on the fron
 - Total ≈ 3-5 focused weeks solo; less if frontend (T2,T5,T8,T10-fe) and pipeline (T1,T3,T4,T6,T7,T9)
   run in parallel.
 - Highest leverage: **T7** (everything else is only trustworthy once the stats core is tested).
+
+---
+
+## Detailed execution plans (2026-06-30 refresh) - remaining six tickets
+
+Code-anchored, grounded in the current tree. Tracks parallelize: **pipeline** (T4-pipeline, T9) and
+**frontend** (T2, T5, T8, T10) overlap little and can run in separate worktrees. All Phase-2 tickets
+are unblocked (T7 done).
+
+### T2 - 2-of-3 dimension comparability  [M]  [deps: T7 ✓]
+**Why.** `join_and_score.py:266-275` renormalizes weights over present dims, so a 2-dim score is
+co-ranked with a 3-dim one - same scale, different estimand (bias/variance). `n_dims_scored` already
+exists (`join_and_score.py:286-291`); the DetailPanel banner already warns (`DetailPanel.tsx:584-589`).
+1. **Diagnostic first** (`selection_diag.py`): count 2-dim scoreable ZCTAs; test MNAR (cross-tab vs
+   population / rurality / state). Emit a `two_dim` block to provenance + meta - the evidence for the UI call.
+2. **Backend** (`data.py:rankings`, `main.py:get_rankings`): add `min_dims` param beside
+   `include_low_confidence`; headline defaults to `n_dims_scored == 3`.
+3. **Frontend** (`RankingsList.tsx`, `store.ts`): headline excludes 2-dim; flagged "partial" tier toggle.
+4. **Map** (`MapView.tsx`, `Legend.tsx`): 2-dim ZCTAs hatched / desaturated, out of the reliable band.
+5. **Tests:** backend `rankings(min_dims=3)` excludes 2-dim; pipeline MNAR diagnostic on a synthetic frame.
+**Accept.** Headline excludes/separates 2-dim; diagnostic reports count + MNAR. **Risk:** low (additive).
+**Defer:** imputing the missing dim (model risk).
+
+### T5 - Decompose the headline; reduce single-number misuse  [L]  [pairs with T3 ✓]
+**Why.** A 95 can be all-need or all-no-providers - different interventions. `synthesis.ts` already
+computes the dominant driver; `DriversSection.tsx` renders share bars. T5 promotes the split.
+1. **Headline reorder** (`DetailPanel.tsx:591-660`): lead with the 3-dim breakdown / `DriversSection`;
+   demote the composite number to a secondary "screening priority."
+2. **Profile chip** (`synthesis.ts` → `profile(m)`: `need-driven | access-driven | both`): primary,
+   color-coded, near the headline (high-need × high-barrier quadrant logic).
+3. **(Optional)** "color by profile" map lens (`MetricSelect.tsx`).
+4. **Copy pass:** composite = prioritization screen, not a verdict.
+5. **Tests:** extend `synthesis.test.ts` (need-driven vs access-driven fixtures → distinct profiles).
+**Accept.** Headline leads with decomposition; profiles distinguishable at a glance. **Risk:** medium -
+reshapes the most-viewed surface; verify with Playwright on contrasting ZIPs.
+
+### T4 - ACS MOE → per-ZIP rank intervals  [L]  [deps: T7 ✓]
+**Why.** `build_acs.py` ALREADY computes per-ZCTA SEs (`_moe`, `_proportion_se`, `ACS_MOE_Z=1.645`) for
+shrinkage; a weight-based band already ships (`_rank_uncertainty` → `access_gap_rank_lo/hi`). T4 adds the
+measurement-error band.
+1. **Persist SEs** (`build_acs.py`): surface `_SE` columns for the key scored rates into the joined frame.
+2. **Per-ZCTA MC** (extend `join_and_score._rank_uncertainty`): B≈500 draws ~ Normal(est, SE), re-rank
+   composite, store the 5-95 rank interval (`access_gap_moe_lo/hi`) in parquet + slim JSON.
+3. **Decision:** combine MOE⊕weight into one "reliable range" (recommended), store both for provenance.
+4. **UI** (`DetailPanel.tsx:ComparisonFrame`): "78th, range 70-86"; "tied with" on overlap.
+5. **Tests:** high-SE ZCTA → wider band than low-SE (monotone in SE).
+**Accept.** Per-ZIP MOE interval stored + shown; overlapping bands read as tied. **Risk:** medium -
+MC×33k×B re-rank runtime (vectorize, cap B); band must not contradict the weight band. Coordinate cols w/ T8.
+
+### T8 - Kill the 30 MB JSON client parse  [L]  [independent]
+**Why.** `frontend/public/metrics.json` is 31.5 MB; `data.ts` fetches + `JSON.parse`s it whole
+(`METRICS_URL='/metrics.json'`). Hard scale ceiling on cellular.
+- **(c) stopgap, hours:** prune to client-used columns + reduce precision; lean on brotli. Ship first.
+- **(b) recommended:** typed-array "map frame" (zcta ids + ~5 percentile cols as Float32/Int8) for first
+  paint; lazy-load the rest per-ZIP via existing shards (`api.ts:apiZcta`).
+- **(a) most work:** Arrow IPC / DuckDB-WASM.
+1. Audit `data.ts` load path (recon found no worker file - confirm); baseline transfer + TTI on 4G.
+2. Emit `mapframe.bin` from the pipeline (sibling to `_write_slim_json`); keep `metrics.json` for non-default cols or drop.
+3. Rewrite `data.ts` to parse typed arrays; keep the store API unchanged.
+4. Verify e2e (`e2e/smoke.spec.ts`) + `verify-csp`; measure before/after.
+**Accept.** First-interactive < ~5 MB; TTI improved; drill-down intact. **Risk:** med-high (core load
+path) - do (c) behind (b). Coordinate w/ T4 (don't bloat frame) + T10 (data path).
+
+### T9 - Data deploy provenance / governance  [M stopgap / L full]  [independent]
+**Why.** No way to know what data is live or to reproduce a build.
+1. **Stamp** (`join_and_score._write_public_meta`): per-payload content hash + pipeline git SHA + provenance digest into `meta.json`.
+2. **`/version`:** static `version.json` in `frontend/public/` (and a `backend/main.py` `/version` route if the API is ever deployed - today it only carries `version="1.0.0"`).
+3. **Deploy record:** `deploy-manifest.json` (hashes + timestamp + SHA) and/or Netlify deploy message.
+4. **Lock** resolved dataset IDs/vintages per build (`config.PLACES_DATASET_ID` etc. resolve-at-runtime today).
+5. **(Optional, L)** scheduled CI: rebuild → `make acceptance`/`gate`/`verify-csp` → deploy (needs secrets + self-hosted runner).
+**Accept.** Live site exposes vintage + hash; manifest records what shipped; rollback traceable. **Risk:** low (additive).
+
+### T10 - Resolve the dual data path  [S static / M deploy]  [deps: T8 decision]
+**Why.** `api.ts:apiZcta` has a dead `VITE_API_BASE` branch (backend not deployed); static shards always serve.
+- **Static-only (recommended):** drop the `API_BASE` branch from `api.ts`; mark `backend/` dev-only;
+  shards cover drill-down. Fully redundant if T8 goes DuckDB-WASM.
+- **Deploy API (alt):** scale-to-zero host, set `VITE_API_BASE`, enable the Netlify `/api` proxy, add
+  origin to CSP `connect-src`, add uptime monitoring.
+1. Remove the env branch from `api.ts` (static path). 2. Label `backend/` dev-only in README. 3. README states the model.
+**Accept.** One prod path; no dead branch; README unambiguous. **Risk:** low - do after the T8 direction is set.
+
+**Sequence:** T2 → T5 → T4 (product); T8 (stopgap first) ∥ T9 → T10 (engineering). Then the one
+coordinated doc pass (README + VALIDATION.md) now that T1/T3/T6 have landed.
