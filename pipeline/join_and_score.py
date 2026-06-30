@@ -78,12 +78,16 @@ _PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.55,
 
 
 def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
-                      n: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+                      n: int = 300, seed: int = 0,
+                      add_noise: bool = True) -> tuple[np.ndarray, np.ndarray]:
     """Per-ZCTA 5-95 national-rank interval under (1) plausible re-weighting (each dimension
     15-55%, renormalized) and (2) ACS measurement noise scaled to the ZCTA's input CV. The
     band is therefore weighting + ACS measurement noise (PLACES MOE is Layer B3). Saisana/
     OECD uncertainty-on-ranks standard. Deterministic (fixed seed) so the build + acceptance
-    tests are reproducible. Returns (lo, hi) arrays aligned to df, NaN for non-scoreable rows."""
+    tests are reproducible. Returns (lo, hi) arrays aligned to df, NaN for non-scoreable rows.
+
+    add_noise=False drops the measurement-error term (re-weighting only) - used by the provenance
+    decomposition (_rank_band_decomposition) to isolate how much of the shipped band is data noise."""
     rng = np.random.default_rng(seed)
     sc = df["scoreable"].to_numpy()
     idx = np.where(sc)[0]
@@ -97,8 +101,8 @@ def _rank_uncertainty(df: pd.DataFrame, dim_cols: list[str],
     W = rng.uniform(0.15, 0.55, size=(n, len(dim_cols)))
     W /= W.sum(axis=1, keepdims=True)
 
-    # per-ZCTA, per-dimension measurement-noise σ (0 for non-ACS dimensions)
-    sigma = _noise_sigma(df, dim_cols, idx)
+    # per-ZCTA, per-dimension measurement-noise σ (0 for non-ACS dimensions; all-0 if add_noise off)
+    sigma = _noise_sigma(df, dim_cols, idx) if add_noise else np.zeros((len(idx), len(dim_cols)))
 
     ranks = np.empty((len(idx), n))
     for j in range(n):
@@ -148,6 +152,43 @@ def _noise_sigma(df: pd.DataFrame, dim_cols: list[str], idx: np.ndarray) -> np.n
                 plc_sig[:, k] = share * col_sigma
 
     return np.sqrt(acs_sig ** 2 + plc_sig ** 2)
+
+
+def _rank_band_decomposition(df: pd.DataFrame, dim_cols: list[str]) -> dict:
+    """Provenance-only: split the shipped reliable-range width into its re-weighting and ACS/PLACES
+    measurement-error parts, so the claim "the per-ZIP band reflects ACS margins of error" (T4) is
+    auditable, not asserted. The combined band (access_gap_rank_lo/hi) is already stored; this
+    recomputes the weight-only band (measurement noise off) at the same seed/n and reports median
+    widths by confidence tier. measurement_contribution = combined - weight_only. The injected σ is
+    independently calibrated against an SE-resample in pipeline.verify_bands (gate 3, within ±20%)."""
+    sc = df["scoreable"].astype(bool).to_numpy()
+    if sc.sum() < 10 or "access_gap_rank_lo" not in df.columns:
+        return {}
+    combined = (df["access_gap_rank_hi"] - df["access_gap_rank_lo"]).to_numpy(float)
+    wlo, whi = _rank_uncertainty(df, dim_cols, add_noise=False)
+    weight_only = whi - wlo
+    lc = (df["low_confidence"].astype(bool).to_numpy()
+          if "low_confidence" in df.columns else np.zeros(len(df), bool))
+
+    def _med(arr: np.ndarray, mask: np.ndarray) -> float | None:
+        v = arr[mask & sc]
+        v = v[~np.isnan(v)]
+        return round(float(np.median(v)), 2) if len(v) else None
+
+    out: dict = {}
+    for grp, mask in (("low_confidence", lc), ("high_confidence", ~lc)):
+        c, w = _med(combined, mask), _med(weight_only, mask)
+        out[grp] = {
+            "median_band_combined": c,
+            "median_band_weight_only": w,
+            "median_band_measurement_contribution":
+                round(c - w, 2) if (c is not None and w is not None) else None,
+        }
+    out["note"] = ("combined = shipped access_gap_rank band (re-weighting + ACS/PLACES measurement "
+                   "noise from published SEs); weight_only = same MC with measurement noise off; the "
+                   "difference is the measurement-error share of the band. The injected σ is calibrated "
+                   "against an independent member-input SE-resample in pipeline.verify_bands gate 3.")
+    return out
 
 
 def _access_beyond_deprivation(df: pd.DataFrame, dim_cols: list[str]) -> pd.Series:
@@ -325,6 +366,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     lo, hi = _rank_uncertainty(df, dim_cols)
     df["access_gap_rank_lo"] = lo
     df["access_gap_rank_hi"] = hi
+    band_decomp = _rank_band_decomposition(df, dim_cols)
     # coarse, communicable tier (decile 1-10) - the resolution the data actually supports
     df["tier"] = np.ceil(df["access_gap_pctile"] / 10.0).clip(1, 10)
     df.loc[~df["scoreable"], "tier"] = np.nan
@@ -343,7 +385,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df.to_parquet(OUT_PARQUET, index=False)
     _write_slim_json(df, dim_cols)
     _write_public_meta(df, corr, eff_dims)
-    write_provenance({"score": {
+    write_provenance({"rank_band": band_decomp, "score": {
         "method": "hierarchical percentile (SVI-style), re-ranked per level",
         "dimension_weights": DIMENSION_WEIGHTS,
         "rows": len(df), "with_score": int(df["access_gap_score"].notna().sum()),

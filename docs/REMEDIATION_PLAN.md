@@ -7,9 +7,11 @@ Effort / Risk / Depends-on**. Effort is for one engineer; frontend (T2,T5,T8) an
 
 Legend: effort S (<1d), M (1-3d), L (3-5d), XL (>1w).
 
-**Status (2026-06-30): 4 of 10 done.** ✅ T7 (`4dfe789`), T1 (`c5f4178`), T3 (`44e2ac9`), T6 (`843301c`).
-Remaining: T2, T5, T4 (Phase 2 product); T8, T9, T10 (Phase 3 engineering). Code-anchored execution
-plans for the remaining six are in the **"Detailed execution plans"** section at the bottom of this doc.
+**Status (2026-06-30): 7 of 10 done.** ✅ T7 (`4dfe789`), T1 (`c5f4178`), T3 (`44e2ac9`), T6 (`843301c`),
+T2 (diagnostic `c388903` + gate), T5 (headline decomposition), T4 (MOE band - core already shipping;
+provenance decomposition + explicit "tied" added). Remaining: T8, T9, T10 (Phase 3 engineering). Code-
+anchored execution plans are in the **"Detailed execution plans"** below. The coordinated doc pass
+(README + `VALIDATION.md`) can now run (T1/T3/T6 framing + T2/T5/T4 product all landed).
 
 ---
 
@@ -227,8 +229,18 @@ Code-anchored, grounded in the current tree. Tracks parallelize: **pipeline** (T
 **frontend** (T2, T5, T8, T10) overlap little and can run in separate worktrees. All Phase-2 tickets
 are unblocked (T7 done).
 
-### T2 - 2-of-3 dimension comparability  [M]  [deps: T7 ✓]
-**Why.** `join_and_score.py:266-275` renormalizes weights over present dims, so a 2-dim score is
+### T2 - 2-of-3 dimension comparability  [M]  [deps: T7 ✓]  ✅ DONE
+**Done.** (1) `selection_diag._two_dim_mechanism` characterizes the missingness as MNAR (764 partial /
+2.3%, all missing health_need, median pop 43 vs 2930, 83.5% low-confidence, composite d +0.27) →
+`selection` block in provenance. (2) `data.rankings(min_dims=3)` + `main.get_rankings` gate the
+headline to 3-of-3, composite-family only (`_COMPOSITE_FAMILY`). (3) `RankingsList` drops partial from
+the headline band on composite lenses; (4) `MapView` desaturates partial ZCTAs (alpha 80 vs 158) and
+`Legend` carries a "partial score (2 of 3)" chip; the `DetailPanel` banner already warned. (5) tests:
+backend `test_rankings_excludes_partial_dims_by_default` / `_partial_gate_is_composite_only`, frontend
+`types.test.ts`. **Decision:** silent headline exclusion (matches `institutional`/`low_confidence`); no
+ranked partial tier - partial ZCTAs stay map-visible + clickable. Imputation deferred (model risk).
+
+**Original plan.** `join_and_score.py:266-275` renormalizes weights over present dims, so a 2-dim score is
 co-ranked with a 3-dim one - same scale, different estimand (bias/variance). `n_dims_scored` already
 exists (`join_and_score.py:286-291`); the DetailPanel banner already warns (`DetailPanel.tsx:584-589`).
 1. **Diagnostic first** (`selection_diag.py`): count 2-dim scoreable ZCTAs; test MNAR (cross-tab vs
@@ -241,8 +253,19 @@ exists (`join_and_score.py:286-291`); the DetailPanel banner already warns (`Det
 **Accept.** Headline excludes/separates 2-dim; diagnostic reports count + MNAR. **Risk:** low (additive).
 **Defer:** imputing the missing dim (model risk).
 
-### T5 - Decompose the headline; reduce single-number misuse  [L]  [pairs with T3 ✓]
-**Why.** A 95 can be all-need or all-no-providers - different interventions. `synthesis.ts` already
+### T5 - Decompose the headline; reduce single-number misuse  [L]  [pairs with T3 ✓]  ✅ DONE
+**Done.** (1) `synthesis.profile(m)` → `need-driven | access-driven | both`, decided on the percentile
+gap between the need side (health_need + social_vulnerability) and the access side (care_access);
+`both` distinguishes the compounding (both-high) from the no-dominant-lever case. (2) `DetailPanel`
+leads the body with a color-coded `ProfileChip` (violet need / blue access / amber both) + one-line
+lever blurb, ABOVE the composite. (3) the composite number is reframed: label "screening priority"
+(was "disadvantage rank") + "a prioritization screen, not a verdict" copy; `DriversSection` breakdown
+unchanged below. (4) tests: `synthesis.test.ts` profile cases incl. same-composite need-vs-access
+divergence. Verified in-browser on 02301 Brockton (need-driven) vs 76054 Hurst (access-driven) -
+distinguishable at a glance. **Deferred:** the optional "color by profile" map lens (step 3) - adds a
+metric column; not needed for the acceptance.
+
+**Original plan.** A 95 can be all-need or all-no-providers - different interventions. `synthesis.ts` already
 computes the dominant driver; `DriversSection.tsx` renders share bars. T5 promotes the split.
 1. **Headline reorder** (`DetailPanel.tsx:591-660`): lead with the 3-dim breakdown / `DriversSection`;
    demote the composite number to a secondary "screening priority."
@@ -254,8 +277,24 @@ computes the dominant driver; `DriversSection.tsx` renders share bars. T5 promot
 **Accept.** Headline leads with decomposition; profiles distinguishable at a glance. **Risk:** medium -
 reshapes the most-viewed surface; verify with Playwright on contrasting ZIPs.
 
-### T4 - ACS MOE → per-ZIP rank intervals  [L]  [deps: T7 ✓]
-**Why.** `build_acs.py` ALREADY computes per-ZCTA SEs (`_moe`, `_proportion_se`, `ACS_MOE_Z=1.645`) for
+### T4 - ACS MOE → per-ZIP rank intervals  [L]  [deps: T7 ✓]  ✅ DONE (core was already shipping)
+**Finding.** The MOE→per-ZIP-rank-band the plan describes was already built, shipping, AND SE-calibrated:
+`build_acs._proportion_se` computes real per-rate SEs from published MOEs → summarized into
+`acs_input_cv` → `_rank_uncertainty`/`_noise_sigma` propagate it into `access_gap_rank_lo/hi` (shown as
+"Reliable range") → `verify_bands.gate3_calibration` already does the exact per-member SE-resample MC
+("rate + N(0,1)·se", re-percentile member→sub-score→dim) and asserts the injected σ matches within
+±20%. A separate `access_gap_moe_lo/hi` band would be redundant with (and risk contradicting) the
+shipped combined band; the plan's own step 3 recommends one combined "reliable range" (which exists).
+**Done (additive only, per the scope decision).** (1) `_rank_band_decomposition` (join_and_score) splits
+the shipped band into re-weighting vs ACS/PLACES measurement-error shares → `rank_band` block in
+provenance (low-conf measurement contribution ≈16.4 pts vs ≈3.0 high-conf - auditable, not asserted);
+`_rank_uncertainty` gained an `add_noise` flag to isolate the weight-only band. (2) `CompareTray` now flags
+overlapping reliable ranges as explicitly **"Statistically tied"** (was implicit in the footnote). (3) tests:
+`tests/test_rank_band.py` (measurement noise only widens; share monotone in input noise). Verified
+in-browser on 91201 Glendale ≈ 91401 Van Nuys (overlapping bands → tied). **Not done (deferred):** a
+separate stored measurement-only per-ZIP band (redundant); the existing combined band is the reliable range.
+
+**Original plan.** `build_acs.py` ALREADY computes per-ZCTA SEs (`_moe`, `_proportion_se`, `ACS_MOE_Z=1.645`) for
 shrinkage; a weight-based band already ships (`_rank_uncertainty` → `access_gap_rank_lo/hi`). T4 adds the
 measurement-error band.
 1. **Persist SEs** (`build_acs.py`): surface `_SE` columns for the key scored rates into the joined frame.

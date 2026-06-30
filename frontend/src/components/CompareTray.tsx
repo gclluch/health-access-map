@@ -61,9 +61,29 @@ export default function CompareTray() {
     [compareZctas, metrics, weights, sorted, extra],
   );
 
-  if (compareZctas.length === 0) return null;
-
   const num = (v: unknown) => (typeof v === 'number' ? v : null);
+
+  // Pairs whose reliable ranges (access_gap_rank_lo/hi) overlap are not statistically distinguishable
+  // (T4): the rank difference is within the combined weighting + ACS-MOE uncertainty. Surfaced as an
+  // explicit "tied" note so an apparent ordering in the rank row isn't over-read.
+  const tiedPairs = useMemo(() => {
+    const bands = cols.map(({ z, m }) => ({
+      label: m?.city ?? m?.county_name ?? z,
+      lo: num(m?.access_gap_rank_lo),
+      hi: num(m?.access_gap_rank_hi),
+    }));
+    const out: string[] = [];
+    for (let i = 0; i < bands.length; i += 1)
+      for (let j = i + 1; j < bands.length; j += 1) {
+        const a = bands[i];
+        const b = bands[j];
+        if (a.lo != null && a.hi != null && b.lo != null && b.hi != null && a.lo <= b.hi && b.lo <= a.hi)
+          out.push(`${a.label} ≈ ${b.label}`);
+      }
+    return out;
+  }, [cols]);
+
+  if (compareZctas.length === 0) return null;
 
   const exportCsv = () => {
     const rows = cols.map(({ z, m, pct, ex }) => ({
@@ -182,6 +202,12 @@ export default function CompareTray() {
         </table>
       </div>
       <div className="px-3 py-1.5 border-t border-hairline text-[10px] text-graphite leading-snug">
+        {tiedPairs.length > 0 && (
+          <div className="mb-1 text-ink">
+            <span className="font-medium">Statistically tied</span> (reliable ranges overlap, so the
+            rank gap is within uncertainty): {tiedPairs.join(' · ')}
+          </div>
+        )}
         Rank and the three dimensions are national percentiles (tier is the matching 1-10 decile) -
         higher = more access disadvantage. ZIPs are reliably different only ~10-15 percentile points
         apart (see the reliable range); smaller gaps may be noise.
