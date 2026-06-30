@@ -37,7 +37,10 @@ looks more powerful than it is.
 **A relative screening lens for where health-care-access disadvantage concentrates - not an
 absolute verdict, an eligibility tool, or a causal claim.** A score of 95 means "worse access
 than 95% of U.S. ZIPs," not "objectively bad." Use it to *prioritize investigation*, not to
-settle it.
+settle it. Because a 95 can be almost all health *need* or almost all *no-providers* - different
+interventions - the detail panel **leads with the need-vs-access decomposition**: a `need-driven`
+/ `access-driven` / `need + access` profile and the per-dimension driver shares come first, with
+the composite demoted to a secondary "screening priority," not a how-bad verdict.
 
 | | |
 |---|---|
@@ -160,6 +163,10 @@ a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.
    mean - lights up only where need *and* barriers coincide) is selectable alongside the additive default.
 5. A ZCTA is **scoreable** only with population present and ≥ 2 of 3 dimensions; otherwise it
    renders gray. Low-population ZCTAs are flagged `low_confidence` and kept out of headline rankings.
+   A **2-of-3 (partial) composite** matches the scale of a full score but not the estimand - and the
+   partial set is systematically rural/tiny/low-confidence (MNAR; see [`docs/VALIDATION.md`](docs/VALIDATION.md)
+   §6d) - so it is also held out of the reliable rank band on composite-family lenses, desaturated on
+   the map, and labelled "partial" in the detail panel, rather than co-ranked with full scores.
 
 The three dimensions are **strongly collinear** (need↔vulnerability **0.73**, need↔access
 0.59, vulnerability↔access 0.61; reported in `provenance.json` and the methodology panel).

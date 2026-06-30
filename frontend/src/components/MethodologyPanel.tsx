@@ -22,7 +22,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Small-area noise (and what we do about it)',
-    'Low-population ZIPs have wide ACS margins of error. We apply empirical-Bayes (Fay-Herriot) shrinkage to the social/economic rates - each ZIP is pulled toward its county mean in proportion to its own noise, so a tiny, uncertain ZIP borrows strength from its county while a well-measured one keeps its own value. This improves agreement with independent outcomes. The noisiest ZIPs are still flagged low-confidence and kept out of the headline rankings; uninhabited/data-starved ZIPs render gray.',
+    'Low-population ZIPs have wide ACS margins of error. We apply empirical-Bayes (Fay-Herriot) shrinkage to the social/economic rates - each ZIP is pulled toward its county mean in proportion to its own noise, so a tiny, uncertain ZIP borrows strength from its county while a well-measured one keeps its own value. This improves agreement with independent outcomes. The noisiest ZIPs are still flagged low-confidence and kept out of the headline rankings; uninhabited/data-starved ZIPs render gray. ZIPs scored from only 2 of the 3 dimensions (almost all missing health-need data, and systematically tiny/rural) are likewise held out of the headline band, desaturated on the map, and labelled a "partial score" - their composite is not comparable to a full 3-dimension one. And the "reliable range" each ZIP shows is itself widened by those ACS margins of error, so noisier ZIPs read as wider, less certain ranks.',
   ],
   [
     'Can you compare two ZIPs? Only coarsely',
@@ -259,7 +259,8 @@ export default function MethodologyPanel() {
             <div className="rounded border border-hairline bg-paper/70 px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-graphite">Read as</div>
               <div className="text-[12px] text-ink mt-0.5 leading-snug">
-                A relative screening lens: worse than X% of U.S. ZIPs, not an absolute verdict.
+                A relative screening priority, not an absolute verdict. The panel leads with the
+                need-vs-access profile (a 95 can be all-need or all-no-providers - different fixes).
               </div>
             </div>
             <div className="rounded border border-hairline bg-paper/70 px-3 py-2">

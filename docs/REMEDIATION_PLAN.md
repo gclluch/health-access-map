@@ -11,7 +11,8 @@ Legend: effort S (<1d), M (1-3d), L (3-5d), XL (>1w).
 T2 (diagnostic `c388903` + gate), T5 (headline decomposition), T4 (MOE band - core already shipping;
 provenance decomposition + explicit "tied" added). Remaining: T8, T9, T10 (Phase 3 engineering). Code-
 anchored execution plans are in the **"Detailed execution plans"** below. The coordinated doc pass
-(README + `VALIDATION.md`) can now run (T1/T3/T6 framing + T2/T5/T4 product all landed).
+(README + `VALIDATION.md` §5/§6d + the in-product methodology panel) is **done** - all Phase-2 framing
+(T1/T3/T6) and product (T2/T5/T4) changes are now reflected in one consistent published story.
 
 ---
 

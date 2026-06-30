@@ -353,7 +353,15 @@ OECD/JRC evaluation of the live build:
 | Dimensionality | PC1 = 46% **across the underlying measures** (cf. **76% at the 3-dimension level**, §1b); corr(composite, PC1) 0.94 | ~one "general deprivation" gradient under the hood |
 
 **Combined: two ZIPs are reliably different only by ~10-15 percentile points ⇒ ~7-10 tiers, not
-33,181 ranks.** The UI leads with **deciles + a 5-95 rank band**, not an integer leaderboard.
+33,181 ranks.** The UI leads with **deciles + a 5-95 rank band**, not an integer leaderboard. The
+band is a Saisana/OECD Monte-Carlo over (1) plausible re-weighting and (2) **ACS/PLACES measurement
+noise propagated from the published margins of error** (`ACS_MOE_Z=1.645` → per-rate SE → the rank
+MC; calibrated against an independent member-input SE-resample by `pipeline.verify_bands` gate 3,
+within ±20%). `provenance.json → rank_band` decomposes the width into its two parts: for
+low-confidence ZCTAs the measurement term contributes **≈16.4** of the ≈24.6-pt median band; for
+high-confidence ZCTAs only **≈3.0** of ≈10.8 - i.e. the band widens where the data is actually
+noisier, not uniformly. When two ZIPs' bands overlap the comparison view marks them **"statistically
+tied"** outright (T4), not just footnoted.
 
 **Why this is honest where the field isn't:** ADI/SVI/CHR publish ranks with **no rank-level
 confidence interval** - the literature (Saisana/Saltelli/Tarantola; OECD Handbook Step 9) calls
@@ -514,7 +522,14 @@ Optimism is **small** (≤0.03 R², largest for the sparse/noisy outcomes), and 
 - **2-of-3 dimension scores (764 ZCTAs, 2.3%): a real, disclosed selection.** They are
   systematically worse-access and higher-mortality than 3-of-3 ZCTAs (Cohen d **+0.27** on the
   composite, **+0.24** on amenable mortality) - their partial composite is *not* missing-at-random.
-  This is exactly why the build flags `n_dims_scored` and the UI caveats a 2-of-3 score.
+  The mechanism is MNAR and specific: every one is missing **health need** (no PLACES disease data),
+  their median population is **43 vs 2,930** for full scores, and **83.5%** are already
+  `low_confidence` (vs 29.4%). A renormalized 2-of-3 score matches the *scale* of a 3-of-3 score but
+  not the *estimand*, so co-ranking them is a comparability error. The build flags `n_dims_scored`,
+  and (T2) the headline **holds 2-of-3 scores out of the reliable rank band** - backend
+  `rankings(min_dims=3)` and the client rankings exclude them on composite-family lenses, the map
+  desaturates them, and the detail panel labels the score "partial." They stay visible and
+  clickable; they are not silently co-ranked with the full-score majority.
 - **Validation-subset selection: a real range restriction.** ZCTAs missing the amenable /
   preventable-hosp outcome are **+0.38 / +0.33 SD worse-access** than those with it, so those
   validation r's are computed on a slightly better-access (truncated) subset - which *attenuates*
