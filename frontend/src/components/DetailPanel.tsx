@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { accessGap, accessGapMult, buildScoreIndex, percentileOf } from '../lib/scoring';
-import { synthesize } from '../lib/synthesis';
+import { synthesize, profile, type ProfileKind } from '../lib/synthesis';
 import {
   MODEL, SUBSCORE_EVIDENCE, COMPOSITE_MULT_METRIC, ACCESS_RESID_METRIC, WITHIN_STATE_METRIC,
   type DimSpec, type SlimMetric, type SubSpec,
@@ -12,6 +12,34 @@ import { apiZcta } from '../lib/api';
 import { fmtInt, fmtScore, ordinal, severity } from '../lib/format';
 import Tip from './Tip';
 import Caret from './Caret';
+
+// Profile-chip hues (T5): need-driven and access-driven must read as clearly DIFFERENT at a glance
+// (they imply different interventions); "both" gets a warm neutral. All meet >=4.5:1 on the chip's
+// 8%-tint background.
+const PROFILE_STYLE: Record<ProfileKind, string> = {
+  'need-driven': '#7A3E9D', // violet - the demand side
+  'access-driven': '#1F6FB0', // blue - the supply side
+  both: '#9A5B2B', // amber - the two coincide
+};
+
+// The need-vs-access lever, led above the composite number so the decomposition reads first (T5).
+function ProfileChip({ m }: { m: SlimMetric }) {
+  const p = profile(m);
+  if (!p) return null;
+  const color = PROFILE_STYLE[p.kind];
+  return (
+    <div className="mb-3">
+      <span
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide rounded-full px-2.5 py-1"
+        style={{ color, backgroundColor: `${color}14` }}
+      >
+        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+        {p.label}
+      </span>
+      <p className="text-[12px] text-graphite mt-1.5 leading-snug">{p.blurb}</p>
+    </div>
+  );
+}
 
 // A percentile bar (0-100). Higher = worse (more disadvantage), so more fill = worse.
 function PctBar({ pct }: { pct: number | null | undefined }) {
@@ -614,6 +642,8 @@ export default function DetailPanel() {
           </div>
         )}
 
+        {score != null && <ProfileChip m={m} />}
+
         {(() => {
           if (score == null || scorePercentile == null) {
             return (
@@ -631,9 +661,9 @@ export default function DetailPanel() {
           const worst = (p: number) => Math.max(1, Math.round(100 - p));
           const stateName = m.state_name ?? 'its state';
           let hPct: number | null = scorePercentile;
-          let rankLabel = 'disadvantage rank';
+          let rankLabel = 'screening priority';
           let sentence =
-            `Higher = more access disadvantage (need + vulnerability + barriers combined). This ZIP is more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the most disadvantaged ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
+            `A prioritization screen, not a verdict: it blends need + vulnerability + barriers into one rank for triage, so see the profile and breakdown for what to act on. This ZIP is more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the most disadvantaged ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
           if (metric === WITHIN_STATE_METRIC && m.access_gap_pctile_within_state != null) {
             hPct = m.access_gap_pctile_within_state;
             rankLabel = 'within-state rank';

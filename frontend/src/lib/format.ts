@@ -11,7 +11,7 @@ export const fmtScore = (v: number | null | undefined) =>
 // intuitive green->amber->red tint. Single source so the detail headline and the compare table
 // signal "higher = worse" identically. Every hue is darkened to clear WCAG 1.4.3 AA contrast
 // (>=4.5:1 on white) so the colored score number and band labels stay legible as text, not just
-// decoration. The badge sits next to the "/ 100 · disadvantage rank" headline, so the word alone
+// decoration. The badge sits next to the "/ 100 · screening priority" headline, so the word alone
 // (no noun) reads as the magnitude of disadvantage.
 export function severity(p: number | null | undefined): { label: string; color: string } | null {
   if (p == null || Number.isNaN(p)) return null;
