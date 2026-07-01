@@ -236,19 +236,11 @@ def _read_secret(env: str, filename: str) -> str | None:
 
 
 def _load_xwalk() -> pd.DataFrame:
-    """National Census 2020 ZCTA<->tract relationship (GEOID_ZCTA5_20, GEOID_TRACT_20, land-area of
-    the intersection), fetched once (~24MB) and cached. The AREA-weighted FALLBACK crosswalk used
-    only when no HUD token is available."""
-    if XWALK_CACHE.exists():
-        return pd.read_parquet(XWALK_CACHE)
-    log("subcounty", "fetching Census ZCTA<->tract relationship file (one-time, ~24MB)...")
-    with urllib.request.urlopen(ZCTA_TRACT_REL, timeout=120) as r:
-        full = pd.read_csv(io.BytesIO(r.read()), sep="|", dtype=str)
-    rel = full[["GEOID_ZCTA5_20", "GEOID_TRACT_20", "AREALAND_PART"]].dropna()
-    rel["AREALAND_PART"] = pd.to_numeric(rel["AREALAND_PART"], errors="coerce")
-    rel = rel[rel["AREALAND_PART"] > 0]
-    rel.to_parquet(XWALK_CACHE, index=False)
-    return rel
+    """National Census 2020 ZCTA<->tract relationship (area-weighted). Shared with build_hpsa via
+    common.load_zcta_tract_xwalk (single cache); the HUD population crosswalk is preferred when a
+    token is available (see _load_hud_xwalk)."""
+    from .common import load_zcta_tract_xwalk
+    return load_zcta_tract_xwalk()
 
 
 def _load_hud_xwalk() -> pd.DataFrame | None:

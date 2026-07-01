@@ -157,3 +157,21 @@ def write_provenance(updates: dict) -> None:
 def scrub_sentinels(series: pd.Series, sentinels: Iterable[int] = config.CENSUS_SENTINELS) -> pd.Series:
     s = pd.to_numeric(series, errors="coerce")
     return s.mask(s.isin(list(sentinels)))
+
+
+def load_zcta_tract_xwalk() -> pd.DataFrame:
+    """National Census 2020 ZCTA<->tract relationship (GEOID_ZCTA5_20, GEOID_TRACT_20, AREALAND_PART
+    = land area of the intersection). Fetched once (~24MB) and cached as zcta_tract_xwalk.parquet.
+    Shared by build_hpsa (tract-level shortage) and validate_subcounty (sub-county validation)."""
+    cache = config.PROCESSED / "zcta_tract_xwalk.parquet"
+    if cache.exists():
+        return pd.read_parquet(cache)
+    raw = config.RAW / "tab20_zcta520_tract20_natl.txt"
+    download_file(config.ZCTA_TRACT_REL_2020, raw, min_bytes=1_000_000)
+    full = pd.read_csv(raw, sep="|", dtype=str)
+    rel = full[["GEOID_ZCTA5_20", "GEOID_TRACT_20", "AREALAND_PART"]].dropna()
+    rel["AREALAND_PART"] = pd.to_numeric(rel["AREALAND_PART"], errors="coerce")
+    rel = rel[rel["AREALAND_PART"] > 0].reset_index(drop=True)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    rel.to_parquet(cache, index=False)
+    return rel

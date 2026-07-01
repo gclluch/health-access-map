@@ -137,6 +137,8 @@ HPSA_PC_URL = "https://data.hrsa.gov/DataDownload/DD_Files/BCD_HPSA_FCT_DET_PC.c
 HPSA_COL_SCORE = "HPSA Score"
 HPSA_COL_FIPS = "Common State County FIPS Code"
 HPSA_COL_STATUS = "HPSA Status"
+HPSA_COL_COMPONENT = "HPSA Component Type Description"  # "Census Tract" / "Single County" / ...
+HPSA_COL_GEOID = "HPSA Geography Identification Number"  # 11-digit tract GEOID for CT components
 
 # Urban Institute "Debt in America" - share of people with medical debt in collections, by
 # county (deidentified credit-bureau panel, 2022 release). A genuine AFFORDABILITY barrier
@@ -166,6 +168,10 @@ FQHC_COL_STATUS = "Site Status Description"
 USALEEP_URL = "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NVSS/USALEEP/CSV/US_A.CSV"
 # ZCTA <-> census tract relationship (2010), with population in each part (POPPT).
 ZCTA_TRACT_REL = "https://www2.census.gov/geo/docs/maps-data/data/rel/zcta_tract_rel_10.txt"
+# ZCTA <-> tract (2020), pipe-delimited, with the land area of each intersection (AREALAND_PART).
+# Shared by build_hpsa (tract-level HPSA) and validate_subcounty; cached as zcta_tract_xwalk.parquet.
+ZCTA_TRACT_REL_2020 = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/"
+                       "tab20_zcta520_tract20_natl.txt")
 
 # ZCTA Gazetteer: internal-point lat/lon centroids (for the 2SFCA catchment).
 GAZETTEER_TMPL = ("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
