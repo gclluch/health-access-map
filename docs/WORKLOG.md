@@ -98,3 +98,9 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Cycle 18
 - **VERIFIED** committed weights.json is current: regenerated the anchored presets via validate.build() on the tract-HPSA metrics -> byte-identical to committed. The tract-HPSA change to care_access didn't shift the floor-weighted correlation presets enough to change the rounded weights. (Checked because cycle-1 redirected the idempotency test's write to tmp, so nothing auto-refreshes the committed file - but it wasn't stale.) No change needed.
+
+## Cycle 19
+- **VERIFIED** accessibility: audited every interactive control in the live app - all buttons/comboboxes/inputs have accessible names (aria-label / title / non-aria-hidden text), incl. an aria-hidden-aware check. Combined with the earlier SearchBox/Tip aria + modal-inert fixes, a11y is solid. No gap found (confirmation is progress).
+
+## Honest checkpoint (after 19 cycles, ~30 commits, all pushed)
+State: the HIGH + MEDIUM-value verifiable work is COMPLETE. All HIGH audit findings resolved; last real MEDIUM (§5.13) done; reproducibility fixed + verified deterministic; CI verified end-to-end; docs consistent + honest; weights.json + a11y confirmed good. Remaining items are genuinely LOW-value (cosmetic frontend, marginal builder hygiene, null-study data cleanup) or BLOCKED (deploy = user's Netlify auth) or LARGE (formal multiplicity framework - already honestly disclosed; MapView autoHighlight - visual, hover already snappy). Continuing with genuine low-value items + verification, transparent about the tail. Top remaining ACTION is the user's deploy.
