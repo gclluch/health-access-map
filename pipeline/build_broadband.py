@@ -34,11 +34,19 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     params = {"get": "group(B28002)", "for": "zip code tabulation area:*"}
     if key:
         params["key"] = key
-    with http_client(timeout=180.0) as c:
-        r = c.get(ACS_B28002, params=params)
-        if r.status_code != 200:
-            die("broadband", f"ACS B28002 fetch failed: HTTP {r.status_code}")
-        j = r.json()
+    import time
+    r = None
+    for attempt in range(3):  # retry transient Census 5xx / key-propagation lag before giving up
+        with http_client(timeout=180.0) as c:
+            r = c.get(ACS_B28002, params=params)
+        if r.status_code == 200:
+            break
+        if attempt < 2:
+            log("broadband", f"ACS B28002 HTTP {r.status_code}; retry {attempt + 1}/2")
+            time.sleep(2 ** attempt)
+    if r is None or r.status_code != 200:
+        die("broadband", f"ACS B28002 fetch failed after retries: HTTP {r.status_code if r else 'no response'}")
+    j = r.json()
     df = pd.DataFrame(j[1:], columns=j[0])
     tot = pd.to_numeric(df["B28002_001E"], errors="coerce")
     no_net = pd.to_numeric(df["B28002_013E"], errors="coerce")
@@ -54,6 +62,11 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         die("broadband", f"only {len(out)} ZCTAs (expected >= {floor})")
     if not out["no_internet_rate"].dropna().between(0, 1).all():
         die("broadband", "no_internet_rate outside [0,1]")
+    # B28002_013 is hard-indexed as "No Internet access"; a future ACS renumber would silently map a
+    # different member and pass [0,1]. Guard with a distribution check - a wrong column shifts the median.
+    med = out["no_internet_rate"].median()
+    if not dev_state and not (0.02 <= med <= 0.45):
+        die("broadband", f"no_internet median {med:.3f} implausible - B28002_013 may have been renumbered")
     out.to_parquet(OUT, index=False)
     log("broadband", f"wrote {OUT.name} ({len(out)} ZCTAs, "
                      f"median no-internet {out['no_internet_rate'].median():.1%})")
