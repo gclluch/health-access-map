@@ -105,7 +105,7 @@ coverage availability). This makes the score **realized/effective access**, not 
   It is **not** in the access-gap composite (outcomes are the result, not a driver). *Backlog:*
   preventable-hospitalization / infant-mortality outcomes; a newer-vintage life-expectancy source.
 - **Under-insurance** not measured (only uninsured); income proxies it.
-- **Other supply types** - dental, pharmacy (deserts), broadband/telehealth - not yet in.
+- **Other supply types** - pharmacy (deserts) not yet in (dental and maternity/OB are scored in `provider_supply`; broadband/telehealth is the scored `digital_access` sub-score).
 - **No empirical weights** - we use conceptual weights (see §10); HPI-style life-expectancy
   regression is the principled upgrade.
 
@@ -133,7 +133,7 @@ exactly the stance County Health Rankings takes. The reasoning:
 - **Empirical alternative (shipped - the "Data-driven" preset).** Following the Healthy
   Places Index, we derive weights by **non-negative least-squares regression (NNLS; Lawson &
   Hanson 1974) of the three dimensions on CDC USALEEP life expectancy** (5% floor, normalized to 100). The result:
-  **~60% health need / 20% social vulnerability / 21% care access** (R²≈0.39, n≈31k). This is
+  **~60% health need / 19% social vulnerability / 21% care access** (R²≈0.39, n≈31k). This is
   itself a finding: at the *area* level, disease burden predicts mortality far more than the
   other axes (~3x health need over care access) - and it's partly tautological (PLACES disease
   ≈ death). Notably the data-driven care-access weight lands at **~21%, almost exactly County
@@ -167,6 +167,13 @@ a cash-only concierge physician identically to a community clinic that serves ev
 the uninsured/Medicaid populations this tool is about, that's the difference between *theoretical*
 and *real* access - it's the **Acceptability** "A" (will they see *you*) on the supply side, the
 analog to why we include social vulnerability on the demand side (§8).
+
+> **Status (superseded).** This section records the original bipartite-E2SFCA safety-net design.
+> It was later reframed to `safetynet_barrier` = FQHC-distance percentile × poverty and is now
+> **displayed but not scored** (`scored=False`): the reframed form is correctly signed *between*
+> counties but wrong-signed *within* counties in ~85% of states, so dropping it from the composite
+> lifts sub-county accuracy. See `pipeline/taxonomy.py` (`safetynet_access`), VALIDATION.md, and
+> DECISIONS.md. The narrative below is kept for the reasoning; the shipped state is unscored.
 
 We address it with a **safety-net access** sub-score: bipartite **E2SFCA** over ~18,000 HRSA
 **FQHC** sites (mandated sliding-fee clinics), capacity-weighted by operating hours. This is the

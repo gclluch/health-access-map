@@ -618,6 +618,15 @@ free data allows. The honest answer, after running them all: **the index is a we
 | §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **borderline** (-35.5/100k, CI [-71.7, +2.2] just includes 0) | the *supply* arm is a powered "almost" - right-signed, dose-responsive, robust to spillover, but short of significance and pre-trends not fully clean |
 | - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
 
+> **Spatial-inference update (supersedes the ZIP-cluster CIs in §7b/§7f below).** The causal
+> validators now report a **county-block** bootstrap beside the ZIP-cluster one and key the verdict on
+> it, because ACSC geography is spatially autocorrelated and the ZIP-cluster CI treats neighbouring
+> ZIPs as independent (too narrow). The honest CIs are wider: **temporal DiD −36.5, county-block CI
+> [−78.6, −4.2]** (still excludes 0) and **FQHC overall −35.5, county-block CI [−74.1, +10.5]** (the
+> "borderline" is now clearly null). Verdicts are unchanged in direction; the FQHC lever remains "no
+> credible effect". The per-horizon and balanced CIs in the prose below are still ZIP-cluster and were
+> not re-run - treat the validator output (`validate_temporal`/`validate_fqhc_lever`) as authoritative.
+
 A single-state DiD would have shipped a causal claim (§7b) that the falsification control (§7e)
 shows the data does not support; the project reports the null rather than the optimistic read. The two
 arms of `care_access` land differently: **affordability** (the ACA coverage shock, §7b/§7e) is a clean,
@@ -753,10 +762,11 @@ modesty is real but smaller than the naked correlations imply.
 
 **What this does and does not change.** The per-ZCTA composite scores never change - precision-weighting
 and disattenuation only alter how the index's association with outcomes is *measured*. The anchored
-*presets* now use the pop-weighted dimension correlations (the better, attenuation-corrected estimator),
-with the prior unweighted weights retained beside them as `weights_unweighted` for transparency. The
-preset shift is modest and mixed at county resolution (pop-weighting nudges the mortality anchors toward
-health_need, e.g. amenable care_access 31.2→28.5; infant mortality moves the other way, 31.5→34.1) - the
+*presets* use the **unweighted** dimension correlations (the shipped default), with the pop-weighted
+variant retained beside them as `weights_popw` for transparency. Pop-weighting changes the estimand to
+"the correlation where people live" and systematically raises care_access, so it is offered as a labeled
+sensitivity, not the default. The unweighted→pop-weighted shift is modest and mixed at county resolution
+(e.g. amenable care_access 31.2→28.5; infant mortality moves the other way, 31.5→34.1) - the
 large care_access recovery is a *sub-county* phenomenon, not a county-preset one, and the docs say so.
 The CV-optimal supervised reweighting at sub-score level was measured and **declined**: it buys only
 +0.02 to +0.085 out-of-sample R² and costs the conceptual-weight interpretability the index protects

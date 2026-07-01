@@ -209,9 +209,9 @@ in-app **"How to read this"** panel as well:
 - **Ecological fallacy / age.** Area patterns are not individual-level facts; crude
   prevalence reflects age mix.
 
-HRSA HPSA validation is intentionally **out of v1** (optional, non-blocking) - and even
-when added, it shares inputs with the score, so it is a consistency check against the
-federal definition, not independent ground truth.
+HRSA HPSA as an **independent validation anchor** is intentionally out of v1: HPSA is itself a
+scored input (the `shortage_designation` care sub-score), so it shares inputs with the score - it
+can only be a consistency check against the federal definition, not independent ground truth.
 
 ---
 
