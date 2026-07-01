@@ -11,7 +11,16 @@ Findings are verified against the actual code. `UNVERIFIED` marks a suspicion th
 
 ---
 
-## Progress & handoff (last updated by remediation pass 2)
+## Progress & handoff (last updated: overnight autonomous session, cycle 13)
+
+**ALL HIGH-severity audit findings are now resolved** (fixed, measured-and-rejected, or confirmed-already-handled). ~40 findings addressed across the session + the tract-HPSA sub-county upgrade. Everything committed + pushed to `origin/master` (~30 commits). Detailed cycle-by-cycle log in `docs/WORKLOG.md`. Verification: 132 Python + 51 frontend tests pass, tsc clean, CI verified end-to-end in a clean clone (101 pass / 31 skip via the committed data slice), scoring rebuild byte-stable (deterministic). **Deploy still blocked on the user's Netlify auth (read-only token).**
+
+Overnight highlights (see WORKLOG for all): tract-level HPSA (sub-county resolution, validation r ~doubled) + kernel test + full doc reconciliation (VALIDATION/METHODOLOGY/DECISIONS/UI); CI data-slice so acceptance/integrity guards RUN (was 0); dep pinning; §2.5 SVI reproducibility fail-loud; build_broadband/gazetteer robustness; FQHC power gate corrected (null is underpowered, not clean); scoring determinism verified. Measured-and-rejected (progress too): §1.1 percentile universe (0.11pt), pop-weighted HPSA (wash), naive tract-HPSA hybrid (wrong-signed). Confirmed non-bugs: §5.5, §6.13.
+
+Remaining (all NON-high): formal cross-suite multiplicity framework (large; already disclosed honestly in §4a), MapView `autoHighlight` (visual, low value - hover already snappy), §5.13 TS index-signature (moderate ripple, modest benefit), assorted low-severity builder items. None load-bearing.
+
+---
+*Historical (pass 2):*
 
 **30 findings fixed and verified so far.** Verification: frontend `tsc --noEmit` clean + 48 vitest tests pass (4 new); Python 130 tests pass. Nothing committed yet.
 
