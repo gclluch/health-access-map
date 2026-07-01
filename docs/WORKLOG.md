@@ -40,3 +40,8 @@ verified work in small units, re-evaluate priorities each cycle.
 - **CONFIRMED (measured)** sub-county signal is real: composite within-county r vs life expectancy = **-0.503**, county-block CI [-0.526,-0.480] (excludes 0), correctly signed. Amenable/infant mortality within-county = 0.000 exactly (county-level outcomes, no within-county variance to test) - the honest caveat. VALIDATION §3 already documents sub-county validity, so this confirms rather than adds.
 - **§5.5 = non-issue**: severity()/band() are fed percentile-converted values at every call site (not the raw CLT-compressed composite). Audit flagged a risk callers actually avoid. No change.
 - **DONE** VALIDATION §7f headline updated to the county-block CI (null, not "borderline"), consistent with the §3.1 code + the note. Committed.
+
+## Cycle 4
+- **DONE (important)** tract-HPSA doc footprint: my §sub-county change overturned a documented finding ("HPSA carries ~zero sub-county signal / county-constant") woven through VALIDATION §3-§6 (repeated 5x). Fixed the prominent §3 "5 A's" table (HPSA within-county 0.000→+0.20) + finding + the county-flat paragraph (now medical_debt-only); added a §3 banner flagging that later computed tables (§6a/§6b) still say "HPSA county-constant" and predate the fix (need a validate_subcounty regen). Committed.
+- Lesson: a shipped DATA change can invalidate a whole documented analysis thread - always sweep the docs for the superseded claim.
+- Testing whether a full validate_subcounty.run_national() regen is feasible offline (to properly refresh the computed tables).
