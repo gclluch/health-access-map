@@ -9,7 +9,6 @@ from __future__ import annotations
 import io
 import zipfile
 
-import httpx
 import pandas as pd
 
 from . import config
@@ -23,13 +22,11 @@ def _resolve():
         url = config.GAZETTEER_TMPL.format(year=year)
         dest = config.RAW / f"gaz_zcta_{year}.zip"
         try:
-            if not dest.exists():
-                with httpx.Client(timeout=20, follow_redirects=True) as c:
-                    if c.head(url).status_code >= 400:
-                        continue
+            # Attempt the actual GET (download_file caches a valid file and validates min_bytes).
+            # No HEAD pre-gate: a server that rejects HEAD (405/403) but serves GET must not be skipped.
             download_file(url, dest, min_bytes=100_000)
             return dest, year
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 - vintage missing / too small; try the next year
             continue
     die("gazetteer", "no Gazetteer vintage resolved")
 
