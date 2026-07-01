@@ -6,7 +6,7 @@ import { SUBSCORE_EVIDENCE } from '../lib/types';
 const POINTS: Array<[string, string]> = [
   [
     'One deprivation gradient, not three independent axes',
-    'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two honest consequences: the tunable weights make that subjectivity explicit rather than hidden, AND because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). Treat the sliders as a sensitivity probe, not a knob that rewrites reality.',
+    'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two consequences: the tunable weights make that subjectivity explicit rather than hidden, and because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). The sliders are a sensitivity probe, not a knob that rewrites the ranking.',
   ],
   [
     'Relative, not absolute',
@@ -259,7 +259,7 @@ export default function MethodologyPanel() {
             <div className="rounded border border-hairline bg-paper/70 px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-graphite">Read as</div>
               <div className="text-[12px] text-ink mt-0.5 leading-snug">
-                A relative screening priority, not an absolute verdict. The panel leads with the
+                A relative screening rank - it shows where to look first. The panel leads with the
                 need-vs-access profile (a 95 can be all-need or all-no-providers - different fixes).
               </div>
             </div>
