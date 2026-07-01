@@ -49,3 +49,8 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 5
 - **DONE** ran validate_subcounty.run_national() OFFLINE (works from local caches) -> authoritative regenerated within-county r's on the new tract-HPSA metrics. HPSA = **+0.246** (was 0.000); provider_supply 0.076 + insurance 0.477 match the doc exactly (confirms the doc table was from this function). Updated §3 to +0.246 and corrected the "HPSA county-constant" prose (§overdose). Computed §6a/§6b tables still flagged by the §3 banner (need their specific state analyses re-run).
 - Next: verify the CI changes end-to-end (fresh venv + requirements.lock + fixture path) - the real CI scenario, to catch any break before the user's CI runs.
+
+## Cycle 6
+- **DONE (major verification)** CI end-to-end sim: fresh clone (no gitignored data → fixture path) + `pip install requirements.lock` + pytest = **101 passed, 31 skipped**. Confirms the CI dep-pinning + data-slice changes work in a clean env exactly as GitHub Actions runs them. Before: 0 data-gated guards ran; now 101 run.
+- **DONE** METHODOLOGY correction: the "sub-county HPSA resolution is a wash (0.99 corr with county-max)" + "spatial-signal ceiling reached" claims tested only the NAIVE form. The tract-component form (county-wide fallback) shipped this build and wins (0.000→+0.246 within-county, validation ~doubled). Corrected both. A genuine finding - the prior verdict missed the right construction.
+- Net: the tract-HPSA change is now fully integrated (code + test + CI-guarded + VALIDATION + METHODOLOGY + UI). 
