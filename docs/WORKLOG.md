@@ -85,3 +85,6 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 14
 - **MILESTONE** all HIGH-severity audit findings resolved (fixed / measured-rejected / already-disclosed). Causal §4 multiplicity is already honestly disclosed in VALIDATION §4a (winner's-curse, "exact decimal is soft", "none of these is a multiplicity correction") - the formal fix is a research-process change, not a retrofit. Consolidated the full status in AUDIT.md.
 - Now in MEDIUM/LOW territory. Continuing with genuinely-useful items, transparent about value level.
+
+## Cycle 15
+- **DONE (type safety, §5.13)** removed SlimMetric's blanket `[k: string]` index signature - a typo'd column (m.halth_need_pctile) was silently `null` at runtime; now a compile error. Blast radius was only 3 dynamic-access sites (scoring.metricValue, store lazy-merge, DetailPanel sub-score pctile), each fixed with a documented unknown-bridged cast. tsc clean + 51 tests pass. Purely type-level, no runtime change.
