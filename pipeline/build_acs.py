@@ -254,9 +254,11 @@ _RACE_BUCKETS = {
 
 
 def _fetch_svi_rates() -> pd.DataFrame | None:
-    """One group() call per ACS table -> a fraction rate + its SE (from the table's
-    margins). Failures are skipped (the hierarchical score averages over whichever
-    members are present)."""
+    """One group() call per ACS table -> a fraction rate + its SE (from the table's margins).
+    A CONTEXT-only table's failure is skipped, but a SCORED input's failure is fatal: silently
+    dropping it would ship a different, degraded, non-deterministic composite between runs."""
+    from .taxonomy import subscore_specs
+    scored_inputs = {m["col"] for s in subscore_specs() if s.get("scored", True) for m in s["members"]}
     frames: list[pd.DataFrame] = []
     for name, (table, nums, denom) in config.ACS_SVI.items():
         try:
@@ -287,7 +289,10 @@ def _fetch_svi_rates() -> pd.DataFrame | None:
             frames.append(pd.DataFrame({"zcta5": grp["zcta5"], name: rate, f"{name}_se": se, **extra}))
             log("acs", f"  svi {name}: median {rate.median():.3f}")
         except Exception as e:  # noqa: BLE001
-            log("acs", f"  svi {name}: FAILED ({type(e).__name__}); skipping")
+            if name in scored_inputs:
+                die("acs", f"scored SVI input {name} failed ({type(e).__name__}: {e}) - dropping it "
+                           "would silently ship a degraded, non-deterministic composite")
+            log("acs", f"  svi {name}: FAILED ({type(e).__name__}); skipping (context-only)")
     if not frames:
         return None
     out = frames[0]
