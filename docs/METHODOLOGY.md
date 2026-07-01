@@ -273,10 +273,12 @@ specced in DECISIONS.md), the only remaining lever that could add genuinely new 
 process measures carry no clean signal (+0.04; see the decision log above). The lever that worked
 instead was **HPSA shortage designation (C5)** - an *official* shortage signal, not a modeled rate.
 
-**The spatial-signal ceiling is reached.** Three further probes - hospital quality
-(Care Compare), SUD/behavioral desert (SAMHSA/NPPES), and sub-county HPSA - all failed the same way
-every earlier one did: collinear with the poverty/rural/supply gradient already scored, so raw signal
-collapses in partial-r. No remaining free spatial dataset is orthogonal to that gradient. The
+**The spatial-signal ceiling is mostly reached.** Two further probes - hospital quality
+(Care Compare) and SUD/behavioral desert (SAMHSA/NPPES) - failed the same way every earlier one did:
+collinear with the poverty/rural/supply gradient already scored, so raw signal collapses in partial-r.
+(Sub-county HPSA was in this list, but only its naive form failed; the tract-component form shipped
+this build - see the "what we tried" note above.) No remaining free spatial dataset is orthogonal to
+that gradient. The
 remaining levers are therefore **completeness/structural, not signal** (in rough ROI order):
 1. **PLACES measurement-noise bands (Layer B3).** health_need's measurement noise (previously σ=0
    in the bands) is parsed from PLACES 95% CIs into a `places_input_cv`, injected in quadrature with
@@ -300,4 +302,9 @@ remaining levers are therefore **completeness/structural, not signal** (in rough
 3. **Acceptability (Medicaid / new-patient acceptance)** - the axis NPPES omits. No free national
    file exists (only the CMS NDF Medicare-assignment flag, near-saturated); needs the scrape-to-
    calibrate heuristic in DECISIONS.md. A real slog. Lowest ROI.
-ZIP/sub-county HPSA resolution - a wash (0.991 correlated with county-max).
+ZIP/sub-county HPSA resolution - the NAIVE version (backfilling non-designated tracts with the
+county-MAX) is a wash (0.99 correlated with county-max) and wrong-signed within county. But resolving
+the Census-Tract *components* to their tract GEOID with a county-WIDE (not county-max) fallback IS a
+win - **shipped this build**: within-county r 0.000 → +0.246, outcome-validation signal roughly
+doubled (amenable mortality 0.25 → 0.49). The earlier "wash" verdict tested only the naive form. See
+docs/SUBCOUNTY_PLAN.md.
