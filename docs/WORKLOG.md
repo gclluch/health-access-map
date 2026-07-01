@@ -77,3 +77,7 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Cycle 12
 - **DONE (robustness, §2.13)** build_gazetteer: the HEAD pre-gate skipped a Census vintage whenever the server rejects HEAD (405/403) but would serve GET. Removed it - download_file's GET + min_bytes validation is the honest test and already caches/raises correctly. Net simpler + more robust; removed the now-dead httpx import. Imports clean.
+
+## Cycle 13
+- **DONE (causal rigor, audit §3)** FQHC power gate overclaimed "TWFE MDE ~= CS MDE" - but the shipped Callaway-Sant'Anna uses only not-yet-treated comparisons (strictly less efficient), so its realized MDE is LARGER. Corrected the gate's printed "Honest reads" + VALIDATION §7g: the FQHC null is now framed as **suggestive-but-underpowered** (right-signed, dose-responsive, wide CI), not a cleanly-powered true null. A meaningful honesty fix - one of the remaining HIGH causal audit items. Parses.
+- Full suite still 132 pass (builder cycles 8-12 no regression).
