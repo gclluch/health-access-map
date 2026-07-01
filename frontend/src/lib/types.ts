@@ -70,6 +70,13 @@ export interface BuildMeta {
     composite_pc1_corr?: number;   // |r| between the additive composite and PC1 (>0.99 => composite IS PC1)
     composite_is_pc1?: boolean;
   };
+  // T9 governance stamp: the pipeline commit + a content hash per shipped payload, so a live deploy
+  // is traceable to a source revision + data vintage. deploy-manifest.json carries the same record.
+  build?: {
+    git_sha?: string;
+    provenance_sha256?: string | null;
+    payloads?: Record<string, string>;
+  };
 }
 
 export type DimKey = 'health_need' | 'social_vulnerability' | 'care_access';

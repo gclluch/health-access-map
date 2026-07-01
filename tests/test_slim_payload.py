@@ -12,8 +12,9 @@ import json
 import numpy as np
 import pandas as pd
 
+import pipeline.config as config
 from pipeline.join_and_score import (SUBSCORE_COLS, _columnar, _write_map_frame,
-                                     _write_subscores)
+                                     _write_public_meta, _write_subscores)
 
 
 def _frame() -> pd.DataFrame:
@@ -92,3 +93,34 @@ def test_subscores_payload_has_all_lenses_keyed_by_zcta(tmp_path, monkeypatch):
         assert len(subs[c]) == 3
     # NaN row -> null; quantized to int elsewhere
     assert subs["insurance_pctile"] == [10, None, 71]
+
+
+def test_public_meta_stamps_build_hashes_and_manifest(tmp_path, monkeypatch):
+    import pipeline.join_and_score as mod
+    # redirect every write/read to the sandbox so the real public/ is untouched
+    monkeypatch.setattr(config, "FRONTEND_PUBLIC", tmp_path)
+    monkeypatch.setattr(config, "PROVENANCE", tmp_path / "provenance.json")
+    (tmp_path / "provenance.json").write_text(json.dumps({"providers": {"nppes_zip": "NPPES_2026.zip"}}))
+    frame_path = tmp_path / "map_frame.json"
+    subs_path = tmp_path / "subscores.json"
+    frame_path.write_bytes(b'{"n":0}')
+    subs_path.write_bytes(b'{"n":0}')
+    monkeypatch.setattr(mod, "OUT_MAP_FRAME", frame_path)
+    monkeypatch.setattr(mod, "OUT_SUBSCORES", subs_path)
+
+    _write_public_meta(_frame(), {"health_need": 0.5}, {"pc1_share": 0.76})
+
+    meta = json.loads((tmp_path / "meta.json").read_text())
+    manifest = json.loads((tmp_path / "deploy-manifest.json").read_text())
+    build = meta["build"]
+    assert isinstance(build["git_sha"], str) and build["git_sha"]
+    # hashes present for the payloads that exist on disk; hex sha256 (64 chars)
+    assert len(build["payloads"]["map_frame.json"]) == 64
+    assert build["payloads"]["subscores.json"] == manifest["payloads"]["subscores.json"]
+    # a content change flips the hash (traceability)
+    frame_path.write_bytes(b'{"n":1}')
+    from pipeline.join_and_score import _sha256
+    assert _sha256(frame_path) != build["payloads"]["map_frame.json"]
+    # manifest mirrors the build stamp
+    assert manifest["git_sha"] == build["git_sha"]
+    assert manifest["vintages"]["nppes"] == "NPPES_2026.zip"

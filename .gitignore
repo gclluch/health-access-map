@@ -27,6 +27,7 @@ frontend/public/subscores.json
 frontend/public/zcta_overview.geojson
 frontend/public/zcta.pmtiles
 frontend/public/meta.json
+frontend/public/deploy-manifest.json
 frontend/public/trends.json
 frontend/public/zcta/
 

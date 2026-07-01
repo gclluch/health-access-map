@@ -15,7 +15,10 @@ lazily by the client the first time one of those map lenses is selected).
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
+import os
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -482,11 +485,52 @@ def _write_subscores(df: pd.DataFrame) -> None:
     log("join", f"subscores.json: {len(df)} records, {len(cols)} cols ({size/1e6:.1f} MB)")
 
 
+def _sha256(path) -> str | None:
+    """sha256 of a file, streamed; None if the file is not present (e.g. pmtiles built separately)."""
+    if not path.exists():
+        return None
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_sha() -> str:
+    """Pipeline commit stamped into the build so a live payload is traceable to a source revision.
+    Prefers HAM_BUILD_SHA (set in CI where the git dir may be absent), else `git rev-parse HEAD`."""
+    env = os.environ.get("HAM_BUILD_SHA")
+    if env:
+        return env.strip()
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=config.ROOT,
+                             capture_output=True, text=True, timeout=5)
+        return out.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
 def _write_public_meta(df: pd.DataFrame, corr: dict, eff_dims: dict) -> None:
     """Slim, frontend-fetchable build metadata (provenance.json itself is not in public/). Drives
     the in-app 'data as of' freshness badge + the dynamic methodology vintages. The NPPES vintage
-    is read from the providers stage's provenance section if already written."""
+    is read from the providers stage's provenance section if already written.
+
+    T9 governance: also stamps the pipeline git SHA + a sha256 per shipped payload + the
+    provenance digest, and emits deploy-manifest.json, so a live deploy is traceable to a data
+    vintage and a source revision (the payloads themselves are gitignored / built locally)."""
     prov = json.loads(config.PROVENANCE.read_text()) if config.PROVENANCE.exists() else {}
+    payloads = {
+        "map_frame.json": OUT_MAP_FRAME,
+        "subscores.json": OUT_SUBSCORES,
+        "zcta_overview.geojson": config.FRONTEND_PUBLIC / "zcta_overview.geojson",
+        "zcta.pmtiles": config.FRONTEND_PUBLIC / "zcta.pmtiles",
+    }
+    payload_hashes = {name: h for name, p in payloads.items() if (h := _sha256(p)) is not None}
+    build = {
+        "git_sha": _git_sha(),
+        "provenance_sha256": _sha256(config.PROVENANCE),
+        "payloads": payload_hashes,
+    }
     meta = {
         "generated": datetime.date.today().isoformat(),
         "vintages": {
@@ -500,9 +544,21 @@ def _write_public_meta(df: pd.DataFrame, corr: dict, eff_dims: dict) -> None:
         "institutional": int(df["institutional"].sum()),
         "dimension_correlations": corr,
         "effective_dimensions": eff_dims,
+        "build": build,
     }
     (config.FRONTEND_PUBLIC / "meta.json").write_text(json.dumps(meta))
-    log("join", f"wrote frontend/public/meta.json (generated {meta['generated']})")
+    # Ops record that travels with the deploy (served at /deploy-manifest.json): what data vintage +
+    # source revision shipped, and the content hash of every payload, so a rollback is traceable.
+    manifest = {
+        "generated": meta["generated"],
+        "git_sha": build["git_sha"],
+        "vintages": meta["vintages"],
+        "provenance_sha256": build["provenance_sha256"],
+        "payloads": payload_hashes,
+    }
+    (config.FRONTEND_PUBLIC / "deploy-manifest.json").write_text(json.dumps(manifest, indent=2))
+    log("join", f"wrote meta.json + deploy-manifest.json (generated {meta['generated']}, "
+                f"build {build['git_sha'][:7]}, {len(payload_hashes)} payload hashes)")
 
 
 def _outcome_anchor(df: pd.DataFrame) -> dict:

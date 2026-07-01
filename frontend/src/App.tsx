@@ -267,11 +267,13 @@ function FreshnessBadge() {
   const nppes = v.nppes
     ?.replace(/^NPPES_Data_Dissemination_|\.zip$/g, "")
     .replace(/_/g, " ");
+  const sha = meta.build?.git_sha;
   const tip =
     `Built ${meta.generated} from: CDC PLACES (${v.places ?? "?"}), ` +
     `Census ACS 5-yr ${v.acs_year ?? "?"}, TIGER ${v.tiger_year ?? "?"}` +
     (nppes ? `, NPPES ${nppes}` : "") +
-    `. ${meta.n_scored?.toLocaleString() ?? "?"} ZIPs scored.`;
+    `. ${meta.n_scored?.toLocaleString() ?? "?"} ZIPs scored.` +
+    (sha && sha !== "unknown" ? ` Build ${sha.slice(0, 7)}.` : "");
   return (
     <span
       title={tip}
