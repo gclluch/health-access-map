@@ -252,7 +252,8 @@ export const useStore = create<AppState>((set, get) => ({
           if (!rec) continue;
           // New row object (not in-place) so consumers memoized on row identity see the merge.
           const merged = { ...rec } as SlimMetric;
-          for (const col of SUBSCORE_LAZY_COLS) merged[col] = s[col][i];
+          const mw = merged as unknown as Record<string, number | null>;  // lazy sub-score columns are number|null
+          for (const col of SUBSCORE_LAZY_COLS) mw[col] = s[col][i];
           metrics.set(s.zcta5[i], merged);
         }
         // New Map reference so map/rankings subscribers re-render and read the merged columns.

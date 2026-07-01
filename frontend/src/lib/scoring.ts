@@ -77,7 +77,9 @@ export function parseWeightParam(w: string | null): Weights | null {
 export function metricValue(m: SlimMetric, metric: string, w: Weights): number | null {
   if (metric === COMPOSITE_METRIC) return accessGap(m, w);
   if (metric === COMPOSITE_MULT_METRIC) return accessGapMult(m, w);
-  const v = m[metric];
+  // Dynamic metric column (runtime string); SlimMetric's typed fields don't cover arbitrary keys, so
+  // access via an unknown-bridged Record. The typeof guard below keeps this null-safe.
+  const v = (m as unknown as Record<string, unknown>)[metric];
   return typeof v === 'number' ? v : null;
 }
 

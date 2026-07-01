@@ -41,7 +41,6 @@ export interface SlimMetric {
   insurance_pctile: number | null;
   medical_debt_pctile: number | null;
   preventive_use_pctile: number | null;
-  [k: string]: string | number | boolean | null;
 }
 
 export const STATE_NAMES: Record<string, string> = {

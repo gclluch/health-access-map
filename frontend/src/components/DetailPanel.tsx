@@ -232,7 +232,7 @@ function Dimension({
                 subKey={s.key}
                 label={s.label}
                 scored={s.scored !== false}
-                pct={m[`${s.key}_pctile`] as number | null}
+                pct={(m as unknown as Record<string, number | null>)[`${s.key}_pctile`] ?? null}
                 rec={rec}
                 recLoading={recLoading}
               />
