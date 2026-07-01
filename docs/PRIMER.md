@@ -486,7 +486,8 @@ docs/
   diagrams/            score-flow.svg, proposed-model.svg
 data/processed/
   metrics.parquet      everything (88 cols); served per-ZIP by the API
-  metrics.json         slim (geography + percentiles); loaded by the map
+  map_frame.json       slim first-paint frame (geography + percentiles); loaded by the map
+  subscores.json       the 14 sub-score lenses; fetched lazily on sub-score select
   provenance.json      exact dataset ids, vintages, weights, correlations
 ```
 

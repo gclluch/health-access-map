@@ -6,7 +6,7 @@ zoom would negate the cold-load win. So the client renders a HYBRID: a tiny, hea
 simplified all-ZCTA overview for the national/low zooms (complete coverage, dense, small), and
 range-requested vector tiles for z6+ where only the viewport's ZCTAs stream at full detail.
 
-Two artifacts, written straight to frontend/public/ (like metrics.json):
+Two artifacts, written straight to frontend/public/ (like map_frame.json):
   - zcta.pmtiles          range-requested vector tiles for z>=6. The map streams only the
                           tiles in view, so zoomed-in geometry transfer + resident memory are
                           bounded instead of holding the whole ~16 MB GeoJSON.

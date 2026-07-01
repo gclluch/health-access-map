@@ -1,6 +1,6 @@
-// Writes a tiny deterministic metrics.json + zcta_overview.geojson into public/ so the app can
-// boot in CI without the multi-GB data build. A tiny zcta.pmtiles is also built when tippecanoe
-// is on PATH (the overview alone covers the low zooms, so the smoke suite passes without it).
+// Writes a tiny deterministic map_frame.json + subscores.json + zcta_overview.geojson into public/ so
+// the app can boot in CI without the multi-GB data build. A tiny zcta.pmtiles is also built when
+// tippecanoe is on PATH (the overview alone covers the low zooms, so the smoke suite passes without it).
 // No-ops if real payloads are already present, so it never clobbers a local `make data` build.
 import { existsSync, writeFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -8,13 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const pub = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
-const metricsPath = join(pub, 'metrics.json');
+const framePath = join(pub, 'map_frame.json');
+const subscoresPath = join(pub, 'subscores.json');
 const geoPath = join(pub, 'zcta_overview.geojson');
 
-// Treat a >5 KB metrics.json as a real build worth preserving.
-const realExists = existsSync(metricsPath) && statSync(metricsPath).size > 5000;
+// Treat a >5 KB map_frame.json as a real build worth preserving.
+const realExists = existsSync(framePath) && statSync(framePath).size > 5000;
 if (realExists) {
-  console.log('make-fixture: real metrics.json present, leaving payloads untouched');
+  console.log('make-fixture: real map_frame.json present, leaving payloads untouched');
   process.exit(0);
 }
 
@@ -31,15 +32,17 @@ const sq = (lon, lat, d = 0.1) => [[
   [lon - d, lat - d], [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d],
 ]];
 
-const metrics = seed.map((s) => {
-  const score = (35 * s.hn + 30 * s.sv + 35 * s.ca) / 100;
+// Full per-ZCTA record; split below into the columnar frame + subscores payloads (mirrors the
+// pipeline's join_and_score._write_map_frame / _write_subscores partition).
+const records = seed.map((s) => {
+  const score = Math.round((35 * s.hn + 30 * s.sv + 35 * s.ca) / 100);
   return {
-    zcta5: s.z, state: 'CA', state_name: 'California', city: s.city, county_name: 'Test County',
-    population: 20000, life_expectancy: 80, life_expectancy_pctile: 50,
-    access_gap_score: score, access_gap_pctile: score,
-    access_gap_rank_lo: Math.max(0, score - 6), access_gap_rank_hi: Math.min(100, score + 6),
-    access_gap_mult_pctile: score, tier: Math.ceil(score / 10), low_confidence: false, scoreable: true,
+    zcta5: s.z, state: 'CA', city: s.city, county_name: 'Test County', population: 20000,
     health_need_pctile: s.hn, social_vulnerability_pctile: s.sv, care_access_pctile: s.ca,
+    access_gap_pctile: score, access_gap_pctile_within_state: score, care_access_resid_pctile: score,
+    access_gap_rank_lo: Math.max(0, score - 6), access_gap_rank_hi: Math.min(100, score + 6),
+    tier: Math.ceil(score / 10), n_dims_scored: 3, low_confidence: 0, institutional: 0, scoreable: 1,
+    life_expectancy_pctile: 50,
     chronic_disease_pctile: s.hn, behavioral_risk_pctile: s.hn, mental_social_health_pctile: s.hn,
     disability_pctile: s.hn, socioeconomic_pctile: s.sv, housing_transport_pctile: s.sv,
     social_needs_pctile: s.sv, digital_access_pctile: s.sv, provider_supply_pctile: s.ca,
@@ -47,6 +50,23 @@ const metrics = seed.map((s) => {
     medical_debt_pctile: s.ca, preventive_use_pctile: s.ca,
   };
 });
+
+const columnar = (cols) => {
+  const out = { n: records.length };
+  for (const c of cols) out[c] = records.map((r) => r[c]);
+  return out;
+};
+
+const FRAME_COLS = ['zcta5', 'state', 'city', 'county_name', 'population',
+  'health_need_pctile', 'social_vulnerability_pctile', 'care_access_pctile',
+  'access_gap_pctile', 'access_gap_pctile_within_state', 'care_access_resid_pctile',
+  'access_gap_rank_lo', 'access_gap_rank_hi',
+  'tier', 'n_dims_scored', 'low_confidence', 'institutional', 'scoreable'];
+const SUBSCORE_COLS = ['zcta5',
+  'chronic_disease_pctile', 'behavioral_risk_pctile', 'mental_social_health_pctile', 'disability_pctile',
+  'socioeconomic_pctile', 'housing_transport_pctile', 'social_needs_pctile', 'digital_access_pctile',
+  'provider_supply_pctile', 'shortage_designation_pctile', 'safetynet_access_pctile', 'insurance_pctile',
+  'medical_debt_pctile', 'preventive_use_pctile', 'life_expectancy_pctile'];
 
 const geojson = {
   type: 'FeatureCollection',
@@ -56,7 +76,8 @@ const geojson = {
   })),
 };
 
-writeFileSync(metricsPath, JSON.stringify(metrics));
+writeFileSync(framePath, JSON.stringify(columnar(FRAME_COLS)));
+writeFileSync(subscoresPath, JSON.stringify(columnar(SUBSCORE_COLS)));
 writeFileSync(geoPath, JSON.stringify(geojson));
 
 // Detailed geometry tiles (only used at z>=6). Best-effort: build from the fixture geojson if
@@ -68,4 +89,4 @@ try {
 } catch {
   console.log('make-fixture: tippecanoe not found, skipping zcta.pmtiles (overview covers smoke)');
 }
-console.log(`make-fixture: wrote ${metrics.length}-ZCTA fixture to public/`);
+console.log(`make-fixture: wrote ${records.length}-ZCTA fixture to public/`);

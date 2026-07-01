@@ -1,6 +1,6 @@
 """FastAPI app: dynamic attribute queries over the in-memory metrics table.
 
-The heavy static files (zcta.geojson, metrics.json) are served by Vite/CDN from
+The heavy static files (zcta.geojson, map_frame.json, subscores.json) are served by Vite/CDN from
 frontend/public -- NOT routed through here. This API handles only the dynamic
 lookups: one ZIP, rankings, compare. CORS is opened to the Vite dev origin.
 """

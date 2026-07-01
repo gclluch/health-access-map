@@ -6,7 +6,7 @@ the static Netlify host there is no backend, so we pre-shard that data: one JSON
 prefix (zcta5[:3]) holding { zcta5: {full record} }. The client (lib/api.ts) fetches one
 ~110 KB shard on demand per ZIP click, so it mirrors the backend without a server.
 
-~900 shards into frontend/public/zcta/ (gitignored, like metrics.json). Mirrors backend
+~900 shards into frontend/public/zcta/ (gitignored, like map_frame.json). Mirrors backend
 data._clean (NaN/inf/NA -> dropped) and rounds floats to bound size.
 """
 from __future__ import annotations

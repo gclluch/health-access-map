@@ -4,8 +4,8 @@
 # backend; without it the panel shows dimension/sub-score data and an "unavailable" note. To wire
 # the backend later, host it on a scale-to-zero free tier and add the redirect + connect-src below.)
 #
-# DEPLOY MODEL - the data payloads (frontend/public/{metrics.json, zcta_overview.geojson,
-# zcta.pmtiles, trends.json}) are gitignored and too large to regenerate on CI (needs API keys +
+# DEPLOY MODEL - the data payloads (frontend/public/{map_frame.json, subscores.json,
+# zcta_overview.geojson, zcta.pmtiles, trends.json}) are gitignored and too large to regenerate on CI (needs API keys +
 # multi-GB downloads), so DON'T let Netlify build from git. Build locally and deploy the dir:
 #   make data                              # produce the static payloads (one time / on refresh)
 #   cd frontend && npm run build           # bundle dist/ (includes the payloads from public/)
@@ -47,8 +47,8 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 # Regenerated each build (not hashed) -> cache, then serve-stale-while-revalidating. SWR lets a
-# repeat visit paint instantly from cache (no blocking revalidation roundtrip on the ~30 MB
-# metrics.json - the dominant cost on mobile/cellular) while it refreshes in the background; the
+# repeat visit paint instantly from cache (no blocking revalidation roundtrip on the columnar
+# map_frame.json - the dominant cold-load cost on mobile/cellular) while it refreshes in the background; the
 # day-long window self-heals after a manual data redeploy. Netlify serves byte ranges on .pmtiles
 # automatically, so the map streams only the viewport's tiles.
 [[headers]]

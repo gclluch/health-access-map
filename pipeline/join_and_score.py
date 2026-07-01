@@ -6,9 +6,11 @@ available members into a sub-score, re-rank; average sub-scores into a dimension
 re-rank; weight the dimensions into the composite, and report the composite's own
 percentile. Re-ranking at each level keeps every node a clean 0-100 "higher = worse."
 
-Outputs: data/processed/metrics.parquet (everything, served per-ZIP by the API) and
-frontend/public/metrics.json (slim: geography + dimension/sub-score percentiles +
-composite + flags, enough for the map and the client-side weight recompute).
+Outputs: data/processed/metrics.parquet (everything, served per-ZIP by the API) and two columnar
+client payloads: frontend/public/map_frame.json (first-paint frame: geography + dimension
+percentiles + composite-family lenses + flags, enough for the map and the client-side weight
+recompute) and frontend/public/subscores.json (the 14 sub-score lenses + life-expectancy, fetched
+lazily by the client the first time one of those map lenses is selected).
 """
 from __future__ import annotations
 
@@ -25,7 +27,11 @@ from .taxonomy import (CONTEXT_ACS, CONTEXT_PLACES, DIMENSION_WEIGHTS, DIMENSION
 from .zip_states import state_name, zip3_to_state
 
 OUT_PARQUET = config.PROCESSED / "metrics.parquet"
-OUT_JSON = config.FRONTEND_PUBLIC / "metrics.json"
+# Two-tier client payload (columnar struct-of-arrays). map_frame.json is the first-paint frame
+# (labels + the columns the default map/rankings/legend need); subscores.json holds the sub-score
+# lenses, fetched lazily the first time one is selected. See _write_map_frame / _write_subscores.
+OUT_MAP_FRAME = config.FRONTEND_PUBLIC / "map_frame.json"
+OUT_SUBSCORES = config.FRONTEND_PUBLIC / "subscores.json"
 
 MERGE_STAGES = ("places", "providers", "acs", "geonames", "supply")
 # merged if present (safety-net + independent outcomes for display/validation). The
@@ -383,7 +389,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     lens = _lens_diag(df)
     anchor = _outcome_anchor(df)
     df.to_parquet(OUT_PARQUET, index=False)
-    _write_slim_json(df, dim_cols)
+    _write_map_frame(df, dim_cols)
+    _write_subscores(df)
     _write_public_meta(df, corr, eff_dims)
     write_provenance({"rank_band": band_decomp, "score": {
         "method": "hierarchical percentile (SVI-style), re-ranked per level",
@@ -404,7 +411,8 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
             "default (clean mean-r 0.500 vs 0.502); down-weights one-dimensional highs ~4-5 pts.",
     }})
     log("join", f"outcome anchor (vs fair/poor health): {anchor}")
-    log("join", f"wrote {OUT_PARQUET.name} ({len(df)} rows, {df.shape[1]} cols) + {OUT_JSON.name}")
+    log("join", f"wrote {OUT_PARQUET.name} ({len(df)} rows, {df.shape[1]} cols) + "
+                f"{OUT_MAP_FRAME.name} + {OUT_SUBSCORES.name}")
     log("join", f"dimension correlations: {corr}")
     log("join", "dimension weights derived by pipeline/validate.py (multi-anchor)")
     return str(OUT_PARQUET)
@@ -421,24 +429,57 @@ RAW_DISPLAY = (
 )
 
 
-def _write_slim_json(df: pd.DataFrame, dim_cols: list[str]) -> None:
-    # slim payload: geography + composite + dimensions + sub-scores + flags.
-    cols = ["zcta5", "state", "state_name", "city", "county_name", "population",
-            "access_gap_score", "access_gap_pctile", "access_gap_pctile_within_state",
-            "access_gap_rank_lo", "access_gap_rank_hi", "care_access_resid_pctile",
-            "tier", "low_confidence", "institutional", "scoreable",
-            "n_dims_scored", "life_expectancy", "life_expectancy_pctile",
-            *dim_cols, *SUBSCORE_COLS]
+# First-paint frame columns: labels + composite inputs + composite-family lenses + the reliable-range
+# band (T4) + tier/flags. NOT the 14 sub-scores (lazy) and NOT access_gap_score (recomputed client-side),
+# state_name / raw life_expectancy (never read client-side).
+_FRAME_LABEL_COLS = ["zcta5", "state", "city", "county_name", "population"]
+_FRAME_LENS_COLS = ["access_gap_pctile", "access_gap_pctile_within_state", "care_access_resid_pctile",
+                    "access_gap_rank_lo", "access_gap_rank_hi"]
+_FRAME_FLAG_COLS = ["tier", "n_dims_scored", "low_confidence", "institutional", "scoreable"]
+
+
+def _cell(v):
+    """JSON-safe scalar: NaN/NA -> None; numpy scalars -> native Python; strings pass through."""
+    if pd.isna(v):
+        return None
+    return v.item() if isinstance(v, np.generic) else v
+
+
+def _columnar(df: pd.DataFrame, cols: list[str]) -> dict:
+    """Struct-of-arrays payload: {"n": rows, <col>: [...]}. Float (percentile/rank) columns are
+    quantized to nullable int (0-100, NaN -> null); bools -> 0/1; everything else (ids, labels,
+    nullable ints) keeps its value with NaN/NA -> null. Killing the repeated object keys (~25 chars
+    x 33k rows) is most of the size win over array-of-objects."""
     cols = [c for c in dict.fromkeys(cols) if c in df.columns]
-    slim = df[cols].copy()
-    for c in slim.columns:
-        if slim[c].dtype.kind == "f":
-            slim[c] = slim[c].round(1)
-    records = json.loads(slim.to_json(orient="records"))
-    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(records, separators=(",", ":")))
-    log("join", f"metrics.json: {len(records)} records, {len(cols)} cols "
-                f"({OUT_JSON.stat().st_size/1e6:.1f} MB)")
+    out: dict = {"n": int(len(df))}
+    for c in cols:
+        s = df[c]
+        if s.dtype.kind == "f":
+            s = s.round(0).astype("Int64")
+            out[c] = [None if v is pd.NA else int(v) for v in s]
+        elif s.dtype.kind == "b":
+            out[c] = [int(v) for v in s]
+        else:
+            out[c] = [_cell(v) for v in s]
+    return out
+
+
+def _write_columnar(path, df: pd.DataFrame, cols: list[str]) -> int:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(_columnar(df, cols), separators=(",", ":")))
+    return path.stat().st_size
+
+
+def _write_map_frame(df: pd.DataFrame, dim_cols: list[str]) -> None:
+    cols = [*_FRAME_LABEL_COLS, *dim_cols, *_FRAME_LENS_COLS, *_FRAME_FLAG_COLS]
+    size = _write_columnar(OUT_MAP_FRAME, df, cols)
+    log("join", f"map_frame.json: {len(df)} records, {len(cols)} cols ({size/1e6:.1f} MB)")
+
+
+def _write_subscores(df: pd.DataFrame) -> None:
+    cols = ["zcta5", *SUBSCORE_COLS, "life_expectancy_pctile"]
+    size = _write_columnar(OUT_SUBSCORES, df, cols)
+    log("join", f"subscores.json: {len(df)} records, {len(cols)} cols ({size/1e6:.1f} MB)")
 
 
 def _write_public_meta(df: pd.DataFrame, corr: dict, eff_dims: dict) -> None:

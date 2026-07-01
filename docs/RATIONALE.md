@@ -208,5 +208,5 @@ maximizes outcome correlation, so gating on outcome-r would wrongly reject a cor
 as they own the weights). It is live in the Color-by + Rankings menus (`COMPOSITE_MULT_METRIC`
 in the frontend), recomputed **client-side** from the three stored dimension percentiles
 (`scoring.accessGapMult()`) — so the precomputed `access_gap_mult_pctile` was dropped from the
-slim `metrics.json` payload (kept in the parquet for the API/CSV). See [VALIDATION.md](VALIDATION.md)
+slim `map_frame.json` payload (kept in the parquet for the API/CSV). See [VALIDATION.md](VALIDATION.md)
 for the gate detail and [DECISIONS.md](DECISIONS.md) (lens toggle DONE; slim-payload trim, D1).

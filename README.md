@@ -110,7 +110,7 @@ data/raw/*  ──(pipeline: Python + DuckDB + mapshaper + tippecanoe)──► 
                                                                  │
                           ┌──────────────────────────────────────┼───────────────────────────┐
                           ▼                                       ▼                            ▼
-                   FastAPI (in-memory parquet)        pmtiles + overview + metrics.json   static files
+                   FastAPI (in-memory parquet)        pmtiles + overview + map_frame     static files
                    /api/zcta /api/rankings /api/compare    copied to frontend/public     (Vite / CDN)
                           │                                       │
                           └──────────────► React + deck.gl + MapLibre map ◄───────────────────┘

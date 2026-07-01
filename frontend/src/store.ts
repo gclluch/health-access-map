@@ -7,6 +7,8 @@ import {
   COMPOSITE_METRIC,
   WITHIN_STATE_METRIC,
   DEFAULT_WEIGHTS,
+  LAZY_METRICS,
+  SUBSCORE_LAZY_COLS,
   parseAnchors,
   PRESETS,
   type AnchorPreset,
@@ -29,6 +31,8 @@ interface AppState {
   status: Status;
   error: string | null;
   metrics: Map<string, SlimMetric>;
+  // Sub-score lens columns (subscores.json) load lazily on first sub-score metric select (T8).
+  subscoresStatus: 'idle' | 'loading' | 'ready' | 'error';
   overview: FeatureCollection | null; // low-zoom geometry; detail streams from pmtiles
   centroids: Map<string, [number, number]>;
   bounds: [[number, number], [number, number]] | null;
@@ -56,6 +60,7 @@ interface AppState {
   showMethodology: boolean;
 
   load: () => Promise<void>;
+  ensureSubscoreColumns: () => Promise<void>;
   setMetric: (m: string) => void;
   setWeights: (w: Partial<Weights>) => void;
   resetWeights: () => void;
@@ -87,6 +92,7 @@ function readUrl(): Partial<Pick<AppState, 'metric' | 'weights' | 'selectedZcta'
 }
 
 let loadStarted = false;
+let subscorePromise: Promise<void> | null = null; // cache the one-time subscores.json fetch+merge
 let urlTimer: ReturnType<typeof setTimeout> | undefined;
 function syncUrl(s: AppState) {
   clearTimeout(urlTimer);
@@ -103,6 +109,7 @@ export const useStore = create<AppState>((set, get) => ({
   status: 'loading',
   error: null,
   metrics: new Map(),
+  subscoresStatus: 'idle',
   overview: null,
   centroids: new Map(),
   bounds: null,
@@ -212,14 +219,45 @@ export const useStore = create<AppState>((set, get) => ({
         ...url,
       });
       if (url.selectedZcta) get().flyTo(url.selectedZcta);
+      // Deep-link straight to a sub-score lens (?metric=insurance_pctile): load its columns now.
+      if (LAZY_METRICS.has(get().metric)) get().ensureSubscoreColumns().catch(() => {});
       syncUrl(get());
     } catch (e) {
       set({ status: 'error', error: e instanceof Error ? e.message : String(e) });
     }
   },
 
+  // Fetch subscores.json once and merge its columns onto the already-loaded SlimMetric records, so
+  // the sub-score map lenses colour. Cached: repeat calls (or a second lens) reuse the one promise.
+  ensureSubscoreColumns: () => {
+    if (subscorePromise) return subscorePromise;
+    set({ subscoresStatus: 'loading' });
+    subscorePromise = fetch('/subscores.json')
+      .then((r) => {
+        if (!r.ok) throw new Error(`subscores.json ${r.status}`);
+        return r.json();
+      })
+      .then((s: { zcta5: string[] } & Record<string, Array<number | null>>) => {
+        const metrics = get().metrics;
+        for (let i = 0; i < s.zcta5.length; i++) {
+          const rec = metrics.get(s.zcta5[i]);
+          if (!rec) continue;
+          for (const col of SUBSCORE_LAZY_COLS) rec[col] = s[col][i];
+        }
+        // New Map reference so map/rankings subscribers re-render and read the merged columns.
+        set({ metrics: new Map(metrics), subscoresStatus: 'ready' });
+      })
+      .catch((e) => {
+        subscorePromise = null; // allow a retry on the next lens select
+        set({ subscoresStatus: 'error' });
+        throw e;
+      });
+    return subscorePromise;
+  },
+
   setMetric: (m) => {
     set({ metric: m });
+    if (LAZY_METRICS.has(m)) get().ensureSubscoreColumns().catch(() => {});
     track('metric_changed', { metric: m });
     syncUrl(get());
   },

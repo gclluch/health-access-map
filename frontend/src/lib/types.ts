@@ -315,3 +315,12 @@ export const ALL_METRICS: string[] = [
   ...MODEL.flatMap((d) => d.subs.map((s) => `${s.key}_pctile`)),
   ...OUTCOME_METRICS.map((o) => `${o.key}_pctile`),
 ];
+
+// Columns NOT in the first-paint map_frame.json: the 14 sub-score lenses + the life-expectancy
+// outcome lens. Shipped in subscores.json and merged into the store lazily the first time one of
+// these map lenses is selected (T8). Keep in sync with pipeline join_and_score._write_subscores.
+export const SUBSCORE_LAZY_COLS: string[] = [
+  ...MODEL.flatMap((d) => d.subs.map((s) => `${s.key}_pctile`)),
+  ...OUTCOME_METRICS.map((o) => `${o.key}_pctile`),
+];
+export const LAZY_METRICS: ReadonlySet<string> = new Set(SUBSCORE_LAZY_COLS);

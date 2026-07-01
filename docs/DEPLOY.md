@@ -1,7 +1,7 @@
 # Deploy
 
-The app is two deployables: a **static SPA** (the map + the precomputed `metrics.json`,
-`zcta_overview.geojson`, and range-requested `zcta.pmtiles`) and a small **FastAPI** service
+The app is two deployables: a **static SPA** (the map + the precomputed `map_frame.json` +
+`subscores.json`, `zcta_overview.geojson`, and range-requested `zcta.pmtiles`) and a small **FastAPI** service
 (per-ZIP drill-down, rankings, compare). The map
 works from the static files alone; the API powers the detail-panel deep drill-down.
 
@@ -11,7 +11,7 @@ Both images bake in build outputs that are gitignored and reproducible:
 
 ```bash
 make data        # -> data/processed/metrics.parquet
-                 #    frontend/public/{metrics.json,zcta_overview.geojson,zcta.pmtiles}
+                 #    frontend/public/{map_frame.json,subscores.json,zcta_overview.geojson,zcta.pmtiles}
 ```
 
 CI does not have these (the data stages need API keys + large downloads), which is why the
@@ -85,9 +85,11 @@ run on a machine with **25+ GB free disk** because NPPES is large.
 
 ## Payload weight (know before you ship)
 
-`metrics.json` (~30 MB raw / ~3.6 MB gzip), `zcta_overview.geojson` (~7 MB raw / ~1.3 MB gzip),
-and `zcta.pmtiles` (~15 MB, range-requested) are the cold-load cost. Mitigations already in place:
-`gzip_static` pre-compressed JSON/GeoJSON, immutable hashed assets, a Web Worker that parses the
+`map_frame.json` (first-paint frame, ~2.6 MB raw / ~0.7 MB gzip), `zcta_overview.geojson` (~7 MB
+raw / ~1.3 MB gzip), and `zcta.pmtiles` (~15 MB, range-requested) are the cold-load cost; the 14
+sub-score lenses (`subscores.json`, ~1.7 MB raw / ~0.6 MB gzip) load lazily on first sub-score
+select, off the cold path. Mitigations already in place: `gzip_static` pre-compressed JSON/GeoJSON,
+immutable hashed assets, a Web Worker that parses the
 payloads off the main thread, split vendor chunks, and PMTiles for detailed geometry.
 
 ## Security checklist

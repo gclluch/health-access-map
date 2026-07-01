@@ -29,7 +29,7 @@ const REQUIRED = ['https://basemaps.cartocdn.com', 'https://*.basemaps.cartocdn.
 const missing = REQUIRED.filter((o) => !CSP.includes(o));
 if (missing.length) { console.error('FAIL: CSP missing required origins:', missing); process.exit(1); }
 
-if (!existsSync(join(dist, 'index.html')) || !existsSync(join(dist, 'metrics.json'))) {
+if (!existsSync(join(dist, 'index.html')) || !existsSync(join(dist, 'map_frame.json'))) {
   console.error('FAIL: dist/ not built (run `npm run build` with real public/ payloads first)');
   process.exit(1);
 }
