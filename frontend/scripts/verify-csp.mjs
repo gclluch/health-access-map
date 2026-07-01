@@ -29,6 +29,27 @@ const REQUIRED = ['https://basemaps.cartocdn.com', 'https://*.basemaps.cartocdn.
 const missing = REQUIRED.filter((o) => !CSP.includes(o));
 if (missing.length) { console.error('FAIL: CSP missing required origins:', missing); process.exit(1); }
 
+// Netlify (the primary SPA deploy) mirrors nginx.conf's CSP + security headers by hand; assert they
+// haven't drifted. Needs no browser or network, so `--static` can gate a merge.
+const netlifyToml = readFileSync(join(root, '..', 'netlify.toml'), 'utf8');
+const netlifyCspMatch = netlifyToml.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
+if (!netlifyCspMatch) { console.error('FAIL: no Content-Security-Policy found in netlify.toml'); process.exit(1); }
+if (netlifyCspMatch[1] !== CSP) {
+  console.error('FAIL: netlify.toml CSP has drifted from nginx.conf.\n  nginx:   ' + CSP + '\n  netlify: ' + netlifyCspMatch[1]);
+  process.exit(1);
+}
+// The three security headers nginx sets that a static host must also ship.
+const SHARED_HEADERS = ['X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy'];
+const headerDrift = SHARED_HEADERS.filter((h) => nginxConf.includes(h) && !netlifyToml.includes(h));
+if (headerDrift.length) {
+  console.error('FAIL: netlify.toml is missing security headers present in nginx.conf:', headerDrift);
+  process.exit(1);
+}
+if (process.argv.includes('--static')) {
+  console.log('CSP STATIC CHECK PASSED: netlify.toml CSP + security headers match nginx.conf.');
+  process.exit(0);
+}
+
 if (!existsSync(join(dist, 'index.html')) || !existsSync(join(dist, 'map_frame.json'))) {
   console.error('FAIL: dist/ not built (run `npm run build` with real public/ payloads first)');
   process.exit(1);

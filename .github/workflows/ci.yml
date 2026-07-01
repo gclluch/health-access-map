@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"  # match the prod runtime (backend/Dockerfile python:3.12-slim)
           cache: pip
       - run: pip install -r requirements.txt
       # NOTE: the data stages need API keys + multi-GB downloads, so CI has no
@@ -43,10 +43,15 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # The build needs the gitignored data payloads; stub empties so `vite build` succeeds
-      # and we still catch TS/bundler regressions. (Real payloads ship via `make data`.)
+      # Merge-gating, network-free: fail if the Netlify CSP/security headers drift from nginx.conf.
+      # (The full browser-render CSP check below stays non-gating because it hits the Carto CDN.)
+      - run: node scripts/verify-csp.mjs --static
+      # The build needs the gitignored data payloads; stub empties so `vite build` succeeds and we
+      # still catch TS/bundler regressions. Names track the live payload contract (map_frame +
+      # subscores + overview geojson). (Real payloads ship via `make data`.)
       - run: |
-          [ -f public/metrics.json ] || echo "[]" > public/metrics.json
+          [ -f public/map_frame.json ] || echo '{"n":0,"zcta5":[]}' > public/map_frame.json
+          [ -f public/subscores.json ] || echo '{"zcta5":[]}' > public/subscores.json
           [ -f public/zcta_overview.geojson ] || echo '{"type":"FeatureCollection","features":[]}' > public/zcta_overview.geojson
       - run: npm run build
 
