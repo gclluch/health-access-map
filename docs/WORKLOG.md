@@ -35,3 +35,8 @@ verified work in small units, re-evaluate priorities each cycle.
 - **DONE** dep pinning: CI now installs `requirements.lock` (exact) not floating `requirements.txt`; backend image pins fastapi/uvicorn/pandas/pyarrow to exact versions. Verified pins match the installed+tested versions. Committed.
 - medical_debt: no free sub-county source; keeping it (valuable between-county signal) and caveating via the new UI point = the honest resolution. No code change.
 - Next: audit-tail correctness sweep (verify which flagged frontend/pipeline items are still real, fix those).
+
+## Cycle 3
+- **CONFIRMED (measured)** sub-county signal is real: composite within-county r vs life expectancy = **-0.503**, county-block CI [-0.526,-0.480] (excludes 0), correctly signed. Amenable/infant mortality within-county = 0.000 exactly (county-level outcomes, no within-county variance to test) - the honest caveat. VALIDATION §3 already documents sub-county validity, so this confirms rather than adds.
+- **§5.5 = non-issue**: severity()/band() are fed percentile-converted values at every call site (not the raw CLT-compressed composite). Audit flagged a risk callers actually avoid. No change.
+- **DONE** VALIDATION §7f headline updated to the county-block CI (null, not "borderline"), consistent with the §3.1 code + the note. Committed.
