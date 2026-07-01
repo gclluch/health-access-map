@@ -615,7 +615,7 @@ free data allows. The honest answer, after running them all: **the index is a we
 | §7b | NY-only event study around 2014 | **inconclusive** (-36.5; joint pre-trends test χ²(4)=9.28, p=0.055 - borderline, point estimates not flat) | not a causal read on its own - high-barrier ZIPs may already be converging |
 | §7e | **Cross-state DiD-in-DiD** (NY vs TX control) | **falsified** (triple-diff +10.3, CI crosses 0) | TX never expanded yet declined the same → the §7b hint was secular convergence, not the expansion |
 | §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
-| §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **borderline** (-35.5/100k, CI [-71.7, +2.2] just includes 0) | the *supply* arm is a powered "almost" - right-signed, dose-responsive, robust to spillover, but short of significance and pre-trends not fully clean |
+| §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **null** (-35.5/100k; ZIP CI [-71.7, +2.2], spatially-honest county-block CI [-74.1, +10.5] - both include 0) | the *supply* arm is right-signed, dose-responsive, robust to spillover, but not distinguishable from 0 once counties (not ZIPs) are the resampling unit; pre-trends not fully clean |
 | - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
 
 > **Spatial-inference update (supersedes the ZIP-cluster CIs in §7b/§7f below).** The causal
