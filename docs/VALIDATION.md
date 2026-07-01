@@ -851,8 +851,11 @@ weighted by cohort size. Outcomes: NY SPARCS PQI_90 ACSC/100k by ZIP×year 2009-
 DSHS PUDF ACSC/100k 2011-2019 (the §7e panel extended to nine annual years). Inference is the project's
 ZIP-cluster bootstrap. **This design was pre-registered by a Monte-Carlo power gate** (`validate_fqhc_power`,
 BACKLOG B5d.0) *before* any panel assembly: it rated the buildable NY+TX pool (~277 treated) as powered
-for the plausible 2-8% effect (MDE 5%) and NY-only (135) as a pilot - so a null here would be informative,
-not a power failure.
+for the plausible 2-8% effect (MDE 5%) and NY-only (135) as a pilot. **Caveat (corrected):** that MDE
+assumed a two-way-FE estimator, but the shipped Callaway-Sant'Anna uses only not-yet-treated comparisons
+and is strictly less efficient, so the realized MDE is *larger* than 5%. The null is therefore best read
+as **suggestive-but-underpowered** (right-signed, dose-responsive, wide CI), not a cleanly-powered true
+null.
 
 **Realized design: 259 newly-served treated ZIPs (NY 125 + TX 134) vs 2,382 supply-stable controls**
 (≈ the gate's powered scenario). The event-study path (population-weighted):

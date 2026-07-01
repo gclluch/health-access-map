@@ -263,8 +263,11 @@ def run() -> dict:
         rep["decision"] = "DO NOT BUILD B5d - underpowered even pop-weighted; ship the null as the finding"
     print(f"\n  DECISION (central, pop-weighted): {rep['decision']}")
     print("  Honest reads: WLS only shrinks the SAMPLING noise, never the heterogeneity floor "
-          f"(sqrt(a)={np.sqrt(noise.a):.0f}); homogeneous-effect TWFE MDE ~= CS MDE; spillover would\n"
-          "  attenuate the true effect below the band, making the gate STRICTER, not looser.")
+          f"(sqrt(a)={np.sqrt(noise.a):.0f}). CAVEAT (was overstated): this gate simulates a two-way-FE\n"
+          "  DiD, but the shipped study runs Callaway-Sant'Anna, which uses only not-yet-treated\n"
+          "  comparisons - strictly LESS efficient, so the realized CS MDE is LARGER than the TWFE MDE\n"
+          "  here. Read this MDE as a LOWER bound and the FQHC null as possibly underpowered, not a clean\n"
+          "  true null. (Spillover would still attenuate the true effect, making the gate stricter.)")
     return rep
 
 
