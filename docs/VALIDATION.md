@@ -219,7 +219,7 @@ sub-county (within-county, national USALEEP) signal:
 | care sub-score | 5-A dimension | county mean\|r\| | **within-county r** |
 |---|---|---|---|
 | provider_supply (2SFCA, spatial) | Availability | 0.263 | **0.076** |
-| shortage_designation (HPSA, tract-resolved) | Availability | 0.206 | **+0.20** |
+| shortage_designation (HPSA, tract-resolved) | Availability | 0.206 | **+0.246** |
 | insurance | Affordability | 0.322 | **0.477** |
 | **medical_debt** (Urban Institute, **county-level**) | Affordability | **0.40** | **0.000** |
 | preventive_use (checkups/screens) | realized access (net of all A's) | 0.200 | **0.464** |
@@ -227,7 +227,8 @@ sub-county (within-county, national USALEEP) signal:
 
 **Finding: `provider_supply` (2SFCA) carries ~zero sub-county signal (0.076), while the non-spatial
 sub-scores carry most of it (insurance 0.477, preventive_use 0.464). HPSA rose from 0.000 to ~+0.20
-once it was resolved to the census-tract level (this build) - the old county-MAX broadcast, not the
+(authoritative `validate_subcounty` value +0.246) once it was resolved to the census-tract level
+(this build) - the old county-MAX broadcast, not the
 designation itself, was hiding its sub-county signal.** The most-engineered piece (spatial 2SFCA
 supply) is still the least productive at the resolution the tool runs.
 
@@ -451,8 +452,8 @@ The within-county r (**+0.224**) ≈ the pooled r (+0.206): the index resolves g
 structure, confirmed **nationally** against an independent death-records outcome - not just a county
 aggregate. The magnitude is modest *and honestly so*: overdose is a specific construct (SUD/harm-
 reduction access + deaths of despair), so the **behavioral/mental/need** sub-scores correctly lead,
-and the county-constant pieces (`medical_debt`, `shortage_designation`) show ~0 within-county a
-**third** independent time. This is the strongest available answer to "does it discriminate within
+and the remaining county-constant piece (`medical_debt`; `shortage_designation`/HPSA is now
+tract-resolved - see the §3 update) shows ~0 within-county a **third** independent time. This is the strongest available answer to "does it discriminate within
 counties": yes, in two states on ACSC and nationally on overdose mortality.
 
 **And a 4th state - California** (`validate_subcounty --california`). CA CHHS publishes observed
