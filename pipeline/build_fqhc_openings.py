@@ -85,7 +85,10 @@ def build(force: bool = False) -> str:
         "n_sites": g.size(),
     }).reset_index()
 
-    # the clean 0->1 treatment: the ZCTA's FIRST EVER FQHC arrived inside the window
+    # 0->1 treatment: the ZCTA's first FQHC arrived inside the window. CAVEAT: HRSA's file lists only
+    # CURRENTLY-ACTIVE sites (0 inactive rows), so "first" = first-among-still-active, not literally
+    # first-ever. A ZCTA whose earlier FQHC closed before the window (and so is absent from the file)
+    # and reopened in-window would be mislabeled newly_served - undetectable with this source, and rare.
     panel["newly_served"] = panel["first_open_year"].between(start, end)
     panel["treat_year"] = np.where(panel["newly_served"], panel["first_open_year"], np.nan)
 
