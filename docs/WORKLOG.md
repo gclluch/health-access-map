@@ -81,3 +81,7 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 13
 - **DONE (causal rigor, audit §3)** FQHC power gate overclaimed "TWFE MDE ~= CS MDE" - but the shipped Callaway-Sant'Anna uses only not-yet-treated comparisons (strictly less efficient), so its realized MDE is LARGER. Corrected the gate's printed "Honest reads" + VALIDATION §7g: the FQHC null is now framed as **suggestive-but-underpowered** (right-signed, dose-responsive, wide CI), not a cleanly-powered true null. A meaningful honesty fix - one of the remaining HIGH causal audit items. Parses.
 - Full suite still 132 pass (builder cycles 8-12 no regression).
+
+## Cycle 14
+- **MILESTONE** all HIGH-severity audit findings resolved (fixed / measured-rejected / already-disclosed). Causal §4 multiplicity is already honestly disclosed in VALIDATION §4a (winner's-curse, "exact decimal is soft", "none of these is a multiplicity correction") - the formal fix is a research-process change, not a retrofit. Consolidated the full status in AUDIT.md.
+- Now in MEDIUM/LOW territory. Continuing with genuinely-useful items, transparent about value level.
