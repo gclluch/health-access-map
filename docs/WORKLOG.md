@@ -71,3 +71,6 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 10
 - **DONE (robustness, §2.10/§2.11)** build_broadband: added a 3-try retry for transient Census 5xx/key-lag (was a single request that died on any hiccup), and a distribution guard (median 0.02-0.45) so a future ACS renumber of the hard-indexed B28002_013 fails loudly instead of shipping a wrong rate. Parses; guard accepts the real data (median 0.093).
 - Honest re-eval: the high+medium-value solo-verifiable items are largely done. Remaining audit items are low-value builder-robustness or need a live pipeline build (network) / the user (deploy) to verify. Next: verify reproducibility itself (the theme of the recent fixes) - rebuild the scoring twice and confirm determinism; that both validates the fixes and could surface a real non-determinism bug.
+
+## Cycle 11
+- **VERIFIED** scoring determinism: rebuilt join_and_score and compared all 181 columns of metrics.parquet - byte-stable, including access_gap_rank_lo/hi (the np.random reliable-range band, confirming it's seeded). The composite is fully reproducible; the §2.5/§2.10-11 fixes protect a genuinely deterministic pipeline. No bug found (verification is progress).
