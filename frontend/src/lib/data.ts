@@ -35,6 +35,15 @@ const FRAME_BOOL_COLS = new Set(['low_confidence', 'institutional', 'scoreable']
 export function framesToRecords(frame: ColumnFrame): SlimMetric[] {
   const n = frame.n;
   const cols = Object.keys(frame).filter((k) => k !== 'n');
+  // A truncated or misaligned column would yield records with undefined fields that read as
+  // "missing" downstream, so fail loudly here instead.
+  if (!Number.isInteger(n) || n < 0) throw new Error(`map_frame: invalid row count ${n}`);
+  for (const c of cols) {
+    const arr = frame[c];
+    if (!Array.isArray(arr) || arr.length !== n) {
+      throw new Error(`map_frame: column "${c}" missing or misaligned (expected length ${n})`);
+    }
+  }
   const records: SlimMetric[] = new Array(n);
   for (let i = 0; i < n; i++) {
     const rec: Record<string, string | number | boolean | null> = {};
@@ -58,10 +67,19 @@ export async function loadData(): Promise<LoadedData> {
   return loadOnMainThread();
 }
 
+// Bound the worker so a silent hang (a fetch that never posts back) falls through to the
+// main-thread parse instead of leaving loadData() pending; large enough not to trip a slow load.
+const WORKER_TIMEOUT_MS = 20_000;
+
 function loadViaWorker(): Promise<LoadedData> {
   return new Promise<LoadedData>((resolve, reject) => {
     const worker = new Worker(new URL('./dataWorker.ts', import.meta.url), { type: 'module' });
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error('data worker timed out'));
+    }, WORKER_TIMEOUT_MS);
     worker.onmessage = (e: MessageEvent) => {
+      clearTimeout(timer);
       const d = e.data;
       worker.terminate();
       if (!d?.ok) return reject(new Error(d?.error ?? 'data worker failed'));
@@ -74,6 +92,7 @@ function loadViaWorker(): Promise<LoadedData> {
       resolve({ metrics, overview: d.geojson as FeatureCollection, centroids });
     };
     worker.onerror = (err) => {
+      clearTimeout(timer);
       worker.terminate();
       reject(err.error ?? new Error('data worker error'));
     };

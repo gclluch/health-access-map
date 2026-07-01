@@ -47,7 +47,10 @@ export function buildQuantile(values: number[]) {
 
 export function colorFor(value: number | null, scale: ReturnType<typeof buildQuantile>): [number, number, number] {
   if (value == null || Number.isNaN(value)) return NO_DATA_RGB;
-  return parseColor(scale(value));
+  // A degenerate (empty-domain) quantile scale returns undefined; render those as no-data.
+  const c = scale(value);
+  if (typeof c !== 'string') return NO_DATA_RGB;
+  return parseColor(c);
 }
 
 // Legend break values for the active domain.

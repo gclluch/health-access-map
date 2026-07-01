@@ -43,9 +43,9 @@ export default function WeightSliders() {
   const toggleWeights = useStore((s) => s.toggleWeights);
   const anchors = useStore((s) => s.anchors);
 
-  // Local mirror keeps the thumb + readout instant; commits to the store (which
-  // recolors 33k polygons + re-sorts rankings) are throttled so a drag doesn't
-  // fire dozens of full recomputes per second.
+  // Local mirror keeps the thumb + readout instant; commits to the store (which recolors 33k
+  // polygons + re-sorts rankings) are debounced (80ms) so a continuous drag coalesces into one
+  // recompute when the user pauses, rather than firing dozens of full recomputes per second.
   const [local, setLocal] = useState<Weights>(storeWeights);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => setLocal(storeWeights), [storeWeights]); // sync preset/reset

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { accessGap, accessGapMult, dimensionContributions, metricValue, parseWeightParam } from './scoring';
+import { accessGap, accessGapMult, buildScoreIndex, dimensionContributions, metricValue, parseWeightParam, percentileOf } from './scoring';
 import { makeMetric } from './testFactory';
 import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, type Weights } from './types';
 
@@ -74,6 +74,41 @@ describe('parseWeightParam', () => {
     expect(parseWeightParam('1,1e999,1')).toBeNull(); // Infinity
     expect(parseWeightParam('')).toBeNull();
     expect(parseWeightParam(null)).toBeNull();
+  });
+});
+
+describe('buildScoreIndex', () => {
+  const scored = (p: number, over = {}) =>
+    makeMetric({ health_need_pctile: p, social_vulnerability_pctile: p, care_access_pctile: p, ...over });
+
+  it('returns the sorted access-gap values of ranking-eligible areas', () => {
+    const idx = buildScoreIndex([scored(30), scored(10), scored(50)], W);
+    expect(idx).toEqual([10, 30, 50]);
+  });
+
+  it('excludes institutional, low-confidence, 2-of-3 partial, and non-scoreable areas from the pool', () => {
+    const metrics = [
+      scored(40),
+      scored(90, { institutional: true }),
+      scored(90, { low_confidence: true }),
+      scored(90, { n_dims_scored: 2 }),
+      scored(90, { scoreable: false }),
+    ];
+    // Only the one clean area survives the ranking gate.
+    expect(buildScoreIndex(metrics, W)).toEqual([40]);
+  });
+});
+
+describe('percentileOf', () => {
+  const sorted = [10, 20, 30, 40, 50];
+  it('is the fraction of the pool strictly below the value, x100', () => {
+    expect(percentileOf(sorted, 30)).toBe(40); // two of five below
+    expect(percentileOf(sorted, 5)).toBe(0); // below the minimum
+    expect(percentileOf(sorted, 55)).toBe(100); // above the maximum
+  });
+  it('returns null for a null score or an empty index', () => {
+    expect(percentileOf(sorted, null)).toBeNull();
+    expect(percentileOf([], 30)).toBeNull();
   });
 });
 

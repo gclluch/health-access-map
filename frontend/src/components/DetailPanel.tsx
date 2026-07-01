@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { accessGap, accessGapMult, buildScoreIndex, percentileOf } from '../lib/scoring';
 import { synthesize, profile, type ProfileKind } from '../lib/synthesis';
@@ -24,7 +24,7 @@ const PROFILE_STYLE: Record<ProfileKind, string> = {
 
 // The need-vs-access lever, led above the composite number so the decomposition reads first (T5).
 function ProfileChip({ m }: { m: SlimMetric }) {
-  const p = profile(m);
+  const p = profile(m, useStore((s) => s.weights));
   if (!p) return null;
   const color = PROFILE_STYLE[p.kind];
   return (
@@ -489,6 +489,10 @@ export default function DetailPanel() {
     mq.addEventListener('change', h);
     return () => mq.removeEventListener('change', h);
   }, []);
+  // Holds the teardown for an in-flight resize drag so an unmount mid-drag (e.g. select(null) from
+  // another path) removes the window listeners instead of firing setWidth on an unmounted component.
+  const dragCleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => dragCleanup.current?.(), []);
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -499,13 +503,20 @@ export default function DetailPanel() {
       last = Math.max(320, Math.min(maxW, startW + (startX - ev.clientX))); // drag left = wider
       setWidth(last);
     };
-    const onUp = () => {
+    const detach = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      dragCleanup.current = null;
+    };
+    const onUp = () => {
+      detach();
       try { localStorage.setItem('ham_detail_width', String(last)); } catch { /* ignore */ }
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    dragCleanup.current = detach;
   };
 
   useEffect(() => {
@@ -780,7 +791,7 @@ export default function DetailPanel() {
         {m.life_expectancy != null && (
           <div className="mt-2 text-[11px] text-graphite">
             Outcome - life expectancy at birth:{' '}
-            <span className="num text-ink font-medium">{m.life_expectancy} yrs</span>
+            <span className="num text-ink font-medium">{m.life_expectancy.toFixed(1)} yrs</span>
             {m.life_expectancy_pctile != null
               ? ` (lower than ${fmtScore(Math.min(99, m.life_expectancy_pctile))}% of U.S. ZIPs)`
               : ''}

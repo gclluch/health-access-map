@@ -155,6 +155,8 @@ export default function CompareTray() {
                 return (
                   <td key={z} className={cell + ' font-semibold'} style={{ color: sev ? sev.color : undefined }}>
                     {pct != null ? ordinal(pct) : '--'}
+                    {/* Severity word: a non-hue cue so the "worse" signal survives color-vision deficiency. */}
+                    {sev && <span className="block text-[9px] font-normal">{sev.label}</span>}
                   </td>
                 );
               })}

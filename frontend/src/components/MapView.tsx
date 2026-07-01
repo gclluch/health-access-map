@@ -79,8 +79,17 @@ const REDUCE_MOTION =
 
 export default function MapView() {
   const mapRef = useRef<MapRef | null>(null);
-  const { metrics, overview, metric, weights, selectedZcta, hoveredZcta, bounds, flyTarget, fitTarget } =
-    useStore();
+  // Per-field selectors, not a whole-store destructure: otherwise MapView re-renders on every
+  // unrelated store change (toast, compare list, ...), not just the map inputs it reads.
+  const metrics = useStore((s) => s.metrics);
+  const overview = useStore((s) => s.overview);
+  const metric = useStore((s) => s.metric);
+  const weights = useStore((s) => s.weights);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const hoveredZcta = useStore((s) => s.hoveredZcta);
+  const bounds = useStore((s) => s.bounds);
+  const flyTarget = useStore((s) => s.flyTarget);
+  const fitTarget = useStore((s) => s.fitTarget);
   const trends = useStore((s) => s.trends);
   const select = useStore((s) => s.select);
   const hover = useStore((s) => s.hover);

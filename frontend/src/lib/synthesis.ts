@@ -21,13 +21,19 @@ export interface Profile {
 // informative case. PROFILE_LEAN mirrors the "materially leads" threshold used in synthesize().
 const PROFILE_LEAN = 15;
 
-export function profile(m: SlimMetric): Profile | null {
-  const needParts = [m.health_need_pctile, m.social_vulnerability_pctile].filter(
-    (v): v is number => v != null,
-  );
+export function profile(m: SlimMetric, w: Weights): Profile | null {
   const access = m.care_access_pctile;
-  if (!needParts.length || access == null) return null;
-  const need = needParts.reduce((a, b) => a + b, 0) / needParts.length;
+  if (access == null) return null;
+  // Weight the need side (health need + social vulnerability) by the sliders so this lever responds
+  // to re-weighting consistently with synthesize(); fall back to equal weight if both are zeroed.
+  const needParts: Array<[number, number]> = [];
+  if (m.health_need_pctile != null) needParts.push([w.health_need, m.health_need_pctile]);
+  if (m.social_vulnerability_pctile != null) needParts.push([w.social_vulnerability, m.social_vulnerability_pctile]);
+  if (!needParts.length) return null;
+  const wsum = needParts.reduce((a, [pw]) => a + pw, 0);
+  const need = wsum > 0
+    ? needParts.reduce((a, [pw, v]) => a + pw * v, 0) / wsum
+    : needParts.reduce((a, [, v]) => a + v, 0) / needParts.length;
   const gap = need - access;
   if (gap >= PROFILE_LEAN)
     return {
@@ -65,19 +71,20 @@ export function synthesize(m: SlimMetric, w: Weights): string {
   const contrib = dimensionContributions(m, w);
   let tail = 'driven by several factors together';
   if (contrib) {
-    const entries = (Object.entries(contrib) as Array<
-      ['health_need' | 'social_vulnerability' | 'care_access', number]
-    >).sort((a, b) => b[1] - a[1]);
-    const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
-    const label = {
+    const LABELS = {
       health_need: 'health need',
       social_vulnerability: 'social vulnerability',
       care_access: 'barriers to care',
-    }[entries[0][0]];
-    // The dimensions are collinear and weights near-equal, so shares are often ~even; only call
-    // out a single driver when the top one materially leads (>=10 share points over the next).
-    const topLead = entries[0][1] / total - (entries[1]?.[1] ?? 0) / total;
-    tail = topLead >= 0.1 ? `driven mostly by ${label}` : 'driven roughly equally across the dimensions';
+    } as const;
+    const entries = (Object.entries(contrib) as Array<[keyof typeof LABELS, number]>)
+      .sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+    const [s0, s1, s2] = entries.map(([, v]) => v / total);
+    // "Roughly equal" requires all THREE shares to be close, not just the top pair: a near-tied
+    // top two over a trailing third (e.g. 40/37/23) reads as driven by that pair, not evenly.
+    if (s0 - s1 >= 0.1) tail = `driven mostly by ${LABELS[entries[0][0]]}`;
+    else if (s0 - s2 < 0.1) tail = 'driven roughly equally across the dimensions';
+    else tail = `driven mainly by ${LABELS[entries[0][0]]} and ${LABELS[entries[1][0]]}`;
   }
 
   return (

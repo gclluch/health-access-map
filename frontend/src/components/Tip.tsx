@@ -63,6 +63,8 @@ export default function Tip({
       className={className}
       tabIndex={focusable ? 0 : undefined}
       role={focusable ? 'button' : undefined}
+      aria-haspopup={focusable ? true : undefined}
+      aria-expanded={focusable ? !!box : undefined}
       aria-describedby={box ? id : undefined}
       onMouseEnter={(e) => {
         position(e.currentTarget);

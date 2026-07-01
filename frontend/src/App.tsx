@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useStore } from "./store";
 import { reportError } from "./lib/observability";
 import MapView from "./components/MapView";
@@ -137,6 +137,14 @@ function AppInner() {
   );
   const [railOpen, setRailOpen] = useState(false);
 
+  // Mark everything behind the methodology dialog inert while it's open, so AT (VoiceOver rotor,
+  // virtual cursor) can't read the map/controls behind aria-modal. Ref, not the `inert` prop, since
+  // React 18 doesn't render it reliably.
+  const bgRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (bgRef.current) bgRef.current.inert = showMethodology;
+  }, [showMethodology]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -153,6 +161,9 @@ function AppInner() {
 
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {/* Everything except the dialog: wrapped so it can be made inert while the modal is open. The
+          wrapper is a static, zero-size block; its absolutely-positioned children are unaffected. */}
+      <div ref={bgRef}>
       {/* map (the hero, full-bleed) */}
       <div className="absolute inset-0">
         {status === "ready" && <MapView />}
@@ -249,6 +260,7 @@ function AppInner() {
 
       {status === "ready" && <SiteCredits />}
       <Toast />
+      </div>
       {showMethodology && (
         <Suspense fallback={null}>
           <MethodologyPanel />

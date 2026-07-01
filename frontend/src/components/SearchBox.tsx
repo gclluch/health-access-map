@@ -32,13 +32,19 @@ export default function SearchBox() {
         maxLength={5}
         value={value}
         aria-label="Search by ZIP code"
+        aria-invalid={!!error}
+        aria-describedby={error ? 'searchbox-error' : undefined}
         onChange={(e) => {
           setValue(e.target.value.replace(/\D/g, ''));
           setError(null);
         }}
       />
       {error && (
-        <div className="absolute top-full mt-1 left-0 text-[11px] text-accent bg-surface border border-hairline rounded px-2 py-1 whitespace-nowrap shadow-sm">
+        <div
+          id="searchbox-error"
+          role="alert"
+          className="absolute top-full mt-1 left-0 text-[11px] text-accent bg-surface border border-hairline rounded px-2 py-1 whitespace-nowrap shadow-sm"
+        >
           {error}
         </div>
       )}

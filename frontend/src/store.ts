@@ -238,14 +238,25 @@ export const useStore = create<AppState>((set, get) => ({
         return r.json();
       })
       .then((s: { zcta5: string[] } & Record<string, Array<number | null>>) => {
-        const metrics = get().metrics;
+        // A malformed/partial subscores.json (missing or short column) should surface as
+        // subscoresStatus:'error' rather than throw mid-merge on s[col][i].
+        for (const col of SUBSCORE_LAZY_COLS) {
+          if (!Array.isArray(s[col]) || s[col].length !== s.zcta5.length) {
+            throw new Error(`subscores.json column "${col}" missing or misaligned`);
+          }
+        }
+        const prev = get().metrics;
+        const metrics = new Map(prev);
         for (let i = 0; i < s.zcta5.length; i++) {
-          const rec = metrics.get(s.zcta5[i]);
+          const rec = prev.get(s.zcta5[i]);
           if (!rec) continue;
-          for (const col of SUBSCORE_LAZY_COLS) rec[col] = s[col][i];
+          // New row object (not in-place) so consumers memoized on row identity see the merge.
+          const merged = { ...rec } as SlimMetric;
+          for (const col of SUBSCORE_LAZY_COLS) merged[col] = s[col][i];
+          metrics.set(s.zcta5[i], merged);
         }
         // New Map reference so map/rankings subscribers re-render and read the merged columns.
-        set({ metrics: new Map(metrics), subscoresStatus: 'ready' });
+        set({ metrics, subscoresStatus: 'ready' });
       })
       .catch((e) => {
         subscorePromise = null; // allow a retry on the next lens select
@@ -282,7 +293,11 @@ export const useStore = create<AppState>((set, get) => ({
     if (z && opts?.fly) get().flyTo(z);
     syncUrl(get());
   },
-  hover: (z) => set({ hoveredZcta: z }),
+  // deck.gl onHover fires continuously while the pointer moves within one polygon; skip the write
+  // when the hovered ZCTA is unchanged so subscribers don't re-render on every pointer move.
+  hover: (z) => {
+    if (get().hoveredZcta !== z) set({ hoveredZcta: z });
+  },
   addCompare: (z) =>
     set((s) => (s.compareZctas.includes(z) || s.compareZctas.length >= 5
       ? s

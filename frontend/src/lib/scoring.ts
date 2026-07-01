@@ -1,5 +1,5 @@
 import { bisectLeft } from 'd3-array';
-import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, type SlimMetric, type Weights } from './types';
+import { COMPOSITE_METRIC, COMPOSITE_MULT_METRIC, DEFAULT_WEIGHTS, isPartialScore, type SlimMetric, type Weights } from './types';
 
 type DimKey = 'health_need' | 'social_vulnerability' | 'care_access';
 
@@ -87,6 +87,10 @@ export function metricValue(m: SlimMetric, metric: string, w: Weights): number |
 export function buildScoreIndex(metrics: Iterable<SlimMetric>, w: Weights): number[] {
   const arr: number[] = [];
   for (const m of metrics) {
+    // Match the ranking-eligibility gate used elsewhere: institutional (providers > residents),
+    // low-confidence (below the population floor), and 2-of-3 partial composites are held out of
+    // rankings, so they must not enter the live percentile denominator.
+    if (m.institutional || m.low_confidence || isPartialScore(m)) continue;
     const s = accessGap(m, w);
     if (s != null) arr.push(s);
   }
