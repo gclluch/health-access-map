@@ -95,3 +95,6 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 17
 - **DONE (robustness, §2.11)** build_trends poverty fetch: added the same 3-try retry as broadband (was a single request that died on any transient Census hiccup). Parses. Completes the broadband/trends pair; a 4th duplication would justify factoring _census_get into common, but 2 is under the abstraction threshold.
 - Note: builder retry now in broadband + trends; build_acs already has its own _census_get retry.
+
+## Cycle 18
+- **VERIFIED** committed weights.json is current: regenerated the anchored presets via validate.build() on the tract-HPSA metrics -> byte-identical to committed. The tract-HPSA change to care_access didn't shift the floor-weighted correlation presets enough to change the rounded weights. (Checked because cycle-1 redirected the idempotency test's write to tmp, so nothing auto-refreshes the committed file - but it wasn't stale.) No change needed.
