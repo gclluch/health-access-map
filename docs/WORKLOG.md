@@ -45,3 +45,7 @@ verified work in small units, re-evaluate priorities each cycle.
 - **DONE (important)** tract-HPSA doc footprint: my §sub-county change overturned a documented finding ("HPSA carries ~zero sub-county signal / county-constant") woven through VALIDATION §3-§6 (repeated 5x). Fixed the prominent §3 "5 A's" table (HPSA within-county 0.000→+0.20) + finding + the county-flat paragraph (now medical_debt-only); added a §3 banner flagging that later computed tables (§6a/§6b) still say "HPSA county-constant" and predate the fix (need a validate_subcounty regen). Committed.
 - Lesson: a shipped DATA change can invalidate a whole documented analysis thread - always sweep the docs for the superseded claim.
 - Testing whether a full validate_subcounty.run_national() regen is feasible offline (to properly refresh the computed tables).
+
+## Cycle 5
+- **DONE** ran validate_subcounty.run_national() OFFLINE (works from local caches) -> authoritative regenerated within-county r's on the new tract-HPSA metrics. HPSA = **+0.246** (was 0.000); provider_supply 0.076 + insurance 0.477 match the doc exactly (confirms the doc table was from this function). Updated §3 to +0.246 and corrected the "HPSA county-constant" prose (§overdose). Computed §6a/§6b tables still flagged by the §3 banner (need their specific state analyses re-run).
+- Next: verify the CI changes end-to-end (fresh venv + requirements.lock + fixture path) - the real CI scenario, to catch any break before the user's CI runs.
