@@ -104,3 +104,6 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Honest checkpoint (after 19 cycles, ~30 commits, all pushed)
 State: the HIGH + MEDIUM-value verifiable work is COMPLETE. All HIGH audit findings resolved; last real MEDIUM (§5.13) done; reproducibility fixed + verified deterministic; CI verified end-to-end; docs consistent + honest; weights.json + a11y confirmed good. Remaining items are genuinely LOW-value (cosmetic frontend, marginal builder hygiene, null-study data cleanup) or BLOCKED (deploy = user's Netlify auth) or LARGE (formal multiplicity framework - already honestly disclosed; MapView autoHighlight - visual, hover already snappy). Continuing with genuine low-value items + verification, transparent about the tail. Top remaining ACTION is the user's deploy.
+
+## Cycle 20
+- **MEASURED -> honest caveat (§2.6)** FQHC treatment-group "reopening contamination": measured the source - HRSA's file has 0 inactive sites (all 18,764 active), so it doesn't retain closed sites. The contamination is UNDETECTABLE with this data (the audit's "use full history incl. inactive" fix is impossible - there's no inactive history), and rare. Corrected the code's "FIRST EVER" overclaim to "first-among-still-active" with the honest caveat. Not a fixable bug; a data limitation, now documented.
