@@ -13,7 +13,7 @@ const DIM_ROWS: Array<[string, 'health_need_pctile' | 'social_vulnerability_pcti
 
 // Side-by-side comparison of 2-5 ZIPs. Headline rows (national rank, tier, the 3 dimensions)
 // come from the in-memory slim metrics so it works with no backend; median income / poverty /
-// uninsured are enriched best-effort via the /api/compare endpoint and simply omitted if it's down.
+// uninsured are enriched best-effort from the static per-ZIP3 shards and simply omitted if absent.
 export default function CompareTray() {
   const metrics = useStore((s) => s.metrics);
   const weights = useStore((s) => s.weights);

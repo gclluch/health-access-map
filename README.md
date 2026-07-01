@@ -110,11 +110,17 @@ data/raw/*  ──(pipeline: Python + DuckDB + mapshaper + tippecanoe)──► 
                                                                  │
                           ┌──────────────────────────────────────┼───────────────────────────┐
                           ▼                                       ▼                            ▼
-                   FastAPI (in-memory parquet)        pmtiles + overview + map_frame     static files
-                   /api/zcta /api/rankings /api/compare    copied to frontend/public     (Vite / CDN)
+              per-ZIP3 drill-down shards           pmtiles + overview + map_frame        static files
+              zcta/*.json (static)                 + subscores, copied to public          (Vite / CDN)
                           │                                       │
                           └──────────────► React + deck.gl + MapLibre map ◄───────────────────┘
 ```
+
+**Deployment model: static-only.** The deployed app is entirely static files (map frame,
+sub-scores, geometry, and pre-built per-ZIP3 drill-down shards) - there is no live backend in
+production; the frontend reads shards directly (`frontend/src/lib/api.ts`). `backend/` (FastAPI over
+the in-memory metrics table) is a **dev/test convenience** - handy for local queries and exercised by
+`tests/test_backend.py` - not part of the prod data path.
 
 - **DuckDB** streams the ~11 GB NPPES CSV (projecting 3 columns) - never loaded into pandas.
 - **SQLite/Postgres rejected**: 33k rows of attribute lookups fit trivially in memory.
@@ -213,7 +219,7 @@ federal definition, not independent ground truth.
 
 ```
 pipeline/      ETL stages (config, preflight, build_*, join_and_score, run)
-backend/       FastAPI over the in-memory metrics table
+backend/       FastAPI over the in-memory metrics table (dev/test only; not the prod data path)
 frontend/      Vite + React + TS + MapLibre + deck.gl
 data/          raw/ (gitignored downloads) + processed/ (gitignored outputs)
 tests/         acceptance suite (definition of done)
@@ -230,9 +236,10 @@ rather than silently producing a wrong column.
 - **CI** (`.github/workflows/ci.yml`): pytest (pipeline + backend), frontend typecheck + Vitest
   unit + production build, and a Playwright smoke/compare e2e on a tiny fixture. Data-level
   acceptance (`make acceptance`) runs against a real build, gated pre-deploy.
-- **Deploy** (`docs/DEPLOY.md`): two Dockerfiles + `docker compose up` (nginx-served SPA with
-  `gzip_static` + cache headers, same-origin `/api` proxy to FastAPI). CORS and the SPA's API
-  base are env-driven (`ALLOWED_ORIGINS`, `VITE_API_BASE`) so prod works without code changes.
+- **Deploy** (`docs/DEPLOY.md`): the production app is **static-only** (map frame, sub-scores,
+  geometry, and per-ZIP3 drill-down shards served as static files - no live backend). `docker compose
+  up` additionally runs the FastAPI backend + an nginx `/api` proxy for local/self-host use; CORS is
+  env-driven (`ALLOWED_ORIGINS`).
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
   over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. It also
   runs the **amenable-mortality focus**: care_access partial r vs CDC WONDER treatable mortality
