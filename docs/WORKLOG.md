@@ -63,3 +63,7 @@ verified work in small units, re-evaluate priorities each cycle.
 ## Cycle 8
 - **Verified NON-BUGS** (earnest re-eval of audit flags): §5.5 (severity/band fed raw composite) - callers all pass percentile-converted values; §6.13 (Legend vs MapView scale drift) - both collect scale values identically, no live divergence. Frontend is more correct than the audit's risk flags implied. No changes needed.
 - Trying to COMPLETE the §6 VALIDATION doc fix (overdose/state tables still say "HPSA county-constant") by regenerating offline rather than leaving them banner-flagged.
+
+## Cycle 9
+- **DONE (real reproducibility fix, §2.5)** build_acs SVI fetch: a failed scored input (crowding, mobile_home, multi_unit, no_hs, no_vehicle, unemployment) was caught+logged+skipped -> a silently different, degraded, non-deterministic composite between runs. Now dies loudly for scored inputs; still skips the 6 context-only ones (pct_minority, medicaid_rate, etc.). Scored set computed from the taxonomy so it self-updates. Parses + split verified; safe-by-inspection (silent-degrade -> loud-fail; doesn't break the current build since Census was up when it built).
+- Also confirmed the overdose validator runs offline -> HPSA within-county vs overdose = +0.136 (was ~0), a 2nd independent outcome confirming the tract-HPSA gain. §6 CA/TX state tables stay banner-flagged (need their state runs; low marginal value).
