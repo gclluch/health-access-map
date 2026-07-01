@@ -7,12 +7,15 @@ Effort / Risk / Depends-on**. Effort is for one engineer; frontend (T2,T5,T8) an
 
 Legend: effort S (<1d), M (1-3d), L (3-5d), XL (>1w).
 
-**Status (2026-06-30): 7 of 10 done.** ✅ T7 (`4dfe789`), T1 (`c5f4178`), T3 (`44e2ac9`), T6 (`843301c`),
+**Status (2026-06-30): 10 of 10 done.** ✅ T7 (`4dfe789`), T1 (`c5f4178`), T3 (`44e2ac9`), T6 (`843301c`),
 T2 (diagnostic `c388903` + gate), T5 (headline decomposition), T4 (MOE band - core already shipping;
-provenance decomposition + explicit "tied" added). Remaining: T8, T9, T10 (Phase 3 engineering). Code-
-anchored execution plans are in the **"Detailed execution plans"** below. The coordinated doc pass
+provenance decomposition + explicit "tied" added). Phase 3 complete: **T8** (`3c18182`) split the client
+`metrics.json` into a columnar first-paint `map_frame.json` + lazy `subscores.json` (first-interactive
+gz transfer 5.0 MB → 2.0 MB); **T9** (`ad9021a`) stamps `meta.json` + `deploy-manifest.json` with a
+per-payload sha256 + pipeline git SHA + provenance digest; **T10** (`9779841`) collapsed the dead
+dynamic-API branch so the static per-ZIP3 shards are the sole prod data path. The coordinated doc pass
 (README + `VALIDATION.md` §5/§6d + the in-product methodology panel) is **done** - all Phase-2 framing
-(T1/T3/T6) and product (T2/T5/T4) changes are now reflected in one consistent published story.
+(T1/T3/T6) and product (T2/T5/T4) changes are reflected in one consistent published story.
 
 ---
 
@@ -307,7 +310,16 @@ measurement-error band.
 **Accept.** Per-ZIP MOE interval stored + shown; overlapping bands read as tied. **Risk:** medium -
 MC×33k×B re-rank runtime (vectorize, cap B); band must not contradict the weight band. Coordinate cols w/ T8.
 
-### T8 - Kill the 30 MB JSON client parse  [L]  [independent]  ← NEXT (start here)
+### T8 - Kill the 30 MB JSON client parse  [L]  [independent]  ✅ DONE (`3c18182`)
+**Done.** Two-tier columnar payload: `_write_map_frame` emits `map_frame.json` (18 first-paint cols,
+struct-of-arrays, int-quantized pctiles); `_write_subscores` emits `subscores.json` (14 sub-score
+lenses + life-expectancy), fetched lazily by `store.ensureSubscoreColumns()` on first sub-score lens
+select and merged onto the `SlimMetric` records - the store API is unchanged so map/rankings/legend are
+untouched. `data.ts`/`dataWorker.ts` reconstruct records via `framesToRecords`; `metrics.json` removed.
+Measured first-interactive gz transfer 5.0 MB → 2.0 MB (map frame 0.72 MB vs old 3.75 MB), sub-scores
+0.60 MB deferred off the cold path. Fixture/CSP/Dockerfile/gitignore updated; new tests
+`data.test.ts`/`store.test.ts`/`lazy-subscores.spec.ts`/`test_slim_payload.py`; e2e + verify-csp green.
+Decision: static-only shard drill-down unaffected; binary blob deferred (columnar JSON captured the win).
 **Sizes (verified 2026-06-30 build):** `metrics.json` **30 MB** (33,791 records × 36 cols),
 `zcta_overview.geojson` **7.2 MB**, `zcta/` drill-down shards **135 MB total** (~150 KB per zip3).
 **Recon corrections (the original notes below were stale - re-verified):**
@@ -347,7 +359,14 @@ side only) and T10 (the static shard path is the prod path).
 **Original (stale) notes:** ~~recon found no worker file~~ (wrong - `dataWorker.ts` exists); ~~prune to client-used
 columns~~ (most slim cols ARE client-used; the sub-score cols need lazy *column* loading, not deletion).
 
-### T9 - Data deploy provenance / governance  [M stopgap / L full]  [independent]
+### T9 - Data deploy provenance / governance  [M stopgap / L full]  [independent]  ✅ DONE (`ad9021a`)
+**Done.** `_write_public_meta` now stamps a `build` block into `meta.json` (frontend-fetched): the
+pipeline git SHA (`git rev-parse HEAD`, or `HAM_BUILD_SHA` for CI), a streamed sha256 per shipped
+payload (`map_frame.json`, `subscores.json`, `zcta_overview.geojson`, `zcta.pmtiles`), and the
+`provenance.json` digest. Also emits `deploy-manifest.json` (served static) as the ops record of what
+shipped. The freshness badge tooltip surfaces the short build SHA. Test:
+`test_public_meta_stamps_build_hashes_and_manifest` (hashes present + content-change flips the hash).
+Deferred (optional/XL): the `/version` backend route (T10 is static-only) and scheduled rebuild CI.
 **Why.** No way to know what data is live or to reproduce a build. `meta.json` (`_write_public_meta`) today carries
 `generated` + `vintages` + counts, but **no content hash and no git SHA**; `backend/main.py` only has `version="1.0.0"`.
 1. **Stamp** (`join_and_score._write_public_meta`): add a sha256 per shipped payload (`metrics.json`, the new map
@@ -366,7 +385,13 @@ columns~~ (most slim cols ARE client-used; the sub-score cols need lazy *column*
 vintage. **Risk:** low (additive). **Note:** `data/processed/*` + `frontend/public/metrics.json` are **gitignored**
 (built locally), which is exactly why the stamp matters - the live bytes are otherwise untraceable to a commit.
 
-### T10 - Resolve the dual data path  [S static / M deploy]  [deps: T8 decision]
+### T10 - Resolve the dual data path  [S static / M deploy]  [deps: T8 decision]  ✅ DONE (`9779841`)
+**Done (static-only).** Removed the `VITE_API_BASE`/`API_BASE` env branch from `api.ts` (+ the env
+declaration in `vite-env.d.ts`). `apiZcta` was already shard-backed; `apiCompare` (which had *no* working
+prod path - it always hit the down `/api/compare`, the e2e ECONNREFUSED) now enriches best-effort from the
+same per-ZIP3 shards, so there is genuinely one prod data path and compare works in prod. `backend/`
+labelled dev/test-only in the README + the static-only deploy model stated unambiguously (diagram + a
+"Deployment model" note). Test `api.test.ts` guards shards-not-`/api`. Deferred: deploying the FastAPI API.
 **Why.** `api.ts` has a dead `VITE_API_BASE` branch (the FastAPI backend is **not deployed**; `VITE_API_BASE` is
 unset). `apiZcta` (line ~60: `if (API_BASE) return getJson('/api/zcta/{z}')`) and `apiCompare` always fall through
 to the static `/zcta/{zip3}.json` shards. `netlify.toml` has the `/api/*` proxy + the API origin in `connect-src`
@@ -383,7 +408,6 @@ to the static `/zcta/{zip3}.json` shards. `netlify.toml` has the `/api/*` proxy 
 **Accept.** One prod data path; no dead branch in `api.ts`; README unambiguous. **Risk:** low. Do after T8 confirms
 the shard path stays the drill-down source (it does, in plan (b) above).
 
-**Sequence (remaining):** **T8 (stopgap c, then b)** → **T9** (stamp the new payloads once their names are final) →
-**T10** (collapse the dead API branch; the static shard path is then the sole, documented prod path). All three are
-Phase-3 engineering and touch **no published numbers**. Phase 2 (T1/T2/T3/T4/T5/T6/T7) + the coordinated doc pass are
-**done** (see status block at the top).
+**Sequence (complete):** **T8** (`3c18182`) → **T9** (`ad9021a`) → **T10** (`9779841`), all landed on master.
+All three were Phase-3 engineering and touched **no published numbers**. With Phase 1 (T7), Phase 2
+(T1/T2/T3/T4/T5/T6) + the coordinated doc pass already done, **all 10 remediation tickets are complete.**
