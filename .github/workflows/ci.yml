@@ -20,7 +20,9 @@ jobs:
         with:
           python-version: "3.12"  # match the prod runtime (backend/Dockerfile python:3.12-slim)
           cache: pip
-      - run: pip install -r requirements.txt
+      # Install the exact pinned versions (requirements.lock), not the floating ranges, so CI
+      # attests the same dependency set the tests were written against and prod deploys.
+      - run: pip install -r requirements.lock
       # The data stages need API keys + multi-GB downloads, so CI has no national
       # data/processed/metrics.parquet. A committed 800-ZCTA slice (tests/fixtures/) now backs the
       # row-level acceptance + integrity guards so they RUN here (no-NaN, ranges, rates, server/client
