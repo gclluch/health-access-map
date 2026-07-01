@@ -153,6 +153,14 @@ amenable anchor confirms it**: on the access-sensitive ruler care access is far 
 
 ## 3. Sub-county validation - the county-resolution blind spot (`pipeline.validate_subcounty`)
 
+> **Update (HPSA now tract-resolved).** `shortage_designation` (HPSA) was upgraded this build from a
+> county-MAX broadcast to census-tract resolution (see `docs/SUBCOUNTY_PLAN.md`), lifting its
+> within-county r from **0.000 to ~+0.20** and roughly doubling its outcome-validation signal
+> (amenable mortality 0.25→0.49). The "5 A's" table below is corrected, but several later statements
+> and computed tables in this section still describe HPSA as "county-constant / 0.000" - those
+> **predate the fix** and are stale for HPSA only (`medical_debt` remains the one county-flat scored
+> input). Re-run `validate_subcounty` to regenerate the computed tables (§6a, §6b) consistently.
+
 Every access-sensitive outcome is **county-level**, yet **25% of the composite's variance is
 within-county** - structurally invisible to the standard gate. So any ZCTA-resolution access
 measure cannot be rewarded by a county-flat outcome; the "spatial-signal ceiling" was declared
@@ -211,29 +219,30 @@ sub-county (within-county, national USALEEP) signal:
 | care sub-score | 5-A dimension | county mean\|r\| | **within-county r** |
 |---|---|---|---|
 | provider_supply (2SFCA, spatial) | Availability | 0.263 | **0.076** |
-| shortage_designation (HPSA) | Availability | 0.206 | **0.000** |
+| shortage_designation (HPSA, tract-resolved) | Availability | 0.206 | **+0.20** |
 | insurance | Affordability | 0.322 | **0.477** |
 | **medical_debt** (Urban Institute, **county-level**) | Affordability | **0.40** | **0.000** |
 | preventive_use (checkups/screens) | realized access (net of all A's) | 0.200 | **0.464** |
 | safetynet (FQHC, **unscored**) | Acceptability proxy | 0.201 | −0.072 |
 
-**Finding: the two *spatial* Availability sub-scores carry ~zero sub-county signal
-(provider_supply 0.076, HPSA 0.000), while the *non-spatial* ones carry nearly all of it
-(insurance 0.477, preventive_use 0.464).** The most-engineered piece (spatial supply) is the
-least productive at the resolution the tool runs.
+**Finding: `provider_supply` (2SFCA) carries ~zero sub-county signal (0.076), while the non-spatial
+sub-scores carry most of it (insurance 0.477, preventive_use 0.464). HPSA rose from 0.000 to ~+0.20
+once it was resolved to the census-tract level (this build) - the old county-MAX broadcast, not the
+designation itself, was hiding its sub-county signal.** The most-engineered piece (spatial 2SFCA
+supply) is still the least productive at the resolution the tool runs.
 
-**County-level scored barriers add only county-resolution signal - an honest asymmetry.** Two
-*scored* care sub-scores are county-level inputs broadcast county→ZCTA, so their within-county r
-is **0.000** by construction (`validate_subcounty` auto-flags both): `shortage_designation` (HPSA)
-and **`medical_debt`**. The latter is the affordability win celebrated in §1/§4 - its entire
-mean|r| 0.40 and **partial-r +0.27 are a *county-resolution* result**; it contributes nothing at
-the tool's native ZCTA resolution, exactly like HPSA. We keep both *scored* on **construct
-grounds** (real, official/credit-bureau, county-level barriers), not because they resolve
-sub-county variance. The distinction from `safetynet` (which was *removed* from scoring) is that
-county-flat is **signal-less within county, not wrong-signed** - harmless to carry, whereas
+**One county-level scored barrier remains - an honest asymmetry.** After HPSA was resolved to
+census tracts (this build), just one *scored* care sub-score is still a county-level input
+broadcast county→ZCTA, so its within-county r is **0.000** by construction (`validate_subcounty`
+auto-flags it): **`medical_debt`** (Urban Institute credit-bureau; no free sub-county release). It
+is the affordability win celebrated in §1/§4 - its entire mean|r| 0.40 and **partial-r +0.27 are a
+*county-resolution* result**; it contributes nothing at the tool's native ZCTA resolution. We keep
+it *scored* on **construct grounds** (a real, credit-bureau, county-level barrier), not because it
+resolves sub-county variance. The distinction from `safetynet` (which was *removed* from scoring)
+is that county-flat is **signal-less within county, not wrong-signed** - harmless to carry, whereas
 safetynet actively mis-ranked sub-county. A reader comparing two ZCTAs in the same county should
-know HPSA and medical_debt give them the *same* value: the sub-county separation comes entirely
-from insurance, the spatial supply terms, and the need/vulnerability dimensions. (Enabling A's in social_vulnerability behave
+know `medical_debt` gives them the *same* value: the sub-county separation now comes from HPSA,
+insurance, the spatial supply terms, and the need/vulnerability dimensions. (Enabling A's in social_vulnerability behave
 the same: socioeconomic/Affordability within-county +0.562, digital/telehealth +0.356.)
 
 **5 A's coverage (updated):** Availability over-built + weak (spatial); **Affordability strong and
