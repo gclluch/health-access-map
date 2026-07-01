@@ -21,10 +21,11 @@ jobs:
           python-version: "3.12"  # match the prod runtime (backend/Dockerfile python:3.12-slim)
           cache: pip
       - run: pip install -r requirements.txt
-      # NOTE: the data stages need API keys + multi-GB downloads, so CI has no
-      # data/processed/metrics.parquet. Tests that require it `skip` (see pytest.mark.skipif),
-      # so this run guards imports, contracts, and the harnesses' code paths. Data-level
-      # acceptance is gated locally/pre-deploy via `make acceptance` on a real build.
+      # The data stages need API keys + multi-GB downloads, so CI has no national
+      # data/processed/metrics.parquet. A committed 800-ZCTA slice (tests/fixtures/) now backs the
+      # row-level acceptance + integrity guards so they RUN here (no-NaN, ranges, rates, server/client
+      # parity, face validity). National-scope / backend-API / outcomes tests still skip and are gated
+      # pre-deploy via `make acceptance` on a real build.
       - run: python -m pytest tests -q
 
   frontend:

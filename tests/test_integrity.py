@@ -16,9 +16,11 @@ import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-METRICS = ROOT / "data" / "processed" / "metrics.parquet"
+_REAL = ROOT / "data" / "processed" / "metrics.parquet"
+# Fall back to the committed slice so the integrity guards run in CI instead of skipping.
+METRICS = _REAL if _REAL.exists() else (Path(__file__).resolve().parent / "fixtures" / "metrics_slice.parquet")
 
-pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline first")
+pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="no metrics build and no fixture")
 
 
 @pytest.fixture(scope="module")

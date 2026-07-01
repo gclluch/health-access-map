@@ -13,11 +13,19 @@ from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent
 PROCESSED = ROOT / "data" / "processed"
-METRICS = PROCESSED / "metrics.parquet"
-PROVENANCE = PROCESSED / "provenance.json"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+# Prefer the full national build; fall back to the committed slice so CI runs the guards instead of
+# skipping (the multi-GB build is unavailable in CI). The slice keeps national percentiles.
+_REAL = PROCESSED / "metrics.parquet"
+METRICS = _REAL if _REAL.exists() else FIXTURES / "metrics_slice.parquet"
+PROVENANCE = (PROCESSED / "provenance.json") if _REAL.exists() else (FIXTURES / "provenance.json")
 GEOJSON = ROOT / "frontend" / "public" / "zcta_overview.geojson"
 
-pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline first")
+pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="no metrics build and no fixture")
+# Tests needing the FULL build (backend API over the whole table, outcomes.parquet, a live
+# validate.build, or national-scope ranking) rather than the row-level slice.
+_REAL_ONLY = pytest.mark.skipif(not _REAL.exists(), reason="needs the full national build, not the slice")
+_HAS_GEOJSON = pytest.mark.skipif(not GEOJSON.exists(), reason="overview geojson not built")
 
 
 def _scope() -> str:
@@ -49,6 +57,8 @@ def test_zcta5_format(df):
     assert df["zcta5"].astype(str).str.match(r"^\d{5}$").all()
 
 
+@_REAL_ONLY
+@_HAS_GEOJSON
 def test_geometry_overlap(df):
     gj = json.loads(GEOJSON.read_text())
     geo = {f["properties"]["zcta5"] for f in gj["features"]}
@@ -96,6 +106,7 @@ def _client_access_gap(row, w=(35, 30, 35)):
     return sum(p[0] * p[1] for p in parts) / wsum if wsum > 0 else None
 
 
+@pytest.mark.skipif(_scope() != "national", reason="re-ranks within the frame; national scope only")
 def test_dimensions_reproducible_from_subscores(df):
     """Each dimension percentile must reproduce by re-ranking the mean of its SCORED
     sub-scores - guards the hierarchical aggregation + nullable-rank determinism.
@@ -157,22 +168,26 @@ def test_affluent_vs_underserved_direction(df):
 
 
 # ---- API ----
+@_REAL_ONLY
 def test_api_health(client, df):
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json()["zcta_count"] == len(df)
 
 
+@_REAL_ONLY
 def test_api_zcta_record(client):
     r = client.get("/api/zcta/90210")
     if r.status_code == 200:
         assert r.json()["zcta5"] == "90210"
 
 
+@_REAL_ONLY
 def test_api_bad_zip_404(client):
     assert client.get("/api/zcta/00000").status_code == 404
 
 
+@_REAL_ONLY
 def test_api_rankings_sorted(client):
     r = client.get("/api/rankings?metric=access_gap_score&limit=10&order=desc")
     assert r.status_code == 200
@@ -185,6 +200,7 @@ OUTCOMES = PROCESSED / "outcomes.parquet"
 WEIGHTS = ROOT / "frontend" / "public" / "weights.json"
 
 
+@_REAL_ONLY
 def test_outcomes_format():
     if not OUTCOMES.exists():
         pytest.skip("outcomes stage not run")
@@ -209,6 +225,7 @@ def test_weights_json_multi_anchor_shape():
         assert a["scope"] in ("county", "zcta")
 
 
+@_REAL_ONLY
 def test_validate_idempotent():
     """Re-running validate against the same metrics must be deterministic - the cheap
     re-tune contract (run --only validate after supply changes) depends on this."""
@@ -260,6 +277,7 @@ def test_rank_uncertainty_band(df):
     assert s["tier"].between(1, 10).all()
 
 
+@_REAL_ONLY
 def test_access_signal_against_access_sensitive_outcome():
     """Post-Layer-C3 (variable/adaptive catchment): spatial provider supply now carries
     real, correctly-signed signal against BOTH infant mortality AND all-cause life
