@@ -88,3 +88,6 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Cycle 15
 - **DONE (type safety, §5.13)** removed SlimMetric's blanket `[k: string]` index signature - a typo'd column (m.halth_need_pctile) was silently `null` at runtime; now a compile error. Blast radius was only 3 dynamic-access sites (scoring.metricValue, store lazy-merge, DetailPanel sub-score pctile), each fixed with a documented unknown-bridged cast. tsc clean + 51 tests pass. Purely type-level, no runtime change.
+
+## Cycle 16
+- **DONE (honesty, §1.5)** build_supply shortage flag: primary_people_per_provider is 1/(Gaussian-decayed E2SFCA), a DECAY-WEIGHTED proxy - not the hard population-per-provider service-area ratio the HRSA 3,500:1 threshold is literally defined on. Relabeled the comment, provenance shortage_basis, and log to "E2SFCA proxy ~ HRSA 3,500:1" so it doesn't overclaim the official designation. Frontend already caveats "spatial access, not an HPSA designation" - left as-is. Parses.
