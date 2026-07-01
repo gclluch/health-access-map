@@ -73,7 +73,8 @@ def _clean(value):
 # (full-sort) rankings responses are pure functions of their args - cache them. This turns the
 # hot rankings path from an O(n log n) sort on every request into a dict lookup. If a reload
 # path is ever added, call record.cache_clear() / rankings.cache_clear() after load().
-@lru_cache(maxsize=4096)
+# The metrics table is immutable and bounded (~33k rows), so an unbounded cache fully covers it.
+@lru_cache(maxsize=None)
 def record(zcta5: str) -> dict | None:
     df = load()
     if zcta5 not in df.index:
@@ -91,7 +92,8 @@ def rankings(metric: str, state: str | None, limit: int, order: str,
     sub = df[df["scoreable"]] if "scoreable" in df.columns else df
     sub = sub[sub[metric].notna()]
     if state:
-        sub = sub[sub["state"] == state.upper()]
+        # state is canonicalized (stripped + uppercased) by the caller before the cache boundary.
+        sub = sub[sub["state"] == state]
     if not include_low_confidence and "low_confidence" in sub.columns:
         sub = sub[~sub["low_confidence"]]
     # institutional (providers > residents - a hospital campus, not a community) is always held out

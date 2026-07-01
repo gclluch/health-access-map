@@ -53,13 +53,15 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=os.environ.get("ALLOWED_ORIGIN_REGEX") or None,  # e.g. preview deploys
     allow_methods=["GET"],
-    allow_headers=["*"],
+    allow_headers=["content-type"],  # GET-only API; no need to allow arbitrary request headers
 )
 
 
 def _norm_zcta(z: str) -> str:
     z = z.strip()
-    if not z.isdigit():
+    # isascii() guards against Unicode digit code points (Arabic-Indic, superscripts) that
+    # str.isdigit()/\d accept but are not valid US ZIPs.
+    if not (z.isascii() and z.isdigit()):
         raise HTTPException(422, detail=f"invalid ZIP '{z}': must be digits")
     z = z.zfill(5)
     if not ZCTA_RE.match(z):
@@ -74,9 +76,10 @@ def health() -> dict:
 
 @app.get("/api/zcta/{zcta5}")
 def get_zcta(zcta5: str) -> dict:
-    rec = data.record(_norm_zcta(zcta5))
+    z = _norm_zcta(zcta5)
+    rec = data.record(z)
     if rec is None:
-        raise HTTPException(404, detail=f"ZIP {zcta5} not found")
+        raise HTTPException(404, detail=f"ZIP {z} not found")  # echo the normalized value, not raw input
     return rec
 
 
@@ -93,6 +96,8 @@ def get_rankings(
 ) -> dict:
     if metric not in data.RANKABLE_METRICS:
         raise HTTPException(422, detail=f"metric must be one of {sorted(data.RANKABLE_METRICS)}")
+    # Canonicalize state before the cache boundary so the key is stable across "ca"/"Ca"/"CA".
+    state = state.strip().upper() or None if state else None
     rows = data.rankings(metric, state, limit, order, include_low_confidence, min_dims)
     return {"metric": metric, "state": state, "order": order, "count": len(rows), "results": rows}
 
