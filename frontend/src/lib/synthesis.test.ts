@@ -74,6 +74,6 @@ describe('profile (need-vs-access lever)', () => {
     const high = makeMetric({ health_need_pctile: 90, social_vulnerability_pctile: 88, care_access_pctile: 85 });
     const low = makeMetric({ health_need_pctile: 20, social_vulnerability_pctile: 22, care_access_pctile: 18 });
     expect(profile(high, W)?.blurb).toMatch(/compounding/);
-    expect(profile(low, W)?.blurb).toMatch(/no single lever/);
+    expect(profile(low, W)?.blurb).toMatch(/not concentrated on the demand or the supply side/);
   });
 });

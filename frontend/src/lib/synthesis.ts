@@ -58,7 +58,8 @@ export function profile(m: SlimMetric, w: Weights): Profile | null {
     blurb: bothHigh
       ? 'High health need and hard-to-reach care coincide here - the compounding case for combined ' +
         'demand- and supply-side action.'
-      : 'Need and barriers contribute roughly equally here - no single lever dominates.',
+      : 'Population need and barriers to care are close here, so the disadvantage is not concentrated ' +
+        'on the demand or the supply side (a single dimension may still lead - see the breakdown).',
   };
 }
 

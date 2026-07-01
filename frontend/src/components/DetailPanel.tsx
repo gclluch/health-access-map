@@ -674,7 +674,7 @@ export default function DetailPanel() {
           let hPct: number | null = scorePercentile;
           let rankLabel = 'screening priority';
           let sentence =
-            `A prioritization screen, not a verdict: it blends need + vulnerability + barriers into one rank for triage, so see the profile and breakdown for what to act on. This ZIP is more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the most disadvantaged ${worst(scorePercentile)}% nationally. Use the range and peer ranks below before treating nearby ZIPs as meaningfully different.`;
+            `Higher = more access disadvantage. This ZIP is more disadvantaged than ${fmtScore(Math.min(99, scorePercentile))}% of U.S. ZIPs - among the most disadvantaged ${worst(scorePercentile)}% nationally. ZIPs within ~10-15 points aren't meaningfully different; use the range and peer ranks below.`;
           if (metric === WITHIN_STATE_METRIC && m.access_gap_pctile_within_state != null) {
             hPct = m.access_gap_pctile_within_state;
             rankLabel = 'within-state rank';
