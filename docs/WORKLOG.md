@@ -74,3 +74,6 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Cycle 11
 - **VERIFIED** scoring determinism: rebuilt join_and_score and compared all 181 columns of metrics.parquet - byte-stable, including access_gap_rank_lo/hi (the np.random reliable-range band, confirming it's seeded). The composite is fully reproducible; the §2.5/§2.10-11 fixes protect a genuinely deterministic pipeline. No bug found (verification is progress).
+
+## Cycle 12
+- **DONE (robustness, §2.13)** build_gazetteer: the HEAD pre-gate skipped a Census vintage whenever the server rejects HEAD (405/403) but would serve GET. Removed it - download_file's GET + min_bytes validation is the honest test and already caches/raises correctly. Net simpler + more robust; removed the now-dead httpx import. Imports clean.
