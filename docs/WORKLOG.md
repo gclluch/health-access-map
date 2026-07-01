@@ -110,3 +110,14 @@ State: the HIGH + MEDIUM-value verifiable work is COMPLETE. All HIGH audit findi
 
 ## Cycle 21
 - **MEASURED -> negligible (§1.9)** reliable-range band centering: band samples uniform(0.15,0.55) ~ equal weights, point uses 0.35/0.30/0.35. Measured: point inside its own band 99.9%, offset from band center mean +0.03 / median -0.05 pctile pts (no systematic bias) - because the shipped weights ~ equal. Centering the band draw on the exact weights would change nothing measurable. Rejected.
+
+## Cycle 22
+- **MEASURED -> accept (§1.10)** multiplicative-lens floor (frac clipped to 0.01): only 2.55% of ZCTAs hit the floor in >=1 dimension, and the displayed access_gap_mult_pctile stays well-differentiated (298 distinct values in [0,3]) because the final _pct re-rank spreads them - no severe compression. Secondary selectable lens, documented rationale. No change.
+
+## Statistical-rigor sweep COMPLETE
+Every marginal statistical concern from the audit has now been measure-first assessed:
+- FIXED: §3.1 spatial CIs, §3.2 weights, §3.14 bootstrap p-floor, §2.5 SVI reproducibility, FQHC power caveat, tract-HPSA.
+- MEASURED -> negligible/rejected (not shipped): §1.1 percentile universe (0.11pt), §1.9 band centering (offset ~0), pop-weighted HPSA (wash), naive tract-hybrid (wrong-signed).
+- MEASURED -> accept as-is: §1.10 mult floor (modest, mitigated).
+- Already honestly disclosed: §4 multiplicity (winner's curse, §4a).
+The index's statistical concerns are now either corrected or rigorously confirmed negligible - the honest, defensible state.
