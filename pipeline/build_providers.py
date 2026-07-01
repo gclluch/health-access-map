@@ -60,6 +60,10 @@ def _classify_row(grouping: str, classification: str, specialization: str) -> st
     if g == config.PHYSICIAN_GROUPING and c in config.PRIMARY_CARE_CLASSIFICATIONS:
         return "primary_care"
     if c in ("Nurse Practitioner", "Physician Assistant"):
+        # a psychiatric/mental-health NP or PA is a behavioral-health provider, not a PCP
+        # (NUCC 363LP0808X alone is ~54k NPIs); route it to mental_health before the PCP default.
+        if "psychiatr" in s or "mental health" in s or "behavioral" in s:
+            return "mental_health"
         return "primary_care"
     if g == config.PHYSICIAN_GROUPING:
         return "specialist"

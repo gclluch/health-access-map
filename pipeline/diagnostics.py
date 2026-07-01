@@ -132,7 +132,7 @@ def run() -> dict:
     print("\n=== 4. INTERNAL reliability (split-half Spearman-Brown) ===")
     from .join_and_score import _member_pctile
     members = [m for s in subscore_specs() for m in s["members"]]
-    mp = {m["col"]: _member_pctile(d, m).to_numpy() for m in members if _member_pctile(d, m) is not None}
+    mp = {m["col"]: p.to_numpy() for m in members if (p := _member_pctile(d, m)) is not None}
     Mat = np.column_stack(list(mp.values()))
     pop = d["population"].to_numpy(float)
     med = np.nanmedian(pop)

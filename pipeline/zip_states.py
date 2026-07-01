@@ -53,10 +53,32 @@ STATE_NAMES = {
 }
 
 
+# Exact 2-digit state/territory FIPS -> USPS (from a ZCTA's county_fips), unlike the approximate
+# SCF-prefix heuristic above.
+FIPS_STATE: dict[str, str] = {
+    "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA", "08": "CO",
+    "09": "CT", "10": "DE", "11": "DC", "12": "FL", "13": "GA", "15": "HI",
+    "16": "ID", "17": "IL", "18": "IN", "19": "IA", "20": "KS", "21": "KY",
+    "22": "LA", "23": "ME", "24": "MD", "25": "MA", "26": "MI", "27": "MN",
+    "28": "MS", "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH",
+    "34": "NJ", "35": "NM", "36": "NY", "37": "NC", "38": "ND", "39": "OH",
+    "40": "OK", "41": "OR", "42": "PA", "44": "RI", "45": "SC", "46": "SD",
+    "47": "TN", "48": "TX", "49": "UT", "50": "VT", "51": "VA", "53": "WA",
+    "54": "WV", "55": "WI", "56": "WY", "72": "PR",
+}
+
+
 def zip3_to_state(zcta5: str) -> str | None:
     if not zcta5 or len(zcta5) < 3 or not zcta5[:3].isdigit():
         return None
     return _PREFIX_STATE.get(int(zcta5[:3]))
+
+
+def fips_to_state(county_fips: str | None) -> str | None:
+    """State USPS from the first 2 digits of a 5-digit county FIPS; None if absent/unknown."""
+    if not county_fips or len(county_fips) < 2:
+        return None
+    return FIPS_STATE.get(county_fips[:2])
 
 
 def state_name(abbr: str | None) -> str | None:

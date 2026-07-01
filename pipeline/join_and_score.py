@@ -27,7 +27,7 @@ from . import config
 from .common import assert_zcta, die, log, write_provenance
 from .taxonomy import (CONTEXT_ACS, CONTEXT_PLACES, DIMENSION_WEIGHTS, DIMENSIONS,
                        subscore_specs)
-from .zip_states import state_name, zip3_to_state
+from .zip_states import fips_to_state, state_name, zip3_to_state
 
 OUT_PARQUET = config.PROCESSED / "metrics.parquet"
 # Two-tier client payload (columnar struct-of-arrays). map_frame.json is the first-paint frame
@@ -237,8 +237,8 @@ def _member_pctile(df: pd.DataFrame, member: dict) -> pd.Series | None:
 def build(dev_state: str | None = None, force: bool = False) -> str:
     universe = _geometry_universe()
     df = pd.DataFrame({"zcta5": universe})
+    # Seed state from the ZIP3 heuristic; county_fips (merged below) overrides it where present.
     df["state"] = df["zcta5"].map(zip3_to_state).astype("string")
-    df["state_name"] = df["state"].map(state_name, na_action="ignore").astype("string")
 
     for name in MERGE_STAGES:
         path = config.PROCESSED / f"{name}.parquet"
@@ -254,6 +254,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
             part = pd.read_parquet(path)
             part["zcta5"] = part["zcta5"].astype("string")
             df = df.merge(part, on="zcta5", how="left")
+
+    # county_fips gives the exact state; the ZIP3 seed only survives where it is missing (SCF
+    # prefixes that straddle a state line would otherwise be filed under the wrong state).
+    if "county_fips" in df.columns:
+        fips_state = df["county_fips"].map(fips_to_state).astype("string")
+        df["state"] = fips_state.fillna(df["state"])
+    df["state_name"] = df["state"].map(state_name, na_action="ignore").astype("string")
 
     # residential ZCTA with no NPPES match = zero registered providers, not missing
     for c in ("providers_total", "providers_primary", "providers_mental"):

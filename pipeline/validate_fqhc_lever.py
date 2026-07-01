@@ -110,7 +110,10 @@ def _build_panel(states: tuple[str, ...], dose: str = "clean") -> tuple[pd.DataF
     j = j[~j["zcta5"].isin(contaminated)].copy()
     j["cohort"] = j["cohort"].fillna(NEVER)
 
-    m = pd.read_parquet(METRICS)[["zcta5", "population"]]
+    try:  # county_fips enables the spatial (county-block) bootstrap; absent on some dev builds
+        m = pd.read_parquet(METRICS, columns=["zcta5", "population", "county_fips"])
+    except Exception:  # noqa: BLE001
+        m = pd.read_parquet(METRICS, columns=["zcta5", "population"])
     m["zcta5"] = m["zcta5"].astype(str)
     j = j.merge(m, on="zcta5", how="inner").rename(columns={"population": "pop"})
     j = j[j["pop"] >= MIN_POP].copy()
@@ -195,19 +198,21 @@ def _pctci(v: list[float]) -> tuple[float, float]:
     return (float(np.percentile(a, 2.5)), float(np.percentile(a, 97.5))) if len(a) else (np.nan, np.nan)
 
 
-def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT
+def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT, unit_col: str = "zcta5"
                ) -> tuple[dict[int, tuple[float, float]], tuple[float, float], tuple[float, float]]:
-    """ZIP-cluster bootstrap: resample whole ZIP series, recompute the event path + both overall
-    ATTs. Returns {e: (lo, hi)} path CIs, the full-horizon overall CI, and the balanced-window CI."""
-    zips = j["zcta5"].unique()
-    groups = {z: g for z, g in j.groupby("zcta5")}
+    """Block bootstrap: resample whole `unit_col` blocks, recompute the event path + both overall
+    ATTs. Returns {e: (lo, hi)} path CIs, the full-horizon overall CI, and the balanced-window CI.
+    Default blocks by ZIP; unit_col="county_fips" resamples whole counties, preserving within-county
+    spatial correlation for an honest (wider) CI where neighbouring ZIPs are not independent."""
+    units = j[unit_col].dropna().unique()
+    groups = {u: g for u, g in j.groupby(unit_col)}
     rng = np.random.default_rng(20260626)
     paths: dict[int, list[float]] = {}
     full, bal = [], []
     for _ in range(n):
-        pick = rng.choice(zips, size=len(zips), replace=True)
-        boot = pd.concat([groups[z].assign(zcta5=f"{z}__{i}") for i, z in enumerate(pick)],
-                         ignore_index=True)
+        pick = rng.choice(units, size=len(units), replace=True)
+        boot = pd.concat([groups[u].assign(zcta5=groups[u]["zcta5"].astype(str) + f"__{i}")
+                          for i, u in enumerate(pick)], ignore_index=True)
         try:
             ag = att_gt(boot, weighted=weighted)
             if ag.empty:
@@ -352,7 +357,11 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
     ov = overall_att(attgt)
     ov_bal = overall_att(attgt, emax=BALANCED_EMAX)
     ci, ov_ci, ov_bal_ci = _bootstrap(j, weighted=weighted)
-    verdict, clean, pre_rms = _verdict(ev, ov, ov_ci)
+    # Spatial-honest CI: resample whole counties (ACSC geography is spatially autocorrelated, so the
+    # ZIP-cluster CI understates uncertainty). This wider CI is the one the verdict keys on.
+    has_county = "county_fips" in j.columns and j["county_fips"].notna().any()
+    ov_ci_cty = _bootstrap(j, weighted=weighted, unit_col="county_fips")[1] if has_county else ov_ci
+    verdict, clean, pre_rms = _verdict(ev, ov, ov_ci_cty)
 
     rep = {
         "design": "Callaway-Sant'Anna group-time ATT, staggered first-FQHC opening, within-state controls",
@@ -364,7 +373,10 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
         "event_study_ci": {int(e): [round(lo, 1), round(hi, 1)] for e, (lo, hi) in ci.items()},
         "overall_att": round(ov, 1),
         "overall_ci": [round(ov_ci[0], 1), round(ov_ci[1], 1)],
-        "overall_excludes_zero": bool(ov_ci[0] > 0 or ov_ci[1] < 0),
+        "overall_ci_county_block": [round(ov_ci_cty[0], 1), round(ov_ci_cty[1], 1)],
+        "overall_excludes_zero_zip": bool(ov_ci[0] > 0 or ov_ci[1] < 0),
+        # honest bar: a lever requires BOTH the ZIP and the spatial county-block CI to exclude 0
+        "overall_excludes_zero": bool((ov_ci[0] > 0 or ov_ci[1] < 0) and (ov_ci_cty[0] > 0 or ov_ci_cty[1] < 0)),
         "overall_att_balanced": round(ov_bal, 1),     # e=0..4, the well-populated horizon
         "overall_ci_balanced": [round(ov_bal_ci[0], 1), round(ov_bal_ci[1], 1)],
         "balanced_excludes_zero": bool(ov_bal_ci[0] > 0 or ov_bal_ci[1] < 0),
@@ -387,8 +399,11 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
         star = " *" if np.isfinite(lo) and (lo > 0 or hi < 0) else ""
         print(f"  {int(r.e):>8d} {r.att:+9.1f}   [{lo:+8.1f},{hi:+8.1f}]   {int(r.n_cohorts):>7d}   {era}{star}")
     print(f"\n  pre-period RMS ATT = {pre_rms:6.1f}  (clean iff small vs |overall ATT|)")
-    print(f"  OVERALL post ATT   = {ov:+.1f}/100k  CI [{ov_ci[0]:+.1f}, {ov_ci[1]:+.1f}]  "
-          f"{'EXCLUDES 0' if rep['overall_excludes_zero'] else 'straddles 0'}  (all e>=0)")
+    print(f"  OVERALL post ATT   = {ov:+.1f}/100k  (all e>=0)")
+    print(f"    ZIP-cluster CI    [{ov_ci[0]:+.1f}, {ov_ci[1]:+.1f}]  "
+          f"{'EXCLUDES 0' if rep['overall_excludes_zero_zip'] else 'straddles 0'}")
+    print(f"    county-block CI   [{ov_ci_cty[0]:+.1f}, {ov_ci_cty[1]:+.1f}]  "
+          f"{'EXCLUDES 0' if (ov_ci_cty[0] > 0 or ov_ci_cty[1] < 0) else 'straddles 0'}  (spatially honest; drives the verdict)")
     print(f"  balanced (e<= {BALANCED_EMAX})   = {ov_bal:+.1f}/100k  CI [{ov_bal_ci[0]:+.1f}, "
           f"{ov_bal_ci[1]:+.1f}]  {'EXCLUDES 0' if rep['balanced_excludes_zero'] else 'straddles 0'}")
     print(f"  parallel-trends clean = {clean}")

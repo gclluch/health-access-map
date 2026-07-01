@@ -85,3 +85,14 @@ def test_county_subscores_tagged_in_taxonomy():
     assert res["provider_supply"] == "zcta"
     assert res["insurance"] == "zcta"
     assert res["socioeconomic"] == "zcta"
+
+
+# --- taxonomy counts (guard the numbers the README/RATIONALE/METHODOLOGY cite) ----------------
+
+def test_taxonomy_counts_match_docs():
+    """3 dimensions, 14 sub-scores (12 scored + 2 displayed-only). Fails loudly when the taxonomy
+    changes so the docs that hardcode these counts get updated with it."""
+    specs = subscore_specs()
+    assert len(specs) == 14
+    assert sum(s["scored"] for s in specs) == 12
+    assert len({s["dim"] for s in specs}) == 3

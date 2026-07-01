@@ -278,16 +278,16 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         dim_corr = {d: _corr(frame[f"{d}_pctile"].to_numpy(float), y) for d in DIMENSIONS}
         if any(r is None for r in dim_corr.values()):
             continue
-        # PRECISION-WEIGHTED dimension correlations drive the presets for county anchors: pop-weighting
-        # down-weights the noisy small counties that attenuate the unweighted association, so the preset
-        # weights reflect the better-estimated strength of each dimension (esp. care access, which the
-        # small-area noise hits hardest). Falls back to unweighted for the ZCTA-level LE anchor.
+        # Pop-weighted dimension correlations, reported as a sensitivity (weights_popw / precision_
+        # weighting) alongside the shipped unweighted presets. Pop-weighting down-weights noisy small
+        # counties but changes the estimand to "where people live"; falls back to unweighted where the
+        # weight column is absent (ZCTA-level LE anchor) or any weighted r is undefined.
         wcol = frame["_cpop"].to_numpy(float) if (scope == "county" and "_cpop" in frame.columns) else None
         dim_corr_pw = ({d: _wcorr(frame[f"{d}_pctile"].to_numpy(float), y, wcol) for d in DIMENSIONS}
                        if wcol is not None else dict(dim_corr))
         if any(r is None for r in dim_corr_pw.values()):
             dim_corr_pw = dict(dim_corr)
-        preset_corr = dim_corr_pw  # the association used for the floor-weighted presets
+        preset_corr = dim_corr_pw  # pop-weighted association (sensitivity only; not the shipped preset)
         Xreg = frame[DIM_COLS].to_numpy(float)
         reg = _regression(Xreg, y)  # diagnostic (may be None)
         # leave-one-state-out CV groups: county_fips prefix for county-aggregated frames, the
@@ -313,12 +313,12 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         anchors_out[a] = {
             "label": label, "scope": scope, "caveat": caveat,
             "precision_weighted": prec,
-            # PRESET weights: proportional to the PRECISION-WEIGHTED univariate correlation, 5% floor.
-            # Keeps care access visible at its real (attenuation-corrected) association strength instead
-            # of letting either the multivariate regression collapse it (collinearity) or small-area
-            # noise understate it. `weights_unweighted` retains the prior estimate for transparency.
-            "weights": _floor_weights([preset_corr[d] for d in DIMENSIONS]),
-            "weights_unweighted": _floor_weights([dim_corr[d] for d in DIMENSIONS]),
+            # SHIPPED preset weights: proportional to the UNWEIGHTED univariate correlation, 5% floor.
+            # Pop-weighting the correlation changes the estimand to "where people live" and would
+            # systematically raise care access, so it ships as a labeled sensitivity (`weights_popw`),
+            # not the default.
+            "weights": _floor_weights([dim_corr[d] for d in DIMENSIONS]),
+            "weights_popw": _floor_weights([preset_corr[d] for d in DIMENSIONS]),
             "dimension_corr": {d: round(r, 3) for d, r in dim_corr.items()},
             "dimension_corr_popw": {d: (round(preset_corr[d], 3) if preset_corr[d] is not None else None)
                                     for d in DIMENSIONS},
@@ -388,13 +388,13 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     # before/after summary: precision-weighting recovers attenuated signal; disattenuation shows
     # how much of the residual gap is a noisy ruler vs a true ceiling.
     # preset before/after: how pop-weighting the dimension correlations shifts the anchored presets
-    print("\n  === anchored preset weights: unweighted -> precision-weighted dimension corr ===")
+    print("\n  === anchored preset weights: shipped (unweighted) vs pop-weighted sensitivity ===")
     for a, vv in anchors_out.items():
-        if vv["weights"] != vv["weights_unweighted"]:
-            old = {d: vv["weights_unweighted"][d] for d in DIMENSIONS}
-            new = {d: vv["weights"][d] for d in DIMENSIONS}
-            print(f"  {a:20s} care_access {old['care_access']:>4.1f} -> {new['care_access']:>4.1f}  "
-                  f"(full: {old} -> {new})")
+        if vv["weights"] != vv["weights_popw"]:
+            shipped = {d: vv["weights"][d] for d in DIMENSIONS}
+            popw = {d: vv["weights_popw"][d] for d in DIMENSIONS}
+            print(f"  {a:20s} care_access {shipped['care_access']:>4.1f} -> {popw['care_access']:>4.1f} (pop-w)  "
+                  f"(full: {shipped} -> {popw})")
 
     if reliab:
         print("\n  === precision-weighting + disattenuation (composite vs county outcome) ===")
@@ -439,16 +439,17 @@ def _write_weights(anchors_out: dict, sub_diag: dict) -> None:
     payload = {
         "default": default_pct,
         "anchors": {a: {"label": v["label"], "scope": v["scope"], "caveat": v["caveat"],
-                        "weights": v["weights"], "weights_unweighted": v["weights_unweighted"],
+                        "weights": v["weights"], "weights_popw": v["weights_popw"],
                         "regression_weights": v["regression_weights"],
                         "fit": v["fit"], "cv": v["cv"], "dimension_corr": v["dimension_corr"],
                         "dimension_corr_popw": v["dimension_corr_popw"]}
                     for a, v in anchors_out.items()},
         "subscore_correlations": sub_diag,
         "note": ("default = conceptual value judgment (theory weights); care access counts "
-                 "fully by design. Each anchor's `weights` are proportional to how strongly "
-                 "each dimension correlates with that independent outcome (5% floor) - this "
-                 "keeps care access visible. `regression_weights` (NNLS) is a diagnostic: it "
+                 "fully by design. Each anchor's `weights` are proportional to the UNWEIGHTED "
+                 "correlation of each dimension with that independent outcome (5% floor); "
+                 "`weights_popw` is the pop-weighted sensitivity variant. `regression_weights` "
+                 "(NNLS) is a diagnostic: it "
                  "collapses care access because area outcomes are need-dominated and the "
                  "dimensions are collinear, not because access doesn't matter."),
     }

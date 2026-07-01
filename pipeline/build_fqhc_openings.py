@@ -114,7 +114,7 @@ def build(force: bool = False) -> str:
 
 def _validate(df: pd.DataFrame) -> None:
     assert_zcta(df, stage="fqhc-openings")
-    if df["first_open_year"].between(1960, 2030).all() is False:
+    if not df["first_open_year"].between(1960, 2030).all():
         die("fqhc-openings", "first_open_year out of plausible range")
     if (df["n_sites"] < 1).any():
         die("fqhc-openings", "a ZCTA with zero sites slipped into the panel")

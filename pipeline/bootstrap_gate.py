@@ -371,8 +371,9 @@ def amenable_subscores(d: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> di
         a = np.asarray(boot[j], float)
         a = a[~np.isnan(a)]
         ci = [round(float(np.percentile(a, 2.5)), 3), round(float(np.percentile(a, 97.5)), 3)]
-        # one-sided bootstrap p: share of replicates where the partial is <= 0 (no positive effect)
-        p_one = float(np.mean(a <= 0)) if len(a) else np.nan
+        # one-sided bootstrap p (share of replicates with partial <= 0), with the (1+#)/(1+n)
+        # plus-one floor (Davison & Hinkley 1997) so a finite bootstrap never reports an exact 0.
+        p_one = float((1 + np.sum(a <= 0)) / (1 + len(a))) if len(a) else np.nan
         return {"raw_r": round(float(p_raw[j]), 3),
                 "partial_r": round(float(p_partial[j]), 3), "ci95": ci, "p_one_sided": p_one}
 

@@ -115,6 +115,10 @@ def _build_panel() -> tuple[pd.DataFrame, list[int]]:
                        / base["barrier_raw"].std())
     _build_panel.barrier_src = barrier_src  # surfaced in run()
     j = panel.merge(base[["zcta5", "barrier"]], on="zcta5", how="inner")
+    # county_fips for the spatial (county-block) bootstrap variant; ZIP-only panels fall back to ZIP.
+    if "county_fips" in m.columns:
+        j = j.merge(m[["zcta5", "county_fips"]].astype({"county_fips": "string"}),
+                    on="zcta5", how="left")
     # require near-complete panels and drop absurd rates (data-entry outliers)
     j = j[(j["rate"] > 0) & (j["rate"] < j["rate"].quantile(0.999))].copy()
     yrs = j.groupby("zcta5")["year"].nunique()
@@ -162,18 +166,22 @@ def _did_coefficient(j: pd.DataFrame) -> float:
     return float(beta[0])
 
 
-def _cluster_bootstrap(panel: pd.DataFrame, estimator, n: int) -> tuple[float, float, float]:
-    """ZIP-cluster bootstrap of `estimator` (resample whole ZIP time series with replacement, fixed
-    seed). Singular resamples are skipped - a no-op for the lstsq DiD coefficient (which never raises)
-    but needed for the triple-diff, where a degenerate draw can be rank-deficient."""
-    zips = panel["zcta5"].unique()
-    groups = {z: g for z, g in panel.groupby("zcta5")}
+def _cluster_bootstrap(panel: pd.DataFrame, estimator, n: int,
+                       unit_col: str = "zcta5") -> tuple[float, float, float]:
+    """Block bootstrap of `estimator`: resample whole `unit_col` blocks with replacement (fixed seed).
+    Default resamples each ZIP's time series; pass unit_col="county_fips" to resample whole counties,
+    which preserves within-county spatial correlation and yields honest - wider - CIs where
+    neighbouring ZIPs are not independent (health geography is strongly spatially autocorrelated, so
+    the ZIP-cluster CI understates uncertainty). Each drawn block keeps its ZIP fixed effects distinct
+    across copies. Singular resamples are skipped (needed for the rank-deficient triple-diff draws)."""
+    units = panel[unit_col].dropna().unique()
+    groups = {u: g for u, g in panel.groupby(unit_col)}
     rng = np.random.default_rng(20260625)
     betas = []
     for _ in range(n):
-        pick = rng.choice(zips, size=len(zips), replace=True)
-        boot = pd.concat([groups[z].assign(zcta5=f"{z}__{i}") for i, z in enumerate(pick)],
-                         ignore_index=True)
+        pick = rng.choice(units, size=len(units), replace=True)
+        boot = pd.concat([groups[u].assign(zcta5=groups[u]["zcta5"].astype(str) + f"__{i}")
+                          for i, u in enumerate(pick)], ignore_index=True)
         try:
             betas.append(estimator(boot))
         except Exception:  # noqa: BLE001 - singular resample, skip
@@ -228,6 +236,11 @@ def run() -> dict:
     betas, _, kyears = _event_study(j, years)
     did = _did_coefficient(j)
     lo, hi, _ = _cluster_bootstrap(j, _did_coefficient, N_BOOT)
+    # Spatial-honest variant: resample whole counties. Health/ACSC geography is spatially
+    # autocorrelated, so the ZIP-cluster CI above understates uncertainty; this is the honest bar.
+    has_county = "county_fips" in j.columns and j["county_fips"].notna().any()
+    clo, chi = (_cluster_bootstrap(j, _did_coefficient, N_BOOT, unit_col="county_fips")[:2]
+                if has_county else (lo, hi))
 
     # parallel-trends diagnostic: mean magnitude of the PRE-2014 betas (should be small vs post)
     pre = [betas[y] for y in kyears if y < EXPANSION_YEAR]
@@ -248,7 +261,11 @@ def run() -> dict:
         "event_study_beta": {str(k): round(v, 2) for k, v in betas.items()},
         "did_post_beta": round(did, 2),
         "did_ci": [round(lo, 2), round(hi, 2)],
-        "did_excludes_zero": bool(hi < 0 or lo > 0),
+        "did_ci_county_block": [round(clo, 2), round(chi, 2)],
+        "did_excludes_zero_zip": bool(hi < 0 or lo > 0),
+        "did_excludes_zero_county_block": bool(chi < 0 or clo > 0),
+        # a lever is only claimed if BOTH the ZIP and the spatially-honest county-block CI exclude 0
+        "did_excludes_zero": bool((hi < 0 or lo > 0) and (chi < 0 or clo > 0)),
         "pre_trend_rms": round(pre_rms, 2),
         "post_mean_beta": round(post_mean, 2),
         "did_drop2009": round(did_drop09, 2),
@@ -289,8 +306,11 @@ def run() -> dict:
         print(f"  {y:>6d} {betas[y]:+9.1f}   {era:<22s} {sign}{bar}")
     print(f"\n  pre-2014 RMS beta  = {pre_rms:6.1f}  (the joint pre-trends test below is the authority)")
     print(f"  post-2014 mean beta= {post_mean:6.1f}")
-    print(f"  POST x barrier DiD = {did:+.1f}/100k per +1 SD  "
-          f"CI [{lo:+.1f}, {hi:+.1f}]  {'EXCLUDES 0' if rep['did_excludes_zero'] else 'straddles 0'}")
+    print(f"  POST x barrier DiD = {did:+.1f}/100k per +1 SD")
+    print(f"    ZIP-cluster CI    [{lo:+.1f}, {hi:+.1f}]  "
+          f"{'EXCLUDES 0' if rep['did_excludes_zero_zip'] else 'straddles 0'}")
+    print(f"    county-block CI   [{clo:+.1f}, {chi:+.1f}]  "
+          f"{'EXCLUDES 0' if rep['did_excludes_zero_county_block'] else 'straddles 0'}  (spatially honest)")
     print(f"  DiD dropping 2009  = {did_drop09:+.1f}/100k  (robustness to the one non-flat pre-year)")
     print(f"  pre-trends joint test: chi2({rep['pre_trend_df']})={rep['pre_trend_chi2']}, "
           f"p={rep['pre_trend_p']}  =>  parallel-trends {'NOT rejected' if rep['parallel_trends_clean'] else 'REJECTED'}")
