@@ -1,4 +1,4 @@
-"""Leave-one-state-out CV regression (point 3): on data with a known linear signal, the pooled
+"""Leave-one-state-out CV regression: on data with a known linear signal, the pooled
 out-of-sample R^2 must be high and the per-fold weights stable; on pure noise it must NOT report a
 high CV R^2 (the whole point of CV is that it refuses to certify an overfit)."""
 from __future__ import annotations

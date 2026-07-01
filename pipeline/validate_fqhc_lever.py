@@ -26,10 +26,10 @@ Design:
     e<0 betas test parallel trends; e>=0 are the dynamic effects; overall ATT averages e>=0.
   * Inference: ZIP-cluster bootstrap (resample whole ZIP series), percentile CIs - the repo standard.
 
-HONEST framing, per the build plan. NY-only is a wiring PILOT (power gate: upper-band only at 135
-treated); the powered claim is the NY+TX pool (~277 treated). We lead with the event-study path + a
-parallel-trends verdict and NEVER a lone post-coefficient - the §7b lesson, where a single DiD
-coefficient looked causal and was a pre-trend artifact. Read-only; never feeds the composite.
+NY-only is a wiring PILOT (power gate: upper-band only at 135 treated); the powered claim is the
+NY+TX pool (~277 treated). Lead with the event-study path + a parallel-trends verdict, NEVER a lone
+post-coefficient (see §7b): a single DiD coefficient can look causal yet be a pre-trend artifact.
+Read-only; never feeds the composite.
 
     python -m pipeline.validate_fqhc_lever          # pooled NY+TX (the headline)
     python -m pipeline.validate_fqhc_lever NY       # NY-only pilot
@@ -330,8 +330,8 @@ def _verdict(ev: pd.DataFrame, ov: float, ov_ci: tuple[float, float]) -> tuple[s
 
 def _gate_band(n_treated: int) -> str:
     """Map the realized treated-N onto validate_fqhc_power's scenarios (the power gate, re-read at
-    the realized N per the build plan), so the verdict carries its own power context. The scenario
-    N's are pulled from validate_fqhc_power.SCENARIOS so this can't drift if the power analysis re-runs."""
+    the realized N) so the verdict carries its own power context. The scenario N's are pulled from
+    validate_fqhc_power.SCENARIOS so this can't drift if the power analysis re-runs."""
     scen_n = {label: n_t for label, n_t, *_ in SCENARIOS}
     nyx, nyo = scen_n["NY+TX (real)"], scen_n["NY-only"]
     if n_treated >= 240:

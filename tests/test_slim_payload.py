@@ -47,8 +47,8 @@ def _frame() -> pd.DataFrame:
 
 def test_columnar_is_struct_of_arrays_with_int_quantized_floats():
     df = _frame()
-    # nullable-int + NA columns must survive json.dumps (the real build tripped on numpy/NAType
-    # scalars leaking through) -> round-trip through JSON, not just compare the dict.
+    # nullable-int + NA columns must survive json.dumps (numpy/NAType scalars must not leak
+    # through) -> round-trip through JSON, not just compare the dict.
     df["tier"] = df["tier"].astype("Int64")
     out = _columnar(df, ["zcta5", "access_gap_pctile", "population", "scoreable", "tier"])
     out = json.loads(json.dumps(out, separators=(",", ":")))

@@ -45,7 +45,7 @@ def test_bh_fdr_monotone_and_correct():
 
 
 def test_spatial_blocking_widens_ci():
-    """Point 2: state blocking (fewer, spatially-honest clusters) must produce a CI at least as
+    """State blocking (fewer, spatially-honest clusters) must produce a CI at least as
     wide as county blocking on the same statistic - resampling whole states cannot make the
     interval narrower. Skips if no amenable outcome is built."""
     import pandas as pd

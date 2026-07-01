@@ -1,5 +1,5 @@
 """build_fqhc_openings: HRSA FQHC site openings -> a ZCTA-level staggered-treatment panel for the
-B5d New Access Point event study (see proj-ideas/B5d-fqhc-lever-build-plan.md, docs/VALIDATION.md §7).
+B5d FQHC New Access Point event study (see docs/VALIDATION.md §7, BACKLOG B5d).
 
 Each active HRSA site carries a `Site Added to Scope this Date`. Assigned to its nearest ZCTA
 centroid (the same approximate geocoding `build_fqhc` uses for the proximity metric), the per-ZCTA

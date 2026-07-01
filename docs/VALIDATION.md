@@ -108,19 +108,16 @@ statistics do not correct for it:
   reliable claim, and the *exact decimal margin* as soft. The honest test for any thin winner is
   **out-of-sample / out-of-outcome replication** - which the amenable-mortality anchor (§4) and the
   sub-county gate (§3) provide, since they change the *ruler* rather than re-fitting against the same
-  six outcomes the inputs were selected on. **This test has now been run (§4): care_access replicates
-  on treatable mortality at partial r +0.395 - an outcome no input was ever selected against.** So the
-  central care-access claim is no longer a within-selection margin; it survives the cleanest available
-  out-of-outcome check.
+  six outcomes. Care_access replicates on treatable mortality at partial r **+0.395** (§4), an outcome
+  no input was ever selected against - so the central care-access claim is no longer a within-selection
+  margin.
 - **The individual sub-scores have now been re-tested too (§4a, BACKLOG B2).** Each *scored* care
   sub-score was put through the same out-of-outcome ruler - partial r vs amenable mortality net of
   need + vulnerability, with a **Benjamini-Hochberg FDR correction across the four candidates** (the
-  multiplicity fix §1c had been missing). **All four survive** at q<=0.05 with a CI excluding 0.
-  Decisively, `medical_debt` - the margin §1c singled out as possibly a multiple-comparisons artifact
-  (partial-r ~+0.27 vs the standard six) - posts the **strongest** independent partial r of the set
-  (**+0.441**, q=0.000); `insurance` is the thinnest (**+0.042**, CI [+0.004,+0.082], q=0.014) but
-  still clears. So the "thinnest sub-score margins remain selection-soft" caveat is now **retired by
-  evidence**, not just asserted: the inputs corroborate on a ruler they were never selected against.
+  multiplicity fix this section had been missing). **All four survive** at q<=0.05 with a CI
+  excluding 0, and `medical_debt` - the very margin flagged above as possibly a multiple-comparisons
+  artifact - posts the *strongest* independent partial r (+0.441). So the "thinnest sub-score margins
+  remain selection-soft" caveat is now retired by evidence, not just asserted (full table in §4a).
 
 ## 2. Why care access reads modest - a category error, not a bug
 
@@ -140,16 +137,15 @@ attributable to clinical care is a small slice. The field's outcome-anchored acc
 therefore validate against **amenable/treatable mortality** (IHME HAQ) and **ACSC
 hospitalizations** (Robert Graham Center SDI), not all-cause mortality.
 Care access is kept in the composite by deliberate construct choice (it is the actionable lever, as
-County Health Rankings weights clinical care 20%) - and, **against the right outcome, it does predict
-mortality**: see §4, where care_access's partial r jumps from **+0.125 (all-cause) to +0.395
-(treatable)**. The "+0.125 small" above is not care access being weak; it is all-cause LE being the
-wrong ruler - precisely the category error this section names.
+County Health Rankings weights clinical care 20%) - and against the right outcome it does predict
+mortality: see §4, where care_access's partial r jumps from **+0.125 (all-cause) to +0.395
+(treatable)**. The "+0.125 small" is not care access being weak; it is all-cause LE being the wrong
+ruler.
 
 **Implication:** the standard gate is need-dominated, so it can only ever show care access as
 marginal. The two fixes - the **amenable-mortality** anchor (§4) and **sub-county** validation (§3) -
-change what the ruler can see rather than adding inputs. **Both have now been run, and the
-amenable anchor confirms it**: on the access-sensitive ruler care access is far from marginal
-(partial +0.395; §4).
+change what the ruler sees rather than adding inputs; the amenable anchor confirms care access is
+far from marginal (partial +0.395; §4).
 
 ## 3. Sub-county validation - the county-resolution blind spot (`pipeline.validate_subcounty`)
 
@@ -255,9 +251,8 @@ Medicaid-acceptance data is orthogonal but need-endogenous/unsigned - DECISIONS)
 was REMOVED from the composite** (it is *realized utilization* - a mediator/Donabedian "process",
 not a barrier; `mammouse` was criterion-contaminated with the mammography validator). Removing the
 mediator *raised* clean-r (0.501→0.516); adding the medical-debt barrier raised it further (→0.547).
-*Implication / lesson: the productive frontier for care_access was not more geography and not
-realized-use proxies (mediators) - it was a genuine upstream **affordability** barrier (medical
-debt). Spatial supply stays the weakest, least-productive piece.*
+The productive frontier for care_access was not more geography or realized-use proxies but a genuine
+upstream **affordability** barrier (medical debt); spatial supply stays the least-productive piece.
 
 ## 4. Amenable mortality - the gold-standard anchor
 
@@ -599,12 +594,10 @@ by mis-assigning sparsely-populated rural tracts. The findings are not just robu
 choice; they were understated by the cruder one. (Falls back to area weighting when no HUD token is
 present; `validate_subcounty._load_hud_xwalk`.)
 
-**Only the paid national panel remains.** Every free expansion identified has now been integrated -
-NY, CO, CA, TX as states and CDC overdose + USALEEP nationally. Texas turned out to need no layout
-doc (the PUDF is published tab-delimited). The one thing still out of reach is **HCUP SID**, a
-single *national* ACSC panel - paid + DUA, not headless. The free state-by-state panel (now the four
-largest states) is the substitute. (California was initially shelved as age-confounded, then
-*recovered* once age was properly controlled - see §6a.)
+**Only the paid national panel remains.** Every free expansion identified has been integrated (NY,
+CO, CA, TX plus CDC overdose + USALEEP nationally); the one thing still out of reach is **HCUP SID**,
+a single *national* ACSC panel - paid + DUA, not headless - for which the free state-by-state panel
+is the substitute.
 
 ## 7. Causal / actionability frontier - is it a lever, or just a better poverty map?
 
@@ -713,18 +706,15 @@ outcome. Any "step toward causal" framing is withdrawn.
 
 ### 7c. What §7 changes
 
-Cross-sectionally the index cannot be distinguished from a poverty map (§7a). The NY-only event study
-(§7b) *appeared* to show the barrier behaving like a lever - but it carried imperfect parallel trends,
-and **the cross-state falsification test (§7e) overturns that optimistic read**: Texas, which never
-expanded Medicaid, shows the *same* post-2014 high-barrier ACSC decline as New York, so the NY drop was
-secular convergence, not the expansion. The honest, control-disciplined conclusion is therefore the
-conservative one: **free-data causal identification does not establish an actionable access lever.** The
-index is a deprivation-dominated *structural-access* map that is well-validated descriptively (§3-§6)
-but whose *actionability* is not demonstrated - and the project says so rather than resting on the
-single-state hint. This is the value of building the control: the naive single-state DiD would have
-shipped a causal claim the data does not support. But §7e tested only the *affordability* arm; the
-**supply arm (§7f below) - a staggered FQHC-opening event study - lands differently: a powered borderline,
-right-signed and dose-responsive but just short of significance.** So the sharpened conclusion is not a
+Cross-sectionally the index cannot be distinguished from a poverty map (§7a); the NY-only event study
+(§7b) *appeared* to show the barrier as a lever, but the cross-state falsification test (§7e) shows
+Texas (never expanded) declined the same, so that hint was secular convergence. The
+control-disciplined conclusion: **free-data causal identification does not establish an actionable
+access lever.** The index is a deprivation-dominated *structural-access* map, well-validated
+descriptively (§3-§6) but with *actionability* undemonstrated. But §7e tested only the *affordability*
+arm; the **supply arm (§7f) - a staggered FQHC-opening event study - lands differently: a powered
+borderline, right-signed and dose-responsive but just short of significance.** So the sharpened
+conclusion is not a
 flat null but an asymmetry: affordability reads as a clean null, supply as a near-miss; the index's
 actionability remains *undemonstrated*, not *disproven*. All temporal validators are standing, read-only,
 and never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP (Openshaw 1984) re-zoning

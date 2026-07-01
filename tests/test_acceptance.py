@@ -195,7 +195,7 @@ def test_api_rankings_sorted(client):
     assert scores == sorted(scores, reverse=True)
 
 
-# ---- Outcomes + multi-anchor validation (Phase 1) ----
+# ---- Outcomes + multi-anchor validation ----
 OUTCOMES = PROCESSED / "outcomes.parquet"
 WEIGHTS = ROOT / "frontend" / "public" / "weights.json"
 
@@ -282,10 +282,10 @@ def test_rank_uncertainty_band(df):
 
 @_REAL_ONLY
 def test_access_signal_against_access_sensitive_outcome():
-    """Post-Layer-C3 (variable/adaptive catchment): spatial provider supply now carries
-    real, correctly-signed signal against BOTH infant mortality AND all-cause life
-    expectancy. The adaptive catchment fixed the urbanicity confound that had left supply
-    ~uncorrelated with life expectancy under the fixed 16 km catchment. Guards that gain."""
+    """The adaptive (variable) catchment yields spatial provider supply that carries real,
+    correctly-signed signal against BOTH infant mortality AND all-cause life expectancy;
+    the variable catchment avoids the urbanicity confound that leaves supply ~uncorrelated
+    with life expectancy under a fixed 16 km catchment. Guards that property."""
     if not WEIGHTS.exists():
         pytest.skip("validate stage not run")
     sc = json.loads(WEIGHTS.read_text())["subscore_correlations"]
@@ -293,5 +293,4 @@ def test_access_signal_against_access_sensitive_outcome():
         pytest.skip("infant mortality anchor unavailable (e.g. dev-state slice)")
     assert sc["infant_mortality"]["provider_supply"] > 0.1, "supply should track infant mortality"
     if "life_expectancy" in sc and "provider_supply" in sc["life_expectancy"]:
-        # C3 win: supply now positively tracks life expectancy (was ~0 under fixed catchment)
-        assert sc["life_expectancy"]["provider_supply"] > 0.08, "supply should now track LE (C3)"
+        assert sc["life_expectancy"]["provider_supply"] > 0.08, "supply should positively track life expectancy"

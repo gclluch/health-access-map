@@ -1,9 +1,7 @@
-"""Synthetic tests for the Fay-Herriot empirical-Bayes shrinkage (_eb_shrink).
-
-This routine was previously untested in isolation despite shrinking every small-area
-social/economic rate. The key property under test: the shrinkage TARGET is the
-precision-weighted state mean, so a single very noisy outlier cannot drag the destination
-that the noisy units are then shrunk toward.
+"""Synthetic tests for the Fay-Herriot empirical-Bayes shrinkage (_eb_shrink),
+which shrinks every small-area social/economic rate. The key property under test:
+the shrinkage TARGET is the precision-weighted state mean, so a single very noisy
+outlier cannot drag the destination that the noisy units are then shrunk toward.
 """
 import numpy as np
 import pandas as pd

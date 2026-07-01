@@ -121,3 +121,8 @@ Every marginal statistical concern from the audit has now been measure-first ass
 - MEASURED -> accept as-is: §1.10 mult floor (modest, mitigated).
 - Already honestly disclosed: §4 multiplicity (winner's curse, §4a).
 The index's statistical concerns are now either corrected or rigorously confirmed negligible - the honest, defensible state.
+
+## Cycle 23
+- **DONE (comment/doc hygiene)** Swept every comment + doc so they read as timeless documentation, not change-narration: stripped "previously/we now/(Bug fixed here)" framing, dangling `proj-ideas/` refs, and stray plan markers (`(Phase 1)`, `Point 2:`), keeping every tracked cross-ref (§-refs, T/B codes) and every load-bearing rationale. Trimmed VALIDATION.md ~66 lines of triplication (no number/caveat dropped).
+- **FIXED (correctness)** join_and_score.py ACS-share comment: care_access ACS noise enters via the poverty term in safetynet_barrier (access2 is PLACES, medical_debt is county-noiseless) - the prior comment mislabeled it as insurance; also corrected the stale 0.47 share to the shipped 0.40. build_slice.py referenced the wrong test name (now test_dimensions_reproducible_from_subscores).
+- Verified: 132 pytest pass, frontend tsc clean. Comment/doc only, no runtime behavior change (deploy ships byte-identical SPA).

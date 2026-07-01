@@ -54,7 +54,7 @@ def test_amenable_focus_recovers_care_signal_synthetic():
     """The amenable focus harness (bootstrap_gate.amenable_focus) must recover care-access signal
     when it is really there. Synthetic data where amenable mortality genuinely depends on care
     access BEYOND a deprivation gradient (need/vuln collinear) -> the partial r must be clearly
-    positive. This proves the frontier analysis is wired + correct BEFORE the real WONDER pull."""
+    positive. Confirms the frontier analysis is wired + correct against planted signal."""
     import numpy as np
     import pandas as pd
 

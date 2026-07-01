@@ -665,10 +665,9 @@ export default function DetailPanel() {
           }
           // The headline tracks the active composite-family lens (composite / within-state /
           // net-of-deprivation / coincidence) so the number + copy match what's coloured on the
-          // map. (Bug fixed here: those lenses used to read "worse than X% of U.S. ZIPs ...
-          // nationally" regardless.) For a sub-score or outcome metric it falls back to the national
-          // composite. The comparison grid below shows every framing at once and the drivers stay on
-          // the national composite, so the canonical national rank is always visible.
+          // map. For a sub-score or outcome metric it falls back to the national composite. The
+          // comparison grid below shows every framing at once and the drivers stay on the national
+          // composite, so the canonical national rank is always visible.
           const worst = (p: number) => Math.max(1, Math.round(100 - p));
           const stateName = m.state_name ?? 'its state';
           let hPct: number | null = scorePercentile;

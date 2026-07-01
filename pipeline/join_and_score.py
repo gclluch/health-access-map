@@ -61,12 +61,11 @@ _RANK_CV_SIGMA_SCALE = 36.0
 _RANK_CV_FLOOR_Q = 0.50
 _RANK_CV_EXCESS_CAP = 1.5
 # Per-dimension ACS-input share = how much ACS measurement noise propagates into each
-# dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.47 × social_
-# vulnerability SD - care access is ACS only via insurance + the poverty term in safetynet,
-# vs social vulnerability's two fully-ACS sub-scores). health_need is PLACES (0; its noise is
-# Layer B3). Not a guess: re-measured by verify_bands gate 3 after each care_access membership
-# change diluted its ACS share (0.60 -> 0.47 when HPSA was added; -> 0.40 after preventive_use
-# left and the noiseless county-level medical_debt joined - only insurance now carries ACS noise).
+# dimension's percentile, MEASURED by the gate-3 resample (care_access SD ≈ 0.40 × social_
+# vulnerability SD - within care_access, ACS noise enters only via the poverty term in
+# safetynet_barrier; insurance/access2 is PLACES and county-level medical_debt is noiseless -
+# vs social vulnerability's two fully-ACS sub-scores).
+# health_need is PLACES (0; its noise is Layer B3). Not a guess: measured by verify_bands gate 3.
 _ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.40}
 
 # Layer B3: PLACES measurement-noise term. PLACES is model-based (smoothed), so its input CV is
@@ -76,11 +75,10 @@ _ACS_SHARE = {"social_vulnerability_pctile": 1.0, "care_access_pctile": 0.40}
 # QUADRATURE (independent noise sources). _PLACES_SHARE = per-dimension propagation ratio
 # MEASURED by a member-input resample (perturb each PLACES rate by its CI-derived SE, propagate
 # member→sub-score→dimension): health_need is pure PLACES (1.0); care_access carries it via
-# access2 only now (0.55 - was 0.78 when the unscored preventive_use also contributed);
-# social_vulnerability barely, via social_needs (0.14). SCALE_p
+# access2 only (0.55); social_vulnerability barely, via social_needs (0.14). SCALE_p
 # is calibrated so health_need's injected σ matches that resample (median ≈4.4 pctile pts);
-# re-verified by verify_bands gate 3. health_need previously had ZERO band noise term - B3 is the
-# completeness fix that closes that gap. See docs/DECISIONS.md B3.
+# verified by verify_bands gate 3. health_need is pure PLACES, so this term is its only band
+# noise source - without Layer B3 it would carry none. See docs/DECISIONS.md B3.
 _RANK_PLACES_SIGMA_SCALE = 71.0
 _PLACES_SHARE = {"health_need_pctile": 1.0, "care_access_pctile": 0.55,
                  "social_vulnerability_pctile": 0.14}

@@ -25,8 +25,7 @@ worst-access areas, and **re-weight the score live with sliders** (recomputed
 client-side - no backend round-trip). The sliders are an honest **sensitivity probe, not a
 control that rewrites the map**: because the three dimensions are strongly collinear,
 re-weighting moves ranks by only Spearman ~0.999 / ~±6 pts (see Scoring methodology below) -
-that near-inertness is the finding, deliberately surfaced rather than hidden behind a knob that
-looks more powerful than it is.
+that near-inertness is the finding, surfaced rather than hidden behind a knob.
 
 ![screenshot](docs/screenshot.png)
 

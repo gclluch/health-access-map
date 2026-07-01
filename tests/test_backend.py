@@ -1,9 +1,8 @@
 """Backend API contract tests (FastAPI TestClient over the real in-memory metrics table).
 
 Skipped when metrics.parquet is absent (e.g. CI without a data build), matching
-test_acceptance. Covers the validation/serialization logic that had no coverage:
-ZIP normalization, metric allow-listing, compare bounds, JSON-safe cleaning, and the
-new response caching.
+test_acceptance. Covers the validation/serialization logic: ZIP normalization,
+metric allow-listing, compare bounds, JSON-safe cleaning, and response caching.
 """
 from pathlib import Path
 

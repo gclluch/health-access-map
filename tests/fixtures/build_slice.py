@@ -3,7 +3,7 @@ and integrity suites run in CI (where the full multi-GB build is unavailable) in
 
 The slice keeps NATIONAL percentiles (it is a subsample, not a re-ranked mini-index), so the row-level
 invariants (no NaN/inf, ranges, rates, zcta format) and the PER-ROW server/client parity hold exactly.
-The one test that re-ranks WITHIN the frame (test_dimensions_reproducible) is national-scope-only and
+The one test that re-ranks WITHIN the frame (test_dimensions_reproducible_from_subscores) is national-scope-only and
 skips here. Includes the 90210/90011 face-validity anchors. Re-freeze with:  python tests/fixtures/build_slice.py
 """
 from __future__ import annotations

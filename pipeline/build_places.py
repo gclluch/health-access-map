@@ -113,7 +113,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     # Layer B3: per-ZCTA PLACES input CV = mean(SE / estimate) across the scored measures,
     # SE parsed from each measure's published 95% CI. PLACES is model-based (smoothed), so this
     # CV is small (~0.06) and nearly population-flat - an irreducible modeling-uncertainty floor
-    # the rank bands previously omitted for health_need. See docs/DECISIONS.md B3.
+    # that feeds health_need's rank band. See docs/DECISIONS.md B3.
     se_cols = {}
     cvs = []
     for key, ci_col in present_ci.items():

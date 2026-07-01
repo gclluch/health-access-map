@@ -23,14 +23,14 @@ test('methodology panel opens and states the collinearity caveat', async ({ page
   await page.getByRole('button', { name: 'How to read this' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  // The reframed honesty: dimensions are collinear and the sliders are a sensitivity probe.
+  // Dimensions are collinear and the sliders are a sensitivity probe, not independent knobs.
   await expect(dialog.getByText(/effective dimension/i).first()).toBeVisible();
 });
 
 test('weighting control is reachable and framed as a sensitivity probe', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Rankings' })).toBeVisible({ timeout: 20_000 });
-  // Open the weighting disclosure (label is consistent per the UI copy fixes).
+  // Open the weighting disclosure.
   const adjust = page.getByRole('button', { name: /Adjust weighting|Customize/ });
   if (await adjust.count()) {
     await adjust.first().click();
