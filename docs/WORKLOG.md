@@ -91,3 +91,7 @@ verified work in small units, re-evaluate priorities each cycle.
 
 ## Cycle 16
 - **DONE (honesty, §1.5)** build_supply shortage flag: primary_people_per_provider is 1/(Gaussian-decayed E2SFCA), a DECAY-WEIGHTED proxy - not the hard population-per-provider service-area ratio the HRSA 3,500:1 threshold is literally defined on. Relabeled the comment, provenance shortage_basis, and log to "E2SFCA proxy ~ HRSA 3,500:1" so it doesn't overclaim the official designation. Frontend already caveats "spatial access, not an HPSA designation" - left as-is. Parses.
+
+## Cycle 17
+- **DONE (robustness, §2.11)** build_trends poverty fetch: added the same 3-try retry as broadband (was a single request that died on any transient Census hiccup). Parses. Completes the broadband/trends pair; a 4th duplication would justify factoring _census_get into common, but 2 is under the abstraction threshold.
+- Note: builder retry now in broadband + trends; build_acs already has its own _census_get retry.
