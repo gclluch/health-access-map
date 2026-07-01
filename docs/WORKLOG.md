@@ -107,3 +107,6 @@ State: the HIGH + MEDIUM-value verifiable work is COMPLETE. All HIGH audit findi
 
 ## Cycle 20
 - **MEASURED -> honest caveat (§2.6)** FQHC treatment-group "reopening contamination": measured the source - HRSA's file has 0 inactive sites (all 18,764 active), so it doesn't retain closed sites. The contamination is UNDETECTABLE with this data (the audit's "use full history incl. inactive" fix is impossible - there's no inactive history), and rare. Corrected the code's "FIRST EVER" overclaim to "first-among-still-active" with the honest caveat. Not a fixable bug; a data limitation, now documented.
+
+## Cycle 21
+- **MEASURED -> negligible (§1.9)** reliable-range band centering: band samples uniform(0.15,0.55) ~ equal weights, point uses 0.35/0.30/0.35. Measured: point inside its own band 99.9%, offset from band center mean +0.03 / median -0.05 pctile pts (no systematic bias) - because the shipped weights ~ equal. Centering the band draw on the exact weights would change nothing measurable. Rejected.
