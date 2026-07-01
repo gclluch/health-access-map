@@ -9,6 +9,10 @@ const POINTS: Array<[string, string]> = [
     'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two consequences: the tunable weights make that subjectivity explicit rather than hidden, and because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). The sliders are a sensitivity probe, not a knob that rewrites the ranking.',
   ],
   [
+    'Sub-county resolution: real, partial, and quantified',
+    'The index is ZIP-level, but not every input varies within a county. About 24% of the score\'s variation is within-county (the rest separates one county from another), and it differs by dimension: health need resolves best (~31% within-county), care access least (~9%). Provider shortage (HPSA) is now resolved to census-tract level; the one remaining county-flat scored input is medical debt, which has no free sub-county source. Read within-county rankings as suggestive and between-county rankings as firm.',
+  ],
+  [
     'Relative, not absolute',
     'A score of 95 means "worse access than 95% of U.S. ZIPs," not "objectively bad." A top-decile ZIP can still be fine in absolute terms.',
   ],
