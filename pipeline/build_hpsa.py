@@ -31,6 +31,41 @@ from .common import assert_zcta, dev_filter, die, download_file, load_zcta_tract
 OUT = config.PROCESSED / "hpsa.parquet"
 
 
+def resolve_zcta_scores(h: pd.DataFrame, xwalk: pd.DataFrame) -> pd.DataFrame:
+    """Pure core (no I/O): designated PC-HPSA rows + the ZCTA<->tract crosswalk -> per-ZCTA score.
+    Census-Tract components set a tract's score (max over designations); Single-County / County-
+    Subdivision components set a county-WIDE fallback; a tract in neither reads 0 (NOT its county's
+    worst tract - that broadcast is what made the old county-MAX wrong within county). Tracts are
+    area-weighted up to their ZCTA. Returns [zcta5, hpsa_pc_score]."""
+    h = h[h[config.HPSA_COL_STATUS].astype(str).str.strip() == "Designated"].copy()
+    h["score"] = pd.to_numeric(h[config.HPSA_COL_SCORE], errors="coerce")
+    h = h[h["score"].notna()]
+    comp = h[config.HPSA_COL_COMPONENT].fillna("")
+
+    ct = h[comp == "Census Tract"].copy()
+    ct["tract"] = ct[config.HPSA_COL_GEOID].astype(str).str.strip().str.zfill(11)
+    ct = ct[ct["tract"].str.match(r"^\d{11}$")]
+    tract_score = ct.groupby("tract")["score"].max()
+
+    cw = h[comp.isin(["Single County", "County Subdivision"])].copy()
+    cw["fips"] = cw[config.HPSA_COL_FIPS].astype(str).str.zfill(5)
+    cw = cw[cw["fips"].str.match(r"^\d{5}$")]
+    countywide = cw.groupby("fips")["score"].max()
+
+    xw = xwalk.rename(columns={
+        "GEOID_ZCTA5_20": "zcta5", "GEOID_TRACT_20": "tract", "AREALAND_PART": "w"}).copy()
+    xw["tract"] = xw["tract"].astype(str).str.zfill(11)
+    xw["w"] = pd.to_numeric(xw["w"], errors="coerce").fillna(0.0)
+    xw["score"] = xw["tract"].map(tract_score).fillna(xw["tract"].str[:5].map(countywide)).fillna(0.0)
+    xw["sw"] = xw["score"] * xw["w"]
+    agg = xw.groupby("zcta5").agg(sw=("sw", "sum"), w=("w", "sum")).reset_index()
+    agg["hpsa_pc_score"] = np.where(agg["w"] > 0, agg["sw"] / agg["w"], 0.0)
+    agg["zcta5"] = agg["zcta5"].astype(str)
+    agg.attrs["n_tract"] = int(tract_score.index.size)
+    agg.attrs["n_countywide"] = int(countywide.index.size)
+    return agg[["zcta5", "hpsa_pc_score"]]
+
+
 def build(dev_state: str | None = None, force: bool = False) -> str:
     if OUT.exists() and not force:
         log("hpsa", f"skip (exists): {OUT.name}")
@@ -50,39 +85,11 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         if c not in h.columns:
             die("hpsa", f"HPSA file missing expected column {c!r}: {list(h.columns)[:8]}...")
 
-    h = h[h[config.HPSA_COL_STATUS].astype(str).str.strip() == "Designated"].copy()
-    h["score"] = pd.to_numeric(h[config.HPSA_COL_SCORE], errors="coerce")
-    h = h[h["score"].notna()]
-    comp = h[config.HPSA_COL_COMPONENT].fillna("")
+    agg = resolve_zcta_scores(h, load_zcta_tract_xwalk())
+    log("hpsa", f"{agg.attrs['n_tract']} tract + {agg.attrs['n_countywide']} county-wide PC-HPSA "
+                f"geographies -> {int((agg['hpsa_pc_score'] > 0).sum())} ZCTAs with a shortage score")
 
-    # tract-level score: Census Tract components carry an 11-digit tract GEOID; max over designations.
-    ct = h[comp == "Census Tract"].copy()
-    ct["tract"] = ct[config.HPSA_COL_GEOID].astype(str).str.strip().str.zfill(11)
-    ct = ct[ct["tract"].str.match(r"^\d{11}$")]
-    tract_score = ct.groupby("tract")["score"].max()
-
-    # county-WIDE fallback: ONLY whole-area designations (a non-designated tract stays 0, so we do NOT
-    # broadcast a county's worst tract - that inflation is what made the old county-MAX wrong within county).
-    cw = h[comp.isin(["Single County", "County Subdivision"])].copy()
-    cw["fips"] = cw[config.HPSA_COL_FIPS].astype(str).str.zfill(5)
-    cw = cw[cw["fips"].str.match(r"^\d{5}$")]
-    countywide = cw.groupby("fips")["score"].max()
-
-    # resolve every tract, then area-weight tracts up to their ZCTA
-    xw = load_zcta_tract_xwalk().rename(columns={
-        "GEOID_ZCTA5_20": "zcta5", "GEOID_TRACT_20": "tract", "AREALAND_PART": "w"})
-    xw["tract"] = xw["tract"].astype(str).str.zfill(11)
-    xw["w"] = pd.to_numeric(xw["w"], errors="coerce").fillna(0.0)
-    xw["score"] = xw["tract"].map(tract_score).fillna(xw["tract"].str[:5].map(countywide)).fillna(0.0)
-    xw["sw"] = xw["score"] * xw["w"]
-    agg = xw.groupby("zcta5").agg(sw=("sw", "sum"), w=("w", "sum")).reset_index()
-    agg["hpsa_pc_score"] = np.where(agg["w"] > 0, agg["sw"] / agg["w"], 0.0)
-    agg["zcta5"] = agg["zcta5"].astype(str)
-    n_tract = int((tract_score.index.size)); n_cty = int(countywide.index.size)
-    log("hpsa", f"{n_tract} tract + {n_cty} county-wide PC-HPSA geographies -> "
-                f"{int((agg['hpsa_pc_score'] > 0).sum())} ZCTAs with a shortage score")
-
-    out = geo.merge(agg[["zcta5", "hpsa_pc_score"]], on="zcta5", how="left")
+    out = geo.merge(agg, on="zcta5", how="left")
     out["hpsa_pc_score"] = out["hpsa_pc_score"].fillna(0.0)  # not in a designated shortage = 0
     out = dev_filter(out, dev_state)
 
