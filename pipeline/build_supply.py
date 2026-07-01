@@ -87,8 +87,12 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     df["dental_2sfca"] = sfca("providers_dental") * 1000.0
     df["ob_2sfca"] = sfca("providers_obgyn") * 1000.0
 
-    # People-per-provider + the HRSA 3,500:1 shortage flag need a FIXED, interpretable service
-    # area (the adaptive catchment drives the scored percentile, not an absolute benchmark).
+    # An E2SFCA-derived people-per-provider PROXY + the shortage flag need a FIXED, interpretable
+    # service area (the adaptive catchment drives the scored percentile, not an absolute benchmark).
+    # NB: primary_people_per_provider is 1 / (Gaussian-decayed E2SFCA accessibility), so it is a
+    # DECAY-WEIGHTED proxy, not the hard population-per-provider service-area ratio the HRSA 3,500:1
+    # threshold is literally defined on - read the flag as "E2SFCA proxy ~ HRSA 3,500:1", not the
+    # official designation.
     find, fdist = tree.query_radius(coords, r=config.CATCHMENT_KM / config.EARTH_KM,
                                     return_distance=True)
     fsig = config.DECAY_SIGMA_KM / config.EARTH_KM
@@ -108,13 +112,14 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
                    "(McGrail & Humphreys 2009): per-ZCTA Gaussian σ = distance to the "
                    f"{config.ADAPTIVE_K}-th nearest centroid, clipped "
                    f"[{config.ADAPTIVE_SIGMA_MIN_KM:.0f},{config.ADAPTIVE_SIGMA_MAX_KM:.0f}] km"),
-        "shortage_basis": f"fixed {config.CATCHMENT_KM:.0f} km catchment vs HRSA 3,500:1",
+        "shortage_basis": f"E2SFCA-inverse proxy over a fixed {config.CATCHMENT_KM:.0f} km catchment "
+                          "vs HRSA 3,500:1 (decay-weighted, not a hard service-area ratio)",
         "hpsa_threshold": config.HPSA_SHORTAGE_RATIO,
         "shortage_zctas": int(out["primary_shortage"].sum()),
         "centroid_source": "Census ZCTA Gazetteer internal points",
     }})
     log("supply", f"wrote {OUT.name} ({len(out)} zctas, "
-                  f"{int(out['primary_shortage'].sum())} below HRSA 3,500:1)")
+                  f"{int(out['primary_shortage'].sum())} below the E2SFCA ~HRSA 3,500:1 proxy)")
     return str(OUT)
 
 
