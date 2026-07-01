@@ -38,10 +38,18 @@ def _poverty_rate(year: int) -> pd.DataFrame:
     params = {"get": "B17001_001E,B17001_002E", "for": f"{GEO}:*"}
     if config.CENSUS_API_KEY:
         params["key"] = config.CENSUS_API_KEY
-    with http_client() as c:
-        r = c.get(url, params=params)
-    if r.status_code != 200:
-        die("trends", f"ACS {year} poverty fetch -> HTTP {r.status_code}: {r.text[:160]}")
+    import time
+    r = None
+    for attempt in range(3):  # retry transient Census 5xx / key-propagation lag before giving up
+        with http_client() as c:
+            r = c.get(url, params=params)
+        if r.status_code == 200:
+            break
+        if attempt < 2:
+            time.sleep(2 ** attempt)
+    if r is None or r.status_code != 200:
+        die("trends", f"ACS {year} poverty fetch -> HTTP {r.status_code if r else 'no response'}: "
+                      f"{r.text[:160] if r else ''}")
     rows = r.json()
     df = pd.DataFrame(rows[1:], columns=rows[0])
     df["zcta5"] = norm_zcta(df[GEO])
