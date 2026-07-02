@@ -110,7 +110,7 @@ log; consider committing it as `pipeline/audit.py`.)
 ## B. Statistical / validity edges
 
 ### B1 (BLOCKED) - Amenable mortality is county-resolution only
-- **Problem.** The §4 gold-standard result (care_access partial r +0.395 vs treatable mortality) is
+- **Problem.** The §4 gold-standard result (care_access partial r +0.419 vs treatable mortality) is
   **between-county**; treatable mortality has no sub-county source, so it can't confirm fine
   within-county differences (the resolution the tool actually runs at).
 - **Why it matters.** Sub-county validity still rests on §3 alone (NY ACSC + national USALEEP).
@@ -128,7 +128,7 @@ log; consider committing it as `pipeline/audit.py`.)
   outcome (VALIDATION §6a). **FIVE independent sub-county rulers now integrated** (`--all` scorecard):
   NY SPARCS PQI (+0.504), CO CDPHE ACSC (+0.568, pop-weighted via HUD res_ratio), CA ACSC mortality
   age-adjusted (+0.440), **TX DSHS patient-ZIP ACSC inpatient (+0.264)**, CDC national overdose
-  (+0.224), + USALEEP LE national (+0.608) - composite within-county r. care_access positive in all;
+  (+0.229), + USALEEP LE national (+0.612) - composite within-county r. care_access positive in all;
   `medical_debt`/`shortage` county-constant in all. Texas needed no layout doc (the PUDF is published
   **tab-delimited**) - true preventable-hospitalization at patient ZIP, no crosswalk, largest state.
   **Residual ceiling: only HCUP SID** (a single *national* ACSC panel) is paid/DUA; the free
@@ -199,6 +199,16 @@ log; consider committing it as `pipeline/audit.py`.)
   treated-vs-control DiD. **Where:** extend `validate_temporal._fetch_ny_panel` to a multi-state
   panel; reuse the TX PUDF fetcher in `validate_subcounty._fetch_tx_acsc` across years. KFF publishes
   expansion dates (free). Cost is the multi-year TX downloads, not the method.
+- **B5e (built 2026-07-02) - APTC-cliff first stage.** The enhanced-premium-tax-credit expiry
+  (end-2025) is a national affordability shock; `pipeline/validate_aptc_cliff.py` builds the
+  ZIP-level first stage from the CMS 2025/2026 OEP ZIP PUFs (cached `data/raw/oep_zip_202[56].zip`;
+  output `data/processed/aptc_cliff_zip.parquet`, 15,254 analyzable ZIPs, 31 FFM states).
+  Result: enrollment change mean **−8.5%** (median −9.6%, aggregate −6.7%); the drop is larger
+  where the access gap is worse (within-county r −0.113) and where 2025 APTC share was higher
+  (within-county r **−0.169**; cross-sectional dose-response is weak, −0.05). Caveats: 3,913
+  suppression-censored ZIPs dropped (censors the largest drops), FFM states only, ZIP≈ZCTA join.
+  Usable as an affordability-sensitivity layer now; outcome effects (ACSC) arrive with a data lag -
+  revisit as a §7-style event study when 2026+ state ACSC panels publish.
 - **B5b (P3) - provider-entry within-ZIP panel.** NPPES is monthly; a within-ZIP fixed-effects panel
   of `provider_supply` vs subsequent ACSC would test the supply lever the same way §7b tests the
   affordability lever. **Where:** historical NPPES monthly archives (~1 GB each, the heavy part);

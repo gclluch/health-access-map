@@ -161,8 +161,8 @@ def run() -> dict:
           "composite_mean_r does not regress ---")
     print("--- these are POINT estimates. Run `python -m pipeline.bootstrap_gate` for 95% CIs "
           "on every margin (cluster bootstrap over county, paired); ship only if the margin CI "
-          "excludes 0. Current: care_access margin +0.046 CI[0.041,0.052], adds signal in 100% "
-          "of resamples; social_vulnerability margin -0.016 CI[-0.02,-0.012] (mildly redundant). ---")
+          "excludes 0. The current margins live in data/processed/gate_ci.json - read them there, "
+          "not from this reminder. ---")
     return report
 
 

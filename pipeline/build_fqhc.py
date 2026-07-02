@@ -6,7 +6,7 @@ scale, so they are the access point for the uninsured / Medicaid - exactly the
 populations this tool is about.
 
 Outputs per ZCTA: fqhc_sites_reachable (count within the catchment) and nearest_fqhc_km
-(distance to the closest site). The scored "safety-net barrier" is computed in
+(distance to the closest site). The displayed-but-unscored "safety-net barrier" is computed in
 join_and_score as nearest_fqhc_km-percentile x poverty - the *need-relative* form, because
 raw FQHC access is wrong-signed (clinics are sited where need is highest). A raw bipartite
 E2SFCA "FQHC access" score was tried and dropped for exactly that reason (see METHODOLOGY).

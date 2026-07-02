@@ -1,6 +1,6 @@
 """join_and_score: merge all layers and build the hierarchical Access Gap model.
 
-Hierarchy (taxonomy.py): 3 dimensions -> 11 sub-scores -> ~50 measures.
+Hierarchy (taxonomy.py): 3 dimensions -> 14 sub-scores (12 scored + 2 displayed-only) -> ~50 measures.
 Method follows CDC/ATSDR SVI: percentile-rank each (oriented) measure, average the
 available members into a sub-score, re-rank; average sub-scores into a dimension,
 re-rank; weight the dimensions into the composite, and report the composite's own

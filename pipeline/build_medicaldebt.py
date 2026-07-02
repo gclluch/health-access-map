@@ -6,8 +6,9 @@ population - a genuine *cause* of care avoidance ("I won't go, I can't pay the b
 mediator/outcome. Empirically it is the first new scored barrier to survive partial-r in the
 whole access-signal program: clean signed-r +0.48 vs independent mortality/ACSC, and +0.27
 PARTIAL controlling for need + vulnerability + the rest of care_access (corr ~0.4 with poverty
-but NOT subsumed by it). County-level (mapped county->ZCTA via geonames; no sub-county
-resolution, like HPSA). Free GitHub CSV. See docs/DECISIONS.md + VALIDATION.md.
+but NOT subsumed by it). County-level (mapped county->ZCTA via geonames; the one remaining
+county-flat scored input now that HPSA is tract-resolved). Free GitHub CSV. See
+docs/DECISIONS.md + VALIDATION.md.
 """
 from __future__ import annotations
 

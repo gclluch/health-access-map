@@ -2,11 +2,13 @@
 
 Goal: move "sub-county index" from *technically true* (ZCTA-native) to *defensible under a statistician's probe* - both by raising how much of the score genuinely varies within counties, and by proving those within-county rankings against real sub-county outcomes.
 
-## Where it stands today (measured, national build 2026-06-30)
+## Where it stands today (measured, national build 2026-06-30; Lever 1 SHIPPED since)
 
 **Structural** - share of composite *weight* on inputs that vary within county:
 - sub-county (ZCTA-native) inputs: **82.5%**
-- county-flat inputs: **17.5%** - exactly two scored sub-scores, both in `care_access`: `shortage_designation` (HPSA, county-MAX) and `medical_debt` (Urban Institute, county-only).
+- county-flat inputs: **17.5%** as measured pre-Lever-1 - then two scored sub-scores. **Lever 1
+  (tract-HPSA) has since shipped**, so `medical_debt` (Urban Institute, county-only) is now the
+  one county-flat scored input (~8.75% of weight).
 
 **Empirical** - share of score *variation* that is within-county (variance decomposition over 3,064 multi-ZIP counties):
 | Layer | within-county variance share |

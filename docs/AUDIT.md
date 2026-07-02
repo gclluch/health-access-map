@@ -19,6 +19,8 @@ Overnight highlights (see WORKLOG for all): tract-level HPSA (sub-county resolut
 
 Remaining (all NON-high): formal cross-suite multiplicity framework (large; already disclosed honestly in §4a), MapView `autoHighlight` (visual, low value - hover already snappy), §5.13 TS index-signature (moderate ripple, modest benefit), assorted low-severity builder items. None load-bearing.
 
+**Claim-integrity pass (2026-07-02).** A second-layer audit swept every user-facing claim against the current build and fixed the drift class §7.3 predicted: frontend HPSA badge said county-flat (now tract-resolved kind + copy in types.ts/measures.ts/taxonomy), MethodologyPanel NNLS prose rewritten from live weights.json, the +0.395 headline family regenerated to the current build (+0.419 etc.) across README/VALIDATION/METHODOLOGY/BACKLOG/panel via fresh `make gate` + `make amenable` + `validate_subcounty --all` + `validate_fqhc_lever` runs, §6a/§6b tables + §3 banner reconciled, the stale "safetynet wrong-signed in 85% of states" claim updated (current build: 38% of states, median ~0; unscoring stands on the state-ACSC rulers), §7f CI inconsistency resolved to the validator's [-71.7,+2.2], and tests no longer clobber gate_ci.json/provenance (the §7.11 sibling). 132 py + 51 fe tests pass, tsc clean.
+
 ---
 *Historical (pass 2):*
 

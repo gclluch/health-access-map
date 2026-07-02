@@ -171,7 +171,8 @@ analog to why we include social vulnerability on the demand side (§8).
 > **Status (superseded).** This section records the original bipartite-E2SFCA safety-net design.
 > It was later reframed to `safetynet_barrier` = FQHC-distance percentile × poverty and is now
 > **displayed but not scored** (`scored=False`): the reframed form is correctly signed *between*
-> counties but wrong-signed *within* counties in ~85% of states, so dropping it from the composite
+> counties but carries no usable *within*-county signal (near-zero nationally, wrong-signed in the
+> state ACSC rulers - see VALIDATION §3), so dropping it from the composite
 > lifts sub-county accuracy. See `pipeline/taxonomy.py` (`safetynet_access`), VALIDATION.md, and
 > DECISIONS.md. The narrative below is kept for the reasoning; the shipped state is unscored.
 

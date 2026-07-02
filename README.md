@@ -53,7 +53,7 @@ composite). Two distinct claims, kept separate: it is **internally reliable** (s
 **tracks 6 independent outcomes** it never ingests (CMS claims + NCHS vital records, never the
 BRFSS/PLACES inputs): life expectancy (+0.52), premature death (+0.49), and - against the
 access-sensitive ruler the field actually uses - treatable/amenable mortality net of deprivation
-(care-access partial r **+0.395**, state-blocked 95% CI [0.33, 0.46]). Read those correlations'
+(care-access partial r **+0.419**, state-blocked 95% CI [0.35, 0.48]). Read those correlations'
 *precision, not their decimals*: 5 of the 6 outcomes are **county-level**, broadcast to ZCTAs, so
 the honest sample is ~3,225 counties / ~50 state blocks - **not** 33k ZIPs - and every CI here is
 spatially clustered to match (see [`docs/VALIDATION.md`](docs/VALIDATION.md) §1, §4).
@@ -174,8 +174,8 @@ a uniform 0-100 "higher = worse"). See [`docs/METHODOLOGY.md`](docs/METHODOLOGY.
    the map, and labelled "partial" in the detail panel, rather than co-ranked with full scores.
 
 The three dimensions are **strongly collinear** (need↔vulnerability **0.73**, need↔access
-0.59, vulnerability↔access 0.61; reported in `provenance.json` and the methodology panel).
-At the dimension level PC1 explains **76%** of the joint variance and the participation ratio
+0.66, vulnerability↔access 0.59; reported in `provenance.json` and the methodology panel).
+At the dimension level PC1 explains **78%** of the joint variance and the participation ratio
 is **~1.6 effective dimensions** - the index is closer to one "general deprivation" gradient
 than to three independent axes. Two consequences, both stated in-product: (a) the weighted sum
 double-counts shared variance, which is why the weights are user-tunable rather than presented
@@ -242,7 +242,7 @@ rather than silently producing a wrong column.
 - **Gate with error bars** (`make gate`): `pipeline.bootstrap_gate` puts 95% CIs (cluster bootstrap
   over county, paired) on every diagnostics margin - ship only if the relevant CI excludes 0. It also
   runs the **amenable-mortality focus**: care_access partial r vs CDC WONDER treatable mortality
-  (age-adjusted, 0-74, 2016-2020) is **+0.395** (county-clustered CI [0.37, 0.43]; state-blocked,
+  (age-adjusted, 0-74, 2016-2020) is **+0.419** (county-clustered CI [0.39, 0.45]; state-blocked,
   the conservative spatial bound, [0.33, 0.46]) - strong and net of the deprivation gradient, vs
   only +0.125 against all-cause life expectancy. This is the field's gold-standard
   validation and confirms the care-access dimension is **descriptively** sound (`docs/VALIDATION.md`

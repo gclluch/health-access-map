@@ -1,6 +1,34 @@
 # Autonomous worklog
 
-Rolling log of the overnight autonomous session. Newest first. Every entry is verified (tests pass /
+Rolling log of the overnight autonomous session. Newest first.
+
+## Cycle 24 (2026-07-02) - claim-integrity sweep + data-frontier reopen
+- **DONE (claim integrity, layer-2 audit).** Full sweep of user-facing claims vs the current build:
+  A1 frontend HPSA badge/copy said county-flat (fixed: tract-resolved kind in types.ts, measures.ts,
+  taxonomy res tag + test); A2 MethodologyPanel NNLS prose contradicted live weights.json (rewritten
+  from live values); A3/A5 regenerated every stale headline number from fresh authoritative runs
+  (`make gate` 1,000 boots + `make amenable` + `validate_subcounty --all` + `validate_fqhc_lever`):
+  care_access partial vs amenable +0.395→**+0.419** [0.392,0.45], FULL 0.498→0.501, margin
+  +0.046→+0.049, §4a HPSA partial +0.185→**+0.288**, B4 retained 92→95%, all §6a/§6b tables,
+  scorecard, §7d disattenuation, §7f CI inconsistency resolved to [-71.7,+2.2]. The "safetynet
+  wrong-signed in 85% of states" claim was stale (current build: 38% of states, median ~0) -
+  updated everywhere with the decision rationale intact. A4 pytest no longer clobbers
+  gate_ci.json/provenance (monkeypatched in 3 tests; §7.11 sibling). A6-A9+B1 stale docstrings +
+  zero-pop shortage-flag inflation fixed. Verified: 132 py + 51 fe tests, tsc clean; weights.json
+  regen byte-identical.
+- **REOPENED (data frontier).** A verified 2026-07 scan found untested candidates beyond the
+  2026-06 "exhausted" set: PLACES 2025 HRSN ZCTA measures (transportation barrier), CMS Marketplace
+  machine-readable network PUF (network-breadth acceptability), WA CHARS free ZIP discharge data
+  (6th sub-county ruler), HRSA UDS patient-origin-by-ZIP + Urban Institute tract medical-debt
+  (request letters drafted in docs/data-requests.md), hospital price-transparency aggregates,
+  APTC-cliff 2025→2026 OEP natural experiment, Sheps rural-closure negative-supply event study.
+- **PROBES SETTLED (same day, all in DECISIONS/BACKLOG):** HRSN = all 7 collapse (already-scored
+  inputs; transportation partial −0.096 wrong-signed; `validate_hrsn.py`). WA CHARS = blocked
+  (ZIP3-only public file). TX free PUDF capped at 2019. Marketplace MR-PUF = no-go national
+  (30 FFM states, 50-80 GB, `accepting` degenerate). Sheps closures = underpowered (16 events in
+  free panels). APTC-cliff first stage = BUILT (`validate_aptc_cliff.py`, B5e: −8.5% mean drop,
+  within-county dose −0.169, gap-tracking −0.113). Request letters drafted (docs/data-requests.md):
+  HRSA UDS ZIP patient-origin + Urban tract medical debt - the two live free options. Every entry is verified (tests pass /
 measured) before commit. Rejections are progress too - they record what was tried and why it was dropped.
 
 Discipline: measure before shipping, verify every change, never ship a broken/unverified result, commit
