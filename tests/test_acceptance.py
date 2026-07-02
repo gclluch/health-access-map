@@ -229,10 +229,12 @@ def test_weights_json_multi_anchor_shape():
 def test_validate_idempotent(tmp_path, monkeypatch):
     """Re-running validate against the same metrics must be deterministic - the cheap
     re-tune contract (run --only validate after supply changes) depends on this. Writes to a tmp
-    weights.json so the test never clobbers the committed frontend/public/weights.json artifact."""
-    from pipeline import validate
+    weights.json + provenance.json so the test never clobbers the committed frontend artifact or
+    the production provenance (validate.build calls write_provenance)."""
+    from pipeline import config, validate
     wp = tmp_path / "weights.json"
     monkeypatch.setattr(validate, "WEIGHTS_JSON", wp)
+    monkeypatch.setattr(config, "PROVENANCE", tmp_path / "provenance.json")
     validate.build()
     first = wp.read_text()
     validate.build()

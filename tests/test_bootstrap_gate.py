@@ -12,8 +12,12 @@ METRICS = ROOT / "data" / "processed" / "metrics.parquet"
 pytestmark = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline first")
 
 
-def test_bootstrap_gate_shape_and_determinism():
+def test_bootstrap_gate_shape_and_determinism(tmp_path, monkeypatch):
     from pipeline import bootstrap_gate
+
+    # run() writes gate_ci.json; redirect it so the test can't replace the
+    # production 1,000-replicate artifact with an 80-replicate one.
+    monkeypatch.setattr(bootstrap_gate, "OUT_JSON", tmp_path / "gate_ci.json")
 
     a = bootstrap_gate.run(n_boot=80, seed=0)
     b = bootstrap_gate.run(n_boot=80, seed=0)

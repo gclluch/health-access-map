@@ -547,7 +547,8 @@ def _print(r: dict) -> None:
             print(f"    amenable retained-fraction 95% CI: {b4['amenable_retained_frac_ci95']}")
         print("    => most external validity survives without PLACES: the circularity bounds the "
               "internal\n       coherence story, not the predictive usefulness.")
-    print(f"\n  wrote {OUT_JSON.relative_to(config.ROOT)}")
+    out = OUT_JSON.relative_to(config.ROOT) if OUT_JSON.is_relative_to(config.ROOT) else OUT_JSON
+    print(f"\n  wrote {out}")
 
 
 if __name__ == "__main__":

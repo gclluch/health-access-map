@@ -13,9 +13,11 @@ needs_data = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline f
 
 
 @needs_data
-def test_selection_diag_shape():
-    from pipeline import selection_diag
+def test_selection_diag_shape(tmp_path, monkeypatch):
+    from pipeline import config, selection_diag
 
+    # run() calls write_provenance; redirect so the test never mutates the production artifact
+    monkeypatch.setattr(config, "PROVENANCE", tmp_path / "provenance.json")
     r = selection_diag.run()
     # scoreability: a population share in [0,1]
     assert 0.0 <= r["scoreability"]["non_scoreable_pop_share"] <= 1.0
