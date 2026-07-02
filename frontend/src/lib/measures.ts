@@ -77,7 +77,7 @@ export const SUBSCORE_MEASURES: Record<string, Measure[]> = {
     { col: 'ob_2sfca', label: 'Maternity / OB-GYN access (2SFCA)', unit: 'per1k', better: 'high', desc: 'OB/GYN (maternity) providers per 1,000 people reachable within the adaptive catchment (≈8-60 km, E2SFCA). Higher = better. Source: CMS NPPES.' },
   ],
   shortage_designation: [
-    { col: 'hpsa_pc_score', label: 'Primary-care HPSA score', unit: 'count', better: 'low', desc: 'HRSA primary-care Health Professional Shortage Area score (0-26, higher = worse shortage) for the county, factoring population-to-provider ratio, % below poverty, and travel distance to the nearest source of care. 0 = no active shortage designation. Source: HRSA data.hrsa.gov.' },
+    { col: 'hpsa_pc_score', label: 'Primary-care HPSA score', unit: 'count', better: 'low', desc: 'HRSA primary-care Health Professional Shortage Area score (0-26, higher = worse shortage), resolved to census tracts where HRSA designates them (county-wide elsewhere), factoring population-to-provider ratio, % below poverty, and travel distance to the nearest source of care. 0 = no active shortage designation. Source: HRSA data.hrsa.gov.' },
   ],
   safetynet_access: [
     { col: 'fqhc_sites_reachable', label: 'FQHC sites within ~16 km', unit: 'count', better: 'high', desc: 'Number of HRSA Federally Qualified Health Center sites within ~16 km - sliding-fee clinics that serve everyone regardless of ability to pay.' },
@@ -113,7 +113,7 @@ export const SUBSCORE_BLURB: Record<string, string> = {
   social_needs: 'Food, housing, transportation and utility insecurity, plus SNAP receipt (CDC PLACES social needs).',
   digital_access: 'Households with no internet - the telehealth / remote-care barrier (Census ACS).',
   provider_supply: 'Primary, mental-health, dental and maternity providers reachable per resident via a spatial catchment (E2SFCA). Higher percentile = fewer providers.',
-  shortage_designation: 'Whether the county is a federal HRSA primary-care shortage area (HPSA), and how severe.',
+  shortage_designation: 'Whether the area sits in a federal HRSA primary-care shortage designation (HPSA, tract-resolved where designated), and how severe.',
   safetynet_access: 'FQHC safety-net clinic deserts weighted by local poverty.',
   insurance: 'Uninsured rate - all ages (Census ACS) and adults 18-64 (CDC PLACES).',
   medical_debt: 'Share with medical debt in collections (Urban Institute, county) - the affordability barrier the uninsured rate misses: the under-insured / cost-burden population.',

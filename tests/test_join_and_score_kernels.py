@@ -78,10 +78,10 @@ def test_subscore_resolution_classifies_member_mix():
 
 def test_county_subscores_tagged_in_taxonomy():
     res = {s["key"]: s["resolution"] for s in subscore_specs()}
-    # the two county-broadcast scored barriers (within-county r ~0) are tagged county...
-    assert res["shortage_designation"] == "county"
+    # the one county-broadcast scored barrier (within-county r ~0) is tagged county...
     assert res["medical_debt"] == "county"
-    # ...and the genuinely sub-county-varying ones are not.
+    # ...and the sub-county-varying ones are not (HPSA is tract-resolved with county fallback).
+    assert res["shortage_designation"] == "zcta"
     assert res["provider_supply"] == "zcta"
     assert res["insurance"] == "zcta"
     assert res["socioeconomic"] == "zcta"

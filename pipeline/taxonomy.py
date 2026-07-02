@@ -169,18 +169,22 @@ DIMENSIONS: dict = {
                 "label": "Official provider shortage (HPSA)",
                 "source": "hpsa",
                 "members": [
-                    M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)", "county"),
+                    # Tract-resolved where HRSA designates census-tract components (~57% of
+                    # designations), county-wide fallback elsewhere - varies within county
+                    # (coarser than ZIP-native), hence the default "zcta" tag. See build_hpsa.py.
+                    M("hpsa_pc_score", 1, "HRSA primary-care shortage (HPSA score)"),
                 ],
             },
             # COMPUTED + DISPLAYED but NOT SCORED (scored=False). need-relative: a raw FQHC-access
             # (E2SFCA) score is wrong-signed because clinics cluster in high-need areas, so A2
             # reframed it to safetynet_barrier = FQHC-distance percentile x poverty. That form is
-            # correctly signed BETWEEN counties (+0.126) but RESOLUTION-DEPENDENT: it is wrong-
-            # signed WITHIN counties in 85% of states (NY ACSC + national USALEEP; FQHC-distance
-            # tracks suburban-ness, not need, at sub-county scale). Because the tool is ZCTA-native,
-            # dropping it from the composite lifts sub-county accuracy (composite within-county
-            # +0.583->+0.601) at a negligible county cost (mean-r 0.504->0.503). Kept displayed
-            # (the between-county signal is real) but unscored - the same call as `household` (A1).
+            # correctly signed BETWEEN counties (+0.126) but RESOLUTION-DEPENDENT: within counties
+            # it carries no usable signal - ~0 nationally (USALEEP) and wrong-signed in the state
+            # ACSC rulers (NY/CO/CA; FQHC-distance tracks suburban-ness, not need, at sub-county
+            # scale). Because the tool is ZCTA-native, dropping it from the composite lifts
+            # sub-county accuracy (composite within-county +0.583->+0.601 when decided) at a
+            # negligible county cost (mean-r 0.504->0.503). Kept displayed (the between-county
+            # signal is real) but unscored - the same call as `household` (A1).
             # See docs/VALIDATION.md + DECISIONS.md.
             "safetynet_access": {
                 "label": "Unmet safety-net need (FQHC desert x poverty)",

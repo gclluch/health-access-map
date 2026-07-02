@@ -193,9 +193,9 @@ export const SUBSCORE_EVIDENCE: Record<string, SubscoreEvidence> = {
     tip: 'Varies by ZCTA using spatial provider catchments; one of the truly local care-access signals.',
   },
   shortage_designation: {
-    label: 'county-level',
-    kind: 'county',
-    tip: 'Official shortage signal is effectively county-level here, so it helps between counties but does not distinguish ZIPs inside the same county.',
+    label: 'tract-resolved',
+    kind: 'local',
+    tip: 'HRSA shortage designations resolved to census tracts where HRSA specifies them (~57% of designations), with a county-wide fallback elsewhere - so it varies within counties, at coarser-than-ZIP grain.',
   },
   safetynet_access: {
     label: 'context only',

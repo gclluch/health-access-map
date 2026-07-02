@@ -6,7 +6,7 @@ import { SUBSCORE_EVIDENCE } from '../lib/types';
 const POINTS: Array<[string, string]> = [
   [
     'One deprivation gradient, not three independent axes',
-    'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 76% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two consequences: the tunable weights make that subjectivity explicit rather than hidden, and because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). The sliders are a sensitivity probe, not a knob that rewrites the ranking.',
+    'The lead caveat: health need, social vulnerability, and care access are strongly correlated (0.59-0.73; PC1 explains 78% of their joint variance, ~1.6 effective dimensions), and the default weighted sum correlates r ≈ 0.999 with that first principal component - i.e. the composite IS, statistically, one general-deprivation gradient. Two consequences: the tunable weights make that subjectivity explicit rather than hidden, and because the three move together, re-weighting barely moves the map (ranks shift only ~±6 points, Spearman ~0.999). The sliders are a sensitivity probe, not a knob that rewrites the ranking.',
   ],
   [
     'Sub-county resolution: real, partial, and quantified',
@@ -34,7 +34,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Descriptive, not causal - a map of where, not proof of a fix',
-    'This shows where access disadvantage concentrates; it does not prove that adding a clinic, coverage, or program where the score is high would change outcomes. We tested this directly and report the honest result: cross-sectionally the index is statistically indistinguishable from a poverty/deprivation map (a negative-control test is a clean null - it does not separate deaths timely care could prevent from those it could not), and the one temporal "access lever" signal was overturned by a cross-state falsification control (a non-expansion state showed the same trend). Net of deprivation the index does track treatable mortality between counties (care-access partial r +0.395, state-blocked 95% CI [0.33, 0.46] - clustered because the outcome is county-level), which is why it is a strong descriptive screen - but actionability as a lever is not demonstrated. Use it for targeting and hypotheses, not as evidence that an intervention will work.',
+    'This shows where access disadvantage concentrates; it does not prove that adding a clinic, coverage, or program where the score is high would change outcomes. We tested this directly and report the honest result: cross-sectionally the index is statistically indistinguishable from a poverty/deprivation map (a negative-control test is a clean null - it does not separate deaths timely care could prevent from those it could not), and the one temporal "access lever" signal was overturned by a cross-state falsification control (a non-expansion state showed the same trend). Net of deprivation the index does track treatable mortality between counties (care-access partial r +0.419, state-blocked 95% CI [0.35, 0.48] - clustered because the outcome is county-level), which is why it is a strong descriptive screen - but actionability as a lever is not demonstrated. Use it for targeting and hypotheses, not as evidence that an intervention will work.',
   ],
   [
     'Why social vulnerability is access, not a descriptor',
@@ -46,7 +46,7 @@ const POINTS: Array<[string, string]> = [
   ],
   [
     'Outcomes layer (independent of the score, used only to validate it)',
-    'Independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) validate - never build - the composite: the five we trust are amenable (treatable) mortality, preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. Flu vaccination and mammography are also tracked, but treated cautiously - they double as healthcare-engagement measures, so judging access inputs against them would be circular. We also run a sub-county gate (NY ZIP-level ACSC + national life expectancy, county fixed-effects) because ~25% of the index varies within counties, invisible to county-level outcomes. Outcomes are shown as separate layers, never in the composite (the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks the mortality outcomes, correctly signed (it was ~uncorrelated with life expectancy under the old fixed radius).',
+    'Independent outcomes (from CMS claims + NCHS vital records, NOT BRFSS/PLACES) validate - never build - the composite: the five we trust are amenable (treatable) mortality, preventable (ACSC) hospitalizations, premature death, infant mortality, and life expectancy. Flu vaccination and mammography are also tracked, but treated cautiously - they double as healthcare-engagement measures, so judging access inputs against them would be circular. We also run a sub-county gate (NY ZIP-level ACSC + national life expectancy, county fixed-effects) because ~24% of the index varies within counties, invisible to county-level outcomes. Outcomes are shown as separate layers, never in the composite (the County Health Rankings stance). After the variable-catchment fix, spatial provider supply now tracks the mortality outcomes, correctly signed (it was ~uncorrelated with life expectancy under the old fixed radius).',
   ],
   [
     'Different vintages & universes',
@@ -100,11 +100,13 @@ function ValidationTable() {
       </div>
       <p className="text-[10px] text-graphite mt-2 leading-snug">
         Weights ∝ each dimension's correlation with the outcome. A pure regression (NNLS)
-        shifts weight onto health need for the disease-dominated mortality rulers (53-77%), but
-        care access stays substantial everywhere (18-65%) and is never the floored dimension - it
-        even leads on flu &amp; mammography (~64%), though those double as engagement measures and
-        aren't trusted validators. The 5% floor lands on social vulnerability (or health need for
-        mammography), because the dimensions are collinear, not because access doesn't matter.
+        shifts weight onto health need for the disease-dominated mortality rulers (~48-85%);
+        care access ranges widely by ruler (from ~10% on preventable hospitalizations and ~16%
+        on life expectancy to ~29-38% on the treatable-mortality anchors) but is never the
+        floored dimension - it even leads on flu &amp; mammography (~62-80%), though those double
+        as engagement measures and aren't trusted validators. The 5% floor lands on social
+        vulnerability (or health need for mammography), because the dimensions are collinear,
+        not because access doesn't matter.
       </p>
       <div className="text-[10px] text-graphite mt-2 leading-snug">
         <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>
@@ -139,9 +141,10 @@ function ValidationTable() {
           Medical debt is the strongest scored care barrier (up to +0.58 vs amenable mortality);
           after the variable-catchment fix provider supply tracks the mortality outcomes, correctly
           signed (infant +0.39, life expectancy +0.16). Safety-net (FQHC) is correctly signed
-          <i>between</i> counties but wrong-signed <i>within</i> counties in 85% of states (clinics
-          sit in the highest-need areas), so it is shown for context but <b>excluded from the
-          composite</b> (computed + displayed, not scored).
+          <i>between</i> counties but carries no usable signal <i>within</i> them - near-zero
+          nationally and wrong-signed in the state ACSC rulers (clinics sit in the highest-need
+          areas), so it is shown for context but <b>excluded from the composite</b> (computed +
+          displayed, not scored).
         </p>
       </div>
     </div>
@@ -288,7 +291,7 @@ export default function MethodologyPanel() {
               One gradient, not three independent dials
             </div>
             <p className="text-[12px] text-ink leading-relaxed">
-              The three dimensions move together (correlations 0.59-0.73; PC1 holds <b>76%</b> of their
+              The three dimensions move together (correlations 0.59-0.73; PC1 holds <b>78%</b> of their
               joint variance, <b>~1.6 effective dimensions</b>). The default weighted sum is, statistically,
               that single gradient: it correlates <b>r ≈ 0.999</b> with the first principal component. So
               one "general deprivation" axis drives almost the whole score, and re-weighting shifts ranks
