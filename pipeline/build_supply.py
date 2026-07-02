@@ -100,7 +100,9 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     a_primary_fixed = _e2sfca(df["providers_primary"].to_numpy(), pop, find, fw)
     df["primary_people_per_provider"] = np.divide(
         1.0, a_primary_fixed, out=np.full_like(a_primary_fixed, np.inf), where=a_primary_fixed > 0)
-    df["primary_shortage"] = df["primary_people_per_provider"] > config.HPSA_SHORTAGE_RATIO
+    # Uninhabited ZCTAs (pop 0, non-scoreable) also read inf here - keep them out of the flag so
+    # the shortage count reflects populated areas only.
+    df["primary_shortage"] = (pop > 0) & (df["primary_people_per_provider"] > config.HPSA_SHORTAGE_RATIO)
 
     out = df[["zcta5", "primary_2sfca", "mental_2sfca", "dental_2sfca", "ob_2sfca",
               "primary_people_per_provider", "primary_shortage"]].copy()
