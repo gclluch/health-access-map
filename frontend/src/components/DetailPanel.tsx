@@ -149,6 +149,8 @@ function SubScoreRow({
   scored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Distinguish "still fetching subscores.json" from a genuinely unscored cell.
+  const subsPending = useStore((s) => s.subscoresStatus === 'idle' || s.subscoresStatus === 'loading');
   const resolution = SUBSCORE_EVIDENCE[subKey];
   const tip =
     `${label}${SUBSCORE_BLURB[subKey] ? ` - ${SUBSCORE_BLURB[subKey]}` : ''}` +
@@ -175,7 +177,7 @@ function SubScoreRow({
         </Tip>
         <ResolutionBadge subKey={subKey} />
         <span className="num text-[10px] text-graphite w-14 text-right">
-          {pct == null ? 'no data' : `${ordinal(pct)} pctile`}
+          {pct != null ? `${ordinal(pct)} pctile` : subsPending ? '…' : 'no data'}
         </span>
         <span className="w-16">
           <PctBar pct={pct} />
@@ -474,6 +476,13 @@ export default function DetailPanel() {
   const m = selectedZcta ? metrics.get(selectedZcta) : undefined;
   const [rec, setRec] = useState<Record<string, unknown> | null>(null);
   const [recLoading, setRecLoading] = useState(false);
+
+  // The sub-score rows read the lazily-merged subscores.json columns (T8). Opening a detail panel
+  // is the intent signal to load them; the map's first paint stays slim and the fetch is cached.
+  const ensureSubscoreColumns = useStore((s) => s.ensureSubscoreColumns);
+  useEffect(() => {
+    if (selectedZcta) ensureSubscoreColumns().catch(() => {});
+  }, [selectedZcta, ensureSubscoreColumns]);
 
   // Desktop-only resizable width (drag the left edge). Persisted across selections.
   const [width, setWidth] = useState<number>(() => {
