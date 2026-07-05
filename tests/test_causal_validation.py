@@ -220,6 +220,60 @@ def test_cs_differences_out_common_trend_no_false_effect():
     assert abs(ov) < 10                                          # common trend differenced out -> ~0
 
 
+def _selection_on_observables_panel(rng, *, effect, years, cohorts=(2013, 2015, 2017),
+                                    n_units=400, noise=4.0):
+    """Units carry HETEROGENEOUS secular slopes; treatment is assigned preferentially to the
+    steep-slope units (the §7f siting story: FQHCs open where ACSC is rising). Confounding is on an
+    observable the panel itself measures - exactly what the DR conditioning is meant to remove."""
+    slopes = rng.uniform(0.0, 15.0, n_units)
+    p_treat = 0.45 * (slopes / 15.0) ** 2                       # steeper slope -> likelier treated
+    treated = rng.random(n_units) < p_treat
+    rows = []
+    for i in range(n_units):
+        g = float(rng.choice(cohorts)) if treated[i] else np.inf
+        zfe = rng.normal(0, 50.0)
+        for y in years:
+            eff = effect if np.isfinite(g) and y >= g else 0.0
+            rows.append({"zcta5": f"z{i}", "year": y, "pop": 5000.0, "cohort": g, "state": "SYN",
+                         "rate": 1500.0 + zfe + slopes[i] * (y - years[0]) + eff
+                                 + rng.normal(0, noise)})
+    return pd.DataFrame(rows)
+
+
+def test_dr_removes_selection_on_observables_bias():
+    """Steep-slope units get treated, true effect = -40. The unconditional contrast is biased
+    upward (treated drift masquerades as post-period change) with dirty pre-trends; the DR
+    estimator, conditioning on the pre-window slope, must land near the truth with flatter pres."""
+    rng = np.random.default_rng(23)
+    years = list(range(2009, 2024))
+    j = _selection_on_observables_panel(rng, effect=-40.0, years=years)
+    ev_unc = vf.aggregate_event(vf.att_gt(j))
+    ev_dr = vf.aggregate_event(vf.att_gt(j, dr=True))
+    ov_unc, ov_dr = vf.overall_att(vf.att_gt(j)), vf.overall_att(vf.att_gt(j, dr=True))
+    assert abs(ov_unc - (-40.0)) > 12                            # unconditional is visibly biased
+    assert abs(ov_dr - (-40.0)) < 12                             # DR recovers the planted effect
+    assert abs(ov_dr - (-40.0)) < abs(ov_unc - (-40.0)) / 2      # and cuts the bias >2x
+    rms = lambda d, lo: float(np.sqrt(np.mean(np.square(       # noqa: E731
+        d.query(f"{lo} <= e < 0")["att"].to_numpy()))))
+    # where the pre-window is long enough to estimate a slope (recent pres), DR flattens hard;
+    # the earliest pre-cells have no covariate window and honestly keep the unconditional bias
+    assert rms(ev_dr, -3) < rms(ev_unc, -3) / 2
+    assert rms(ev_dr, -99) < rms(ev_unc, -99)                    # and never worse overall
+
+
+def test_dr_matches_unconditional_when_selection_is_random():
+    """With no selection (common trend only), conditioning must be harmless: DR and unconditional
+    agree on the planted effect - the covariates carry no signal to (mis)use."""
+    rng = np.random.default_rng(24)
+    years = list(range(2009, 2024))
+    j = _staggered_panel(rng, cohorts=[2013, 2015, 2017], n_per_cohort=40, n_never=200, years=years,
+                         effect=-50.0, common_trend=-9.0)
+    ov_unc = vf.overall_att(vf.att_gt(j))
+    ov_dr = vf.overall_att(vf.att_gt(j, dr=True))
+    assert abs(ov_dr - ov_unc) < 8
+    assert abs(ov_dr - (-50.0)) < 12
+
+
 def test_cs_event_study_exposes_treated_pretrend():
     """The decisive diagnostic property: a treated-ONLY divergent trajectory (no genuine treatment
     effect) must show up as NON-flat pre-period ATTs - exactly the §7b warning the event study exists

@@ -110,8 +110,8 @@ def _build_panel(states: tuple[str, ...], dose: str = "clean") -> tuple[pd.DataF
     j = j[~j["zcta5"].isin(contaminated)].copy()
     j["cohort"] = j["cohort"].fillna(NEVER)
 
-    try:  # county_fips enables the spatial (county-block) bootstrap; absent on some dev builds
-        m = pd.read_parquet(METRICS, columns=["zcta5", "population", "county_fips"])
+    try:  # county_fips enables the spatial (county-block) bootstrap; poverty_rate feeds the DR
+        m = pd.read_parquet(METRICS, columns=["zcta5", "population", "county_fips", "poverty_rate"])
     except Exception:  # noqa: BLE001
         m = pd.read_parquet(METRICS, columns=["zcta5", "population"])
     m["zcta5"] = m["zcta5"].astype(str)
@@ -135,15 +135,100 @@ def _wmean(v: np.ndarray, w: np.ndarray) -> float:
     return float(np.average(v, weights=w)) if len(v) and w.sum() > 0 else float("nan")
 
 
-def att_gt(j: pd.DataFrame, weighted: bool = False) -> pd.DataFrame:
+# Doubly-robust conditioning (Sant'Anna & Zhao 2020). The unconditional estimator assumes parallel
+# trends holds unconditionally, but the §7f placebo showed a residual SITING pre-trend: FQHCs open
+# where ACSC is high/rising - selection on observables the panel itself measures. Conditioning each
+# ATT(g,t) on pre-window outcome level + slope (plus poverty, log pop) asks the weaker question:
+# "did treated ZIPs diverge from controls that LOOKED THE SAME before treatment?"
+DR_MIN_TREATED = 3     # below this a cell falls back to the unconditional contrast
+DR_PSCORE_CLIP = 0.95  # trim propensity scores (Crump-style) so odds weights can't explode
+DR_SLOPE_YEARS = 3     # pre-window years needed before a slope covariate is used
+
+
+def _logit_irls(X: np.ndarray, y: np.ndarray, w: np.ndarray, lam: float = 1e-3,
+                iters: int = 25) -> np.ndarray:
+    """Ridge-penalized logistic regression via IRLS (X includes the intercept column). Hand-rolled:
+    it runs inside every bootstrap cell, where sklearn's per-fit overhead dominates the math."""
+    b = np.zeros(X.shape[1])
+    pen = lam * np.eye(X.shape[1])
+    pen[0, 0] = 0.0
+    for _ in range(iters):
+        p = 1.0 / (1.0 + np.exp(-np.clip(X @ b, -30, 30)))
+        wt = w * p * (1 - p) + 1e-12
+        step = np.linalg.solve(X.T @ (X * wt[:, None]) + pen, X.T @ (w * (y - p)) - pen @ b)
+        b += step
+        if np.max(np.abs(step)) < 1e-8:
+            break
+    return b
+
+
+def _cell_covariates(Y: pd.DataFrame, base: float, t: float, static: list[np.ndarray]) -> np.ndarray:
+    """Per-(g,t) covariate matrix: pre-window outcome level and slope, from years STRICTLY before
+    both the base period and the comparison year - so no covariate shares a year with dY (else the
+    pre-period placebo ATTs would be mechanically deflated) - plus the static columns."""
+    window = [y for y in Y.columns if y < min(base, t)]
+    cols = list(static)
+    if window:
+        W = Y[window].to_numpy(dtype=float)
+        mask = np.isfinite(W)
+        n_obs = mask.sum(1)
+        Wf = np.nan_to_num(W)
+        n = np.maximum(n_obs, 1)
+        cols.append(np.where(n_obs > 0, Wf.sum(1) / n, np.nan))
+        if len(window) >= DR_SLOPE_YEARS:
+            # per-row OLS slope over the observed pre-window years (nan-aware, vectorized)
+            yr = np.array(window, dtype=float)
+            sum_y, sum_w = (mask * yr).sum(1), Wf.sum(1)
+            cov = (Wf * yr).sum(1) - sum_y * sum_w / n
+            var = (mask * yr ** 2).sum(1) - sum_y ** 2 / n
+            slope = np.where((n_obs >= DR_SLOPE_YEARS) & (var > 1e-9), cov / np.maximum(var, 1e-9), np.nan)
+            cols.append(slope)
+    return np.column_stack(cols) if cols else np.zeros((len(Y), 0))
+
+
+def _dr_att_cell(dY: np.ndarray, X: np.ndarray, ok_t: np.ndarray, ok_c: np.ndarray,
+                 w: np.ndarray) -> float:
+    """Sant'Anna-Zhao DR ATT for one (g,t) cell: outcome regression m0 fit on controls, propensity
+    odds reweighting of the control residuals, both on standardized covariates. Either model being
+    right makes the contrast unbiased under CONDITIONAL parallel trends."""
+    idx = ok_t | ok_c
+    Xc = X[idx]
+    mu, sd = np.nanmean(Xc, 0), np.nanstd(Xc, 0)
+    sd[~np.isfinite(sd) | (sd < 1e-9)] = 1.0
+    Z = (X - mu) / sd
+    Z = np.nan_to_num(Z)                       # missing covariate -> cell mean (0 after z-scoring)
+    Z = np.column_stack([np.ones(len(Z)), Z])
+    k = Z.shape[1]
+
+    wc = w * ok_c
+    # outcome regression on controls (ridge for the odd near-collinear resample)
+    A = Z.T @ (Z * wc[:, None]) + 1e-6 * np.eye(k)
+    m0 = Z @ np.linalg.solve(A, Z.T @ (wc * dY))
+    resid = dY - m0
+
+    treated_term = _wmean(resid[ok_t], w[ok_t])
+    y01 = ok_t[idx].astype(float)
+    b = _logit_irls(Z[idx], y01, w[idx])
+    p = 1.0 / (1.0 + np.exp(-np.clip(Z @ b, -30, 30)))
+    p = np.clip(p, 1e-6, DR_PSCORE_CLIP)
+    odds = p / (1 - p)
+    control_term = _wmean(resid[ok_c], (w * odds)[ok_c])
+    return treated_term - control_term
+
+
+def att_gt(j: pd.DataFrame, weighted: bool = False, dr: bool = False) -> pd.DataFrame:
     """Group-time ATT for every (state, cohort g, period t). Computed WITHIN state: comparison =
     that state's not-yet-treated by max(t,g) (cohort > max(t,g), always including never-treated).
-    Universal base period g-1. Returns (state, g, t, e=t-g, att, n_treated)."""
+    Universal base period g-1. dr=True conditions each cell on pre-window level/slope + statics via
+    the Sant'Anna-Zhao doubly-robust contrast. Returns (state, g, t, e=t-g, att, n_treated)."""
     out = []
     for st, js in j.groupby("state"):
         Y = js.pivot_table(index="zcta5", columns="year", values="rate")
         pop = js.groupby("zcta5")["pop"].first().reindex(Y.index)
         cohort = js.groupby("zcta5")["cohort"].first().reindex(Y.index)
+        static = [np.log(pop.to_numpy())]
+        if "poverty_rate" in js.columns:
+            static.append(js.groupby("zcta5")["poverty_rate"].first().reindex(Y.index).to_numpy())
         years = list(Y.columns)
         w_all = pop.to_numpy() if weighted else np.ones(len(Y))
         for g in sorted(c for c in cohort.unique() if np.isfinite(c)):
@@ -160,7 +245,11 @@ def att_gt(j: pd.DataFrame, weighted: bool = False) -> pd.DataFrame:
                 ok_c = ctrl & np.isfinite(dY)
                 if ok_t.sum() < 1 or ok_c.sum() < 2:
                     continue
-                att = _wmean(dY[ok_t], w_all[ok_t]) - _wmean(dY[ok_c], w_all[ok_c])
+                if dr and ok_t.sum() >= DR_MIN_TREATED:
+                    X = _cell_covariates(Y, base, t, static)
+                    att = _dr_att_cell(np.nan_to_num(dY), X, ok_t, ok_c, w_all)
+                else:
+                    att = _wmean(dY[ok_t], w_all[ok_t]) - _wmean(dY[ok_c], w_all[ok_c])
                 out.append({"state": st, "g": int(g), "t": int(t), "e": int(t - g),
                             "att": att, "n": int(ok_t.sum())})
     return pd.DataFrame(out)
@@ -198,7 +287,8 @@ def _pctci(v: list[float]) -> tuple[float, float]:
     return (float(np.percentile(a, 2.5)), float(np.percentile(a, 97.5))) if len(a) else (np.nan, np.nan)
 
 
-def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT, unit_col: str = "zcta5"
+def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT, unit_col: str = "zcta5",
+               dr: bool = False
                ) -> tuple[dict[int, tuple[float, float]], tuple[float, float], tuple[float, float]]:
     """Block bootstrap: resample whole `unit_col` blocks, recompute the event path + both overall
     ATTs. Returns {e: (lo, hi)} path CIs, the full-horizon overall CI, and the balanced-window CI.
@@ -214,7 +304,7 @@ def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT, unit_col: str =
         boot = pd.concat([groups[u].assign(zcta5=groups[u]["zcta5"].astype(str) + f"__{i}")
                           for i, u in enumerate(pick)], ignore_index=True)
         try:
-            ag = att_gt(boot, weighted=weighted)
+            ag = att_gt(boot, weighted=weighted, dr=dr)
             if ag.empty:
                 continue
             for _, r in aggregate_event(ag).iterrows():
@@ -227,9 +317,9 @@ def _bootstrap(j: pd.DataFrame, weighted: bool, n: int = N_BOOT, unit_col: str =
     return ci, _pctci(full), _pctci(bal)
 
 
-def _overall_ci(j: pd.DataFrame, weighted: bool, n: int) -> tuple[float, float]:
+def _overall_ci(j: pd.DataFrame, weighted: bool, n: int, dr: bool = False) -> tuple[float, float]:
     """Bootstrap CI for just the full-horizon overall ATT (the robustness summary statistic)."""
-    _, ov_ci, _ = _bootstrap(j, weighted=weighted, n=n)
+    _, ov_ci, _ = _bootstrap(j, weighted=weighted, n=n, dr=dr)
     return ov_ci
 
 
@@ -341,7 +431,7 @@ def _gate_band(n_treated: int) -> str:
     return f"below the gate's NY-only scenario ({nyo}): underpowered (realized {n_treated})"
 
 
-def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
+def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True, dr: bool = False) -> dict:
     j, years = _build_panel(states)
     cohort = j.groupby("zcta5")["cohort"].first()
     n_treated = int(np.isfinite(cohort).sum())
@@ -352,19 +442,22 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
     log("fqhc-lever", f"{tag} panel: {j['zcta5'].nunique()} ZIPs ({years[0]}-{years[-1]}); "
                       f"{n_treated} newly-served treated ({by_state}), {n_control} supply-stable controls")
 
-    attgt = att_gt(j, weighted=weighted)
+    attgt = att_gt(j, weighted=weighted, dr=dr)
     ev = aggregate_event(attgt)
     ov = overall_att(attgt)
     ov_bal = overall_att(attgt, emax=BALANCED_EMAX)
-    ci, ov_ci, ov_bal_ci = _bootstrap(j, weighted=weighted)
+    ci, ov_ci, ov_bal_ci = _bootstrap(j, weighted=weighted, dr=dr)
     # Spatial-honest CI: resample whole counties (ACSC geography is spatially autocorrelated, so the
     # ZIP-cluster CI understates uncertainty). This wider CI is the one the verdict keys on.
     has_county = "county_fips" in j.columns and j["county_fips"].notna().any()
-    ov_ci_cty = _bootstrap(j, weighted=weighted, unit_col="county_fips")[1] if has_county else ov_ci
+    ov_ci_cty = _bootstrap(j, weighted=weighted, unit_col="county_fips", dr=dr)[1] if has_county else ov_ci
     verdict, clean, pre_rms = _verdict(ev, ov, ov_ci_cty)
+    ov_uncond = overall_att(att_gt(j, weighted=weighted)) if dr else ov
 
     rep = {
         "design": "Callaway-Sant'Anna group-time ATT, staggered first-FQHC opening, within-state controls",
+        "estimator": ("doubly-robust conditional (Sant'Anna-Zhao; pre-window ACSC level+slope, "
+                      "poverty, log pop)" if dr else "unconditional"),
         "states": list(states),
         "outcome": "ACSC/100k by patient ZIP x year (NY SPARCS PQI_90 2009-2023; TX PUDF 2011-2019)",
         "weighting": "population" if weighted else "equal",
@@ -388,6 +481,7 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
 
     print(f"\n=== FQHC SUPPLY LEVER: staggered first-FQHC event study (Callaway-Sant'Anna, {tag}) ===")
     print(f"  outcome: {rep['outcome']}")
+    print(f"  estimator: {rep['estimator']}")
     print(f"  {n_treated} newly-served treated ZIPs {by_state}, {n_control} supply-stable controls; "
           f"{rep['weighting']}-weighted, within-state comparisons")
     print(f"  power gate (re-read at realized N): {rep['power_gate_band']}")
@@ -407,14 +501,18 @@ def run(states: tuple[str, ...] = ("NY", "TX"), weighted: bool = True) -> dict:
     print(f"  balanced (e<= {BALANCED_EMAX})   = {ov_bal:+.1f}/100k  CI [{ov_bal_ci[0]:+.1f}, "
           f"{ov_bal_ci[1]:+.1f}]  {'EXCLUDES 0' if rep['balanced_excludes_zero'] else 'straddles 0'}")
     print(f"  parallel-trends clean = {clean}")
+    if dr:
+        rep["overall_att_unconditional"] = round(ov_uncond, 1)
+        print(f"  unconditional ATT (same panel) = {ov_uncond:+.1f}/100k  "
+              f"(DR shift {ov - ov_uncond:+.1f} = the part explained by observable siting)")
     print(f"  VERDICT: {verdict}")
     return rep
 
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
-    do_robust = "robust" in [a.lower() for a in argv]
-    st = tuple(a.upper() for a in argv if a.lower() not in ("robust",)) or ("NY", "TX")
-    run(states=st)
-    if do_robust:
+    flags = {a.lower() for a in argv}
+    st = tuple(a.upper() for a in argv if a.lower() not in ("robust", "dr")) or ("NY", "TX")
+    run(states=st, dr="dr" in flags)
+    if "robust" in flags:
         run_robustness(states=st)

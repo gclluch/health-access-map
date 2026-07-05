@@ -624,7 +624,7 @@ free data allows. The honest answer, after running them all: **the index is a we
 | §7b | NY-only event study around 2014 | **inconclusive** (-36.5; joint pre-trends test χ²(4)=9.28, p=0.055 - borderline, point estimates not flat) | not a causal read on its own - high-barrier ZIPs may already be converging |
 | §7e | **Cross-state DiD-in-DiD** (NY vs TX control) | **falsified** (triple-diff +10.3, CI crosses 0) | TX never expanded yet declined the same → the §7b hint was secular convergence, not the expansion |
 | §7d | Precision-weighting + disattenuation | observed↑ to ceiling ~0.85; **no scored signal added** | the "modest" correlations are a noisy *ruler*, not a weak index |
-| §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **null** (-35.5/100k; ZIP CI [-71.7, +2.2], spatially-honest county-block CI [-74.1, +10.5] - both include 0) | the *supply* arm is right-signed, dose-responsive, robust to spillover, but not distinguishable from 0 once counties (not ZIPs) are the resampling unit; pre-trends not fully clean |
+| §7f | **Staggered FQHC supply-lever event study** (Callaway-Sant'Anna, NY+TX) | **null, bounded** (unconditional -35.5/100k borderline; **doubly-robust conditional -4.3/100k**, county-block CI [-38.0, +35.4]) | the near-miss was observable *siting* (FQHCs open where ACSC is high/rising); conditioning on pre-treatment level+slope removes ~7/8 of it, and bracketing bounds the true effect in [-35.5, -4.3] - both ends ≈ 0 |
 | - | New-data hunt (CMS/SAMHSA/HCRIS) | supply hits the endogeneity wall; the barrier that works is redundant | no free dataset adds new scored signal |
 
 > **Spatial-inference update (supersedes the ZIP-cluster CIs in §7b/§7f below).** The causal
@@ -638,9 +638,10 @@ free data allows. The honest answer, after running them all: **the index is a we
 
 A single-state DiD would have shipped a causal claim (§7b) that the falsification control (§7e)
 shows the data does not support; the project reports the null rather than the optimistic read. The two
-arms of `care_access` land differently: **affordability** (the ACA coverage shock, §7b/§7e) is a clean,
-control-disciplined null; **supply** (the FQHC openings, §7f) is a powered near-miss - the strongest
-free-data hint of an actionable lever the project has, still honestly short of demonstrated.
+arms of `care_access` land the same way by different routes: **affordability** (the ACA coverage
+shock, §7b/§7e) is a clean, control-disciplined null; **supply** (the FQHC openings, §7f) looked like
+a powered near-miss until a doubly-robust conditional re-estimate showed the borderline was observable
+siting - it resolves to a null with an informative bound (benefits >~3% of baseline ruled out).
 
 ### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.validate_placebo`)
 
@@ -717,12 +718,13 @@ Cross-sectionally the index cannot be distinguished from a poverty map (§7a); t
 Texas (never expanded) declined the same, so that hint was secular convergence. The
 control-disciplined conclusion: **free-data causal identification does not establish an actionable
 access lever.** The index is a deprivation-dominated *structural-access* map, well-validated
-descriptively (§3-§6) but with *actionability* undemonstrated. But §7e tested only the *affordability*
-arm; the **supply arm (§7f) - a staggered FQHC-opening event study - lands differently: a powered
-borderline, right-signed and dose-responsive but just short of significance.** So the sharpened
-conclusion is not a
-flat null but an asymmetry: affordability reads as a clean null, supply as a near-miss; the index's
-actionability remains *undemonstrated*, not *disproven*. All temporal validators are standing, read-only,
+descriptively (§3-§6) but with *actionability* undemonstrated. §7e tested only the *affordability*
+arm; the **supply arm (§7f) - a staggered FQHC-opening event study - first read as a powered
+borderline, but a doubly-robust conditional re-estimate resolved it: the near-miss was observable
+siting, and the effect is bounded in [-35.5, -4.3]/100k with both ends ≈ 0.** So the conclusion is
+symmetric after all: both arms are nulls - affordability by falsification, supply by a well-identified
+bound; the index's actionability is *undemonstrated*, and effects larger than ~3% of baseline ACSC are
+now positively ruled out. All temporal validators are standing, read-only,
 and never feed the composite. Remaining follow-ups (a provider-entry within-ZIP panel; a MAUP (Openshaw 1984) re-zoning
 check) are in [BACKLOG.md](BACKLOG.md).
 
@@ -888,7 +890,8 @@ diminishing-returns prediction), which we read not as a stronger lever but as a 
 treatment folds in more siting endogeneity; the clean 0→1 transition remains the headline precisely
 because it is the better-identified one.
 
-**Honest verdict: borderline - a powered "almost", not a demonstrated lever and not a clean null.** The
+**Verdict of the unconditional estimator (superseded by the conditional re-estimate below): borderline
+- a powered "almost", not a demonstrated lever and not a clean null.** The
 supply arm is right-signed, dose-responsive, robust to spillover, and clean on the near-term placebo, in
 a design the power gate certified - materially stronger than the affordability arm's control-disciplined
 null (§7e). But the 95% CI just includes zero and the distant pre-period carries a residual siting trend
@@ -899,3 +902,27 @@ two access arms, affordability reads as a clean null and supply reads as a near-
 better-identified design (more states with annual panels; the distance-to-opening dose). Read-only;
 never feeds the composite. The CS estimator is unit-tested with a planted staggered effect, a common
 trend it must difference out, and a treated-only pre-trend it must expose (`tests/test_causal_validation.py`).
+
+**Conditional re-estimate (doubly robust) - the borderline resolves to a null with an informative
+bound.** The residual pre-trend above is precisely *selection on observables*: HRSA sites clinics
+where ACSC is high and rising, and both the level and the slope are measured by the panel itself. The
+estimator therefore has a conditional variant (`python -m pipeline.validate_fqhc_lever dr`;
+`att_gt(dr=True)`): each ATT(g,t) cell applies the Sant'Anna & Zhao (2020) doubly-robust contrast - an
+outcome regression fit on that cell's controls plus a trimmed propensity-odds reweighting - conditioning
+on the ZCTA's pre-window ACSC level and slope (computed from years strictly before *both* the base
+period and the comparison year, so no covariate shares a year with the outcome change), poverty rate,
+and log population. This asks the weaker, better-identified question: *did treated ZIPs diverge from
+controls that looked the same before treatment?* Result: the overall ATT collapses from −35.5 to
+**−4.3/100k** (county-block CI [−38.0, +35.4]; balanced *e*≤4: −8.7, CI [−40.9, +22.3]), and the
+pre-period both flattens (RMS 26.8 → 19.2) and loses its systematic positive sign. Roughly +31 of the
+−35.5 headline was observable siting read back as treatment. The property is unit-tested with planted
+effects: under selection-on-observables the conditional estimator recovers a known effect the
+unconditional one misses by >2×, and under random selection the two agree - conditioning is harmless
+when there is nothing to condition away (`tests/test_causal_validation.py`). One honest caveat cuts the
+other way: conditioning on lagged outcomes can *over*-correct when pre-period differences are partly
+noise (regression to the mean), so per the Ding & Li (2019) bracketing result the unconditional DiD and
+the conditional estimate bound the truth from the two sides: **the supply effect lies in
+[−35.5, −4.3]/100k, and both ends are indistinguishable from zero** under the spatially-honest
+county-block CI. The supply arm therefore lands where the affordability arm did - **no demonstrated
+lever** - but as a *well-identified bound* rather than an ambiguous borderline: benefits larger than
+~3% of the ~1,300/100k baseline are ruled out at 95%.
