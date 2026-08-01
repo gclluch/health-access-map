@@ -29,7 +29,6 @@ setup:
 	python3 -m venv .venv
 	$(PY) -m pip install -U pip
 	$(PY) -m pip install -r requirements.txt
-	$(PY) -m pip freeze > requirements.lock
 	npm install
 	cd frontend && npm install
 

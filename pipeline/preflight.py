@@ -71,8 +71,8 @@ def check() -> bool:
     if config.CENSUS_API_KEY:
         _ok("census-key", "present")
     else:
-        _fail("census-key", "CENSUS_API_KEY missing in .env (ACS layer will be skipped)")
-        # not fatal -- ACS can be skipped
+        # build_acs hard-dies without it, so fail here rather than 40 minutes into NPPES
+        _fail("census-key", "CENSUS_API_KEY missing in .env"); ok = False
 
     # Host reachability (HEAD; report, don't hard-fail individually)
     for host in config.DATA_HOSTS:
