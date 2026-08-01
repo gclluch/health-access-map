@@ -21,10 +21,11 @@ export default function SiteCredits() {
   const [open, setOpen] = useState(false);
   return (
     <div className="absolute z-20 left-2 bottom-1 sm:left-3 sm:bottom-2 hidden sm:block pointer-events-auto">
+      {/* A disclosure, not a modal: it never traps focus and the page stays interactive behind
+          it. role="dialog" would promise AT a focus trap and an Escape key that do not exist. */}
       {open && (
         <div
-          role="dialog"
-          aria-label="Sources and license"
+          id="site-credits"
           className="panel rounded-md p-3 mb-1.5 w-[300px] max-w-[88vw] text-[11px] leading-snug text-graphite shadow-lg"
         >
           <div className="font-medium text-ink mb-1.5">Data sources</div>
@@ -57,6 +58,7 @@ export default function SiteCredits() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls="site-credits"
         className="num text-[10px] text-graphite bg-surface/85 border border-hairline rounded px-1.5 py-1 hover:text-accent"
       >
         Sources &amp; license

@@ -17,7 +17,13 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- First-paint shell. React's createRoot clears this on mount; without it the page is blank
+         until the app chunk parses. Inline styles because the stylesheet is a separate request. -->
+    <div id="root">
+      <div style="min-height:100vh;display:grid;place-items:center;background:#F7F8FA;font-family:system-ui,sans-serif">
+        <div style="color:#5A6472;font-size:13px">Loading ~33,000 ZIP areas…</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

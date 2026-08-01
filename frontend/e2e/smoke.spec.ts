@@ -20,6 +20,9 @@ test('access-beyond-deprivation lens colors the map and explains itself', async 
 
 test('methodology panel opens and states the collinearity caveat', async ({ page }) => {
   await page.goto('/');
+  // Wait for ready before clicking, as the other interaction tests do: the map chunk is still
+  // streaming in until then, and its dev-server module waterfall delays the panel's own chunk.
+  await expect(page.getByRole('button', { name: 'Rankings' })).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'How to read this' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

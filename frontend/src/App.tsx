@@ -1,13 +1,18 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useStore } from "./store";
 import { reportError } from "./lib/observability";
-import MapView from "./components/MapView";
 import Legend from "./components/Legend";
 import SearchBox from "./components/SearchBox";
 import TopControls from "./components/TopControls";
 import SiteCredits from "./components/SiteCredits";
 import Caret from "./components/Caret";
 import { COMPOSITE_METRIC, metricLabel } from "./lib/types";
+
+// The map stack (maplibre + deck.gl) is ~485 kB gz, larger than everything else combined. Imported
+// statically it is modulepreloaded, so nothing paints until it lands. Lazy so the shell paints on
+// the small app chunk; AppInner warms the import on mount so the download still overlaps the data
+// fetch rather than queuing behind it.
+const MapView = lazy(() => import("./components/MapView"));
 
 // Interaction-gated panels: none are needed for first paint (the rail starts collapsed, the
 // detail/compare panels appear only on selection, methodology only when opened). Code-splitting
@@ -109,7 +114,10 @@ export default function App() {
 }
 
 function AppInner() {
-  const { status, error } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const status = useStore((s) => s.status);
+  const error = useStore((s) => s.error);
   const load = useStore((s) => s.load);
   const selectedZcta = useStore((s) => s.selectedZcta);
   const compareCount = useStore((s) => s.compareZctas.length);
@@ -132,9 +140,6 @@ function AppInner() {
       : rankOrder === "desc"
         ? "highest first"
         : "lowest first";
-  const [isCompactHeight, setCompactHeight] = useState(
-    () => window.innerHeight < 520,
-  );
   const [railOpen, setRailOpen] = useState(false);
 
   // Mark everything behind the methodology dialog inert while it's open, so AT (VoiceOver rotor,
@@ -147,17 +152,9 @@ function AppInner() {
 
   useEffect(() => {
     load();
+    // Start the map chunk downloading alongside the data fetch instead of after it.
+    void import("./components/MapView");
   }, [load]);
-
-  useEffect(() => {
-    const onResize = () => {
-      const compact = window.innerHeight < 520;
-      setCompactHeight(compact);
-      if (compact) setRailOpen(false);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -165,9 +162,13 @@ function AppInner() {
           wrapper is a static, zero-size block; its absolutely-positioned children are unaffected. */}
       <div ref={bgRef}>
       {/* map (the hero, full-bleed) */}
-      <div className="absolute inset-0">
-        {status === "ready" && <MapView />}
-      </div>
+      <main className="absolute inset-0">
+        {status === "ready" && (
+          <Suspense fallback={<Loading />}>
+            <MapView />
+          </Suspense>
+        )}
+      </main>
 
       {status === "loading" && <Loading />}
       {status === "error" && <ErrorState msg={error ?? "unknown error"} />}
@@ -175,9 +176,9 @@ function AppInner() {
       {/* top bar (transparent over map) */}
       <header className="absolute top-0 left-0 right-0 z-30 flex items-start gap-2 px-3 py-2.5 pointer-events-none flex-wrap max-[520px]:px-2 max-[520px]:py-2">
         <div className="pointer-events-auto flex items-center gap-2">
-          <span className="font-serif text-[16px] text-ink bg-surface/90 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline max-[520px]:text-[15px]">
+          <h1 className="font-serif text-[16px] text-ink bg-surface/90 backdrop-blur-sm px-2.5 py-1 rounded border border-hairline max-[520px]:text-[15px]">
             Care Access Map
-          </span>
+          </h1>
           <FreshnessBadge />
           {status === "ready" && <CoverageNote />}
         </div>
@@ -212,7 +213,7 @@ function AppInner() {
               </span>
               <Caret open={railOpen} size={14} className="text-graphite" />
             </button>
-            {railOpen && !isCompactHeight && (
+            {railOpen && (
               <div className="flex-1 min-h-0 overflow-hidden">
                 <Suspense fallback={null}>
                   <RankingsList />

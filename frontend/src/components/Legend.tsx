@@ -24,7 +24,13 @@ const LENS_HELP: Record<string, string> = {
 // metric's axis, ramp beneath, and a marker for where the selected ZIP falls.
 // The whole product is about *relative position*; the legend says it directly.
 export default function Legend() {
-  const { metrics, metric, weights, selectedZcta, stateFilter } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const metrics = useStore((s) => s.metrics);
+  const metric = useStore((s) => s.metric);
+  const weights = useStore((s) => s.weights);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const stateFilter = useStore((s) => s.stateFilter);
   const setMetric = useStore((s) => s.setMetric);
   const showWeights = useStore((s) => s.showWeights);
   const toggleWeights = useStore((s) => s.toggleWeights);
@@ -68,7 +74,7 @@ export default function Legend() {
         <div className="relative max-w-[200px] max-[520px]:max-w-[210px]">
           <MetricSelect
             ariaLabel="Color the map by metric"
-            className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
+            className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium cursor-pointer rounded pr-5 text-right"
             value={metric}
             onChange={setMetric}
             includeWithinState={!!stateFilter}

@@ -5,7 +5,11 @@ import Caret from './Caret';
 // State quick-jump (§13.2): reach a workable zoom in one action; also filters the
 // rankings. Plus "Use my area" geolocation.
 export default function TopControls() {
-  const { availableStates, stateFilter, locating } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const availableStates = useStore((s) => s.availableStates);
+  const stateFilter = useStore((s) => s.stateFilter);
+  const locating = useStore((s) => s.locating);
   const jumpToState = useStore((s) => s.jumpToState);
   const locateMe = useStore((s) => s.locateMe);
 
@@ -17,7 +21,7 @@ export default function TopControls() {
           onChange={(e) => jumpToState(e.target.value || null)}
           aria-label="Jump to a state"
           title="The default map opens on the continental U.S.; Alaska, Hawaii, and Puerto Rico are available here."
-          className="w-full appearance-none text-[12px] bg-surface/90 border border-hairline rounded pl-2 pr-6 py-1.5 text-ink outline-none focus:border-accent cursor-pointer max-[520px]:pr-5 max-[520px]:min-h-[40px]"
+          className="w-full appearance-none text-[12px] bg-surface/90 border border-hairline rounded pl-2 pr-6 py-1.5 text-ink focus:border-accent cursor-pointer max-[520px]:pr-5 max-[520px]:min-h-[40px]"
         >
           <option value="">CONUS overview</option>
           {availableStates.map((s) => (

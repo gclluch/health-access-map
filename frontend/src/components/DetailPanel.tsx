@@ -467,7 +467,12 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
 }
 
 export default function DetailPanel() {
-  const { metrics, weights, selectedZcta, metric } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const metrics = useStore((s) => s.metrics);
+  const weights = useStore((s) => s.weights);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const metric = useStore((s) => s.metric);
   const select = useStore((s) => s.select);
   const compareZctas = useStore((s) => s.compareZctas);
   const addCompare = useStore((s) => s.addCompare);
@@ -483,6 +488,14 @@ export default function DetailPanel() {
   useEffect(() => {
     if (selectedZcta) ensureSubscoreColumns().catch(() => {});
   }, [selectedZcta, ensureSubscoreColumns]);
+
+  // Selecting a ZIP is the app's core interaction, and it happens on the map canvas -- without a
+  // focus move nothing announces it and the keyboard is left behind on the map. Focusing the region
+  // makes AT read "ZIP <n> detail" and puts the panel's controls next in tab order.
+  const regionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedZcta) regionRef.current?.focus();
+  }, [selectedZcta]);
 
   // Desktop-only resizable width (drag the left edge). Persisted across selections.
   const [width, setWidth] = useState<number>(() => {
@@ -597,12 +610,18 @@ export default function DetailPanel() {
           aria-orientation="vertical"
           aria-label="Resize panel (arrow keys)"
           title="Drag to resize"
-          className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group"
         >
           <div className="h-10 w-1 rounded-full bg-hairline group-hover:bg-accent transition-colors" />
         </div>
       )}
-      <div role="region" aria-label="ZIP detail" className="panel rounded-md w-full max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto">
+      <div
+        ref={regionRef}
+        tabIndex={-1}
+        role="region"
+        aria-label={`ZIP ${m.zcta5} detail`}
+        className="panel rounded-md w-full max-h-[64vh] sm:max-h-[calc(100vh-110px)] overflow-y-auto"
+      >
       <div className="px-4 pt-3 pb-2 border-b border-hairline sticky top-0 bg-surface z-10">
         <div className="flex justify-between items-start">
           <div className="min-w-0">

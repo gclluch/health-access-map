@@ -248,7 +248,7 @@ export default function MethodologyPanel() {
             ref={closeRef}
             onClick={() => toggle(false)}
             aria-label="Close"
-            className="text-graphite hover:text-ink rounded focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="text-graphite hover:text-ink rounded"
           >
             ✕
           </button>
