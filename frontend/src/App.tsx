@@ -195,9 +195,12 @@ function AppInner() {
         </div>
       </header>
 
-      {/* left rail (desktop) / bottom sheet (mobile): rankings + customize */}
+      {/* left rail (desktop) / bottom sheet (mobile): rankings + customize.
+          Phone-width, the detail sheet takes the same bottom anchor and sits above this one, so
+          the rail is dropped rather than left as a control nobody can reach or tab to. Closing
+          the detail sheet brings it back. */}
       {status === "ready" && (
-        <div className="absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[282px] max-[520px]:bottom-1">
+        <div className={`absolute z-20 left-2 right-2 bottom-2 sm:left-3 sm:right-auto sm:top-14 sm:bottom-auto sm:w-[282px] max-[520px]:bottom-1 ${selectedZcta ? 'max-sm:hidden' : ''}`}>
           <div className={`panel rounded-md overflow-hidden flex flex-col max-h-[38vh] sm:max-h-[calc(100vh-150px)] ${railOpen ? '' : 'max-[520px]:max-h-[34px]'}`}>
             <button
               onClick={() => setRailOpen((v) => !v)}
@@ -236,9 +239,11 @@ function AppInner() {
       {/* "What you're seeing" cluster: bottom-center. The legend (color-by metric +
           histogram) and the weighting control are siblings - both govern what the map
           shows - so they live together here. Weights expand UPWARD above the legend.
-          Sits below the sheet z-layer on mobile so an open sheet covers it. */}
+          Sits below the sheet z-layer on mobile so an open sheet covers it.
+          Phone-width it left-aligns instead of centring, leaving the right gutter clear for the
+          map's zoom controls, which a full-bleed legend otherwise covers. */}
       {status === "ready" && (
-        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5 max-[520px]:bottom-[40px] max-[520px]:w-[calc(100vw-16px)]">
+        <div className="absolute z-10 left-1/2 -translate-x-1/2 bottom-[46px] sm:z-20 sm:bottom-4 w-[340px] max-w-[88vw] flex flex-col gap-1.5 max-[520px]:bottom-[40px] max-[520px]:left-2 max-[520px]:translate-x-0 max-[520px]:w-[calc(100vw-72px)]">
           {showWeights && (
             <div className="panel rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
               <Suspense fallback={null}>
