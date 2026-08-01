@@ -39,21 +39,6 @@ So a disease-burden percentile of **5** = *healthier* than 95% of areas (very lo
 burden). A provider-supply percentile of **5** = fewer providers per resident than 95%
 of areas (starved).
 
----
-
-## 2. Appendix - the superseded v1 model
-
-The original **v1** Access Gap was a 3-component weighted sum - **disease burden 0.40 / supply
-gap 0.35 / economic vulnerability 0.25** - each component standardized then percentile-ranked
-(standardize-then-combine, the construction of deprivation indices and the Human Development
-Index; supply gap = 100 - provider-density percentile, on the HRSA HPSA ratio precedent). It was
-replaced by the current **hierarchical SVI-method model** (§1, §8-13 here +
-[`METHODOLOGY.md`](METHODOLOGY.md)): 3 dimensions -> 14 sub-scores (12 scored + 2 displayed-only) -> ~50 measures at default
-weights 35 / 30 / 35. The hierarchical model fixed v1's two weak spots - flat ZIP-containment
-supply (now E2SFCA + adaptive catchment, §11) and a thin economic axis (now the full
-social-vulnerability dimension, §8). The percentile backbone (§1) and precedents (SVI, ADI, CHR,
-2SFCA) carry over unchanged; see [`PRIMER.md`](PRIMER.md) for the current per-dimension inputs.
-
 ## 8. Why each dimension belongs in an *access* gap (not just a descriptor)
 
 A reasonable objection: "social vulnerability describes a population - it isn't access."

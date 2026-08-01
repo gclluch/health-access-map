@@ -1,8 +1,31 @@
 """Missouri ZIP-level preventable-hospitalization panel (MOPHIMS / MICA).
 
-B5f replication input. Read-only; never feeds the composite. See docs/PREREG_B5f.md -
-the analysis plan is pre-registered and this module must not be used to explore
-specifications after the fact.
+B5f replication input. Read-only; never feeds the composite.
+
+SHELVED BEFORE ANY DATA - NEVER RUN
+-----------------------------------
+No Missouri counts were ever extracted. B5f existed to rescue B5d's supply-lever estimate when it
+looked like a near-significant borderline (-35.5/100k, CI [-71.7, +2.2]); the spatially-honest CI
+and the doubly-robust re-estimate landed first and bounded that effect at -4.3/100k, CI
+[-38.0, +35.4]. There is no borderline left to rescue, and Missouri's condition definitions differ
+from NY's and TX's, so it cannot add N to the existing estimator either way. See VALIDATION §7f.
+Reopen only if the paid Florida (~$1,100) or Oklahoma (~$550) panels are bought - both carry
+5-digit patient ZIP and do add N. That is a spend decision, not an analysis decision.
+
+TWO UNFIXED DEFECTS IN THE BROWSER PATH - FIX BOTH BEFORE ANY RUN
+-----------------------------------------------------------------
+The parsing path is tested (24 cases in tests/test_mo_acsc.py) and sound. The browser path was
+never executed against the live site, and reading it found two faults:
+
+1. `_counties()` reads `page.locator("select").nth(2)` on a freshly-loaded page - *before*
+   Geography = "Zip / ZCTA" is selected. The pickers cascade (see below), so the county list does
+   not exist yet and the default all-counties path reads the wrong `<select>`. Passing
+   `--counties` explicitly sidesteps it.
+2. `_scrape_one()` requests `Statistics: "Counts and Rates"`, but `parse_table_csv` and its
+   fixtures assume **one column per year**. With both statistics there are two columns per year,
+   both matching the year regex, so the parser emits two rows per (zcta5, year) and `combine()`'s
+   `drop_duplicates` silently keeps one - possibly the rate where a count is meant. Select counts
+   only, or teach the parser to read the Statistics row and keep the count column explicitly.
 
 WHY A BROWSER, NOT `requests`
 -----------------------------
@@ -32,14 +55,14 @@ MOPHIMS splits into two modules with DIFFERENT condition lists:
   "2016 and Forward" (2016-2022, ICD-10 era) - AHRQ-PQI-named: Diabetes Long-Term
                                               Complications, Heart Failure, ...
 These are NOT the same measure. The `year_group` column preserves which module each row
-came from; downstream code MUST NOT pool them without the handling pre-registered in
-PREREG_B5f.md §8a. `load_panel()` refuses to hand back a mixed frame unless you opt in.
+came from; downstream code MUST NOT pool them without an explicit opt-in - `load_panel()` refuses to hand
+back a mixed frame otherwise, and any pooled analysis owes a stated handling of the break.
 
 SUPPRESSION
 -----------
 Cells are kept as raw text and parsed conservatively: a value is a count only if it parses
 as a number. Anything else - blank, '*', 'S', '-', 'NR' - becomes NA with `censored=True`.
-Censored cells are NEVER coerced to zero (PREREG_B5f.md §2). Note that MOPHIMS does emit
+Censored cells are NEVER coerced to zero - a suppressed cell is unknown, not small. Note that MOPHIMS does emit
 genuine `0`s for low-volume ZIPs; those are real zeros and stay zeros.
 """
 from __future__ import annotations
@@ -213,7 +236,7 @@ def load_panel(path: Path | None = None, *, allow_mixed_definitions: bool = Fals
     """Read the built panel.
 
     Refuses to return both modules at once unless you explicitly opt in, because the
-    2015/2016 condition lists are different measures (PREREG_B5f.md §8a).
+    2015/2016 condition lists are different measures (the ICD-9 -> ICD-10 module break).
     """
     p = Path(path) if path else OUT_PARQUET
     if not p.exists():
@@ -225,7 +248,7 @@ def load_panel(path: Path | None = None, *, allow_mixed_definitions: bool = Fals
     if len(groups) > 1 and not allow_mixed_definitions:
         die("mo_acsc",
             f"panel spans {sorted(groups)} - these use DIFFERENT condition definitions "
-            f"(2015/16 ICD-9->ICD-10 break; see docs/PREREG_B5f.md §8a). Pass "
+            f"(2015/16 ICD-9->ICD-10 break; the two MICA modules are different measures). Pass "
             f"year_group=... to pick one, or allow_mixed_definitions=True if you have "
             f"pre-registered how the break is handled.")
     return df

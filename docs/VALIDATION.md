@@ -150,9 +150,9 @@ far from marginal (partial +0.419; §4).
 ## 3. Sub-county validation - the county-resolution blind spot (`pipeline.research.validate_subcounty`)
 
 > **Note (HPSA is tract-resolved).** `shortage_designation` (HPSA) was upgraded from a county-MAX
-> broadcast to census-tract resolution (see `docs/SUBCOUNTY_PLAN.md`), lifting its within-county r
-> from **0.000 to ~+0.25** and roughly doubling its outcome-validation signal (amenable mortality
-> 0.25→0.49; §4a partial now +0.288). `medical_debt` is the one remaining county-flat scored input.
+> broadcast to census-tract resolution (§3a below), lifting its within-county r from **0.000 to
+> ~+0.25** and roughly doubling its outcome-validation signal (amenable mortality 0.25→0.49; §4a
+> partial now +0.288). `medical_debt` is the one remaining county-flat scored input.
 > All computed tables in this section and §6 were regenerated on the current build via
 > `validate_subcounty --all`.
 
@@ -207,6 +207,47 @@ gain arguably outweighs the county loss - but it touches shipped scoring and sli
 the historical county gate, so it is a **judgment call left to the maintainer**, not auto-applied.
 Do *not* re-tune the desert×poverty form against the within-county metric (overfitting); the
 honest options are keep (county-helpful) or remove (sub-county-helpful).
+
+### 3a. How much of the score can vary within a county at all
+
+The within-county correlations above are bounded by how much of the composite is even *capable*
+of varying inside a county. Two decompositions, measured on the national build:
+
+**Structural** - share of composite *weight* carried by inputs that vary within county: **82.5%**
+sub-county (ZCTA-native) against 17.5% county-flat as measured before the tract-HPSA upgrade.
+That upgrade moved `shortage_designation` across the line, leaving **`medical_debt` as the single
+county-flat scored input** (~8.75% of weight).
+
+**Empirical** - share of score *variation* that is within-county, from a variance decomposition
+over the 3,064 multi-ZIP counties:
+
+| Layer | within-county variance share |
+|---|---|
+| composite `access_gap_score` | **24.1%** |
+| `health_need` (all sub-county inputs) | **31.2%** ← achievable ceiling with current data |
+| `care_access` | **7.6%** ← measured when half its scored inputs were county-flat |
+
+The defensible headline: *~24% of the score's variation is within-county; health need resolves
+best at 31%, care access worst, because its inputs were the county-flat ones.* This is why §3's
+within-county correlations are the load-bearing test and why the county gate alone cannot see the
+tool's actual resolution.
+
+**The tract-HPSA prototype, and why the obvious version was wrong (a documented negative).**
+57% of HPSA designations are Census Tract components, which `build_hpsa.py` was discarding with a
+`groupby(county_fips).max()`. Three variants were measured before anything shipped:
+
+| Variant | within-county var share | within-county r vs life expectancy (neg = correct) | coverage (>0) |
+|---|---|---|---|
+| county-max (the original) | 0.0% | flat | 91% |
+| pure tract-level (non-designated = 0) | **38.4%** | **−0.21 ✓** | 9% |
+| naive hybrid (tract, else county-max fallback) | 4.1% | **+0.07 ✗ wrong-signed** | 93% |
+
+The tract signal is real and correctly signed, but only 9% of ZCTAs sit inside a tract-designated
+shortage. **The naive hybrid flips the sign**: backfilling the other 91% with county-max mixes two
+scales, so a tract-designated pocket reads *better* than its county-worst-case surroundings - the
+same failure mode that made `safetynet_access` wrong-signed within county. What shipped was the
+population-weighted tract resolution with a county-*wide* (not county-max) fallback. **Do not
+re-introduce the county-max backfill**; it is coverage bought at the price of the sign.
 
 ### Is supply too spatial? The 5 A's coverage + signal audit
 
@@ -928,7 +969,7 @@ lever** - but as a *well-identified bound* rather than an ambiguous borderline: 
 ~3% of the ~1,300/100k baseline are ruled out at 95%.
 
 **This closes the supply arm; a Missouri replication was pre-registered and then shelved unrun.** The
-obvious extension - add states to raise treated-N - was written up as B5f (`docs/PREREG_B5f.md`) while
+obvious extension - add states to raise treated-N - was written up as B5f (pre-registered, then shelved before any data) while
 the unconditional borderline still looked like a near-miss. It was shelved before any data was
 acquired, once the conditional re-estimate above made clear there was no borderline to rescue: a
 third state under *different* condition definitions cannot add N to this estimator, and its own

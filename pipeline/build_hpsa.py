@@ -15,7 +15,7 @@ tract gets the MAX "HPSA Score" (0-26, higher = worse shortage) of its designati
 county). Tracts are area-weighted to ZCTA via the shared Census 2020 crosswalk. This is a strict
 improvement over the old county-MAX on every validation axis (e.g. national signed-r vs amenable
 mortality 0.25 -> 0.49) AND adds real within-county resolution (0% -> ~10% of variance). Output:
-hpsa.parquet (zcta5, hpsa_pc_score). See docs/SUBCOUNTY_PLAN.md for the prototype gate.
+hpsa.parquet (zcta5, hpsa_pc_score). See docs/VALIDATION.md §3a for the prototype gate.
 
 Mental-health / dental HPSA and the MUA/IMU index were gate-tested too: both are subsumed by
 PC-HPSA (they add ~0 beyond it) and MUA is wrong-signed at ZCTA level, so only PC-HPSA ships.

@@ -251,9 +251,21 @@ honest "what are we still missing," separate from the signal question:
 **Bottom line:** 3 of 5 A's are well-covered; **Accommodation and Acceptability are genuine
 construct gaps**, and both are *unfillable from free national data* - every free candidate is
 either collinear with the captured deprivation gradient (collapses in partial-r) or, where
-orthogonal, too weak to survive dimensional dilution. Closing them needs the **scrape-to-calibrate**
-heuristic (sample → regress on held features → predict nationally → gate the predicted column;
-specced in DECISIONS.md), the only remaining lever that could add genuinely new signal.
+orthogonal, too weak to survive dimensional dilution.
+
+**The last lever was pulled, and it did not hold (BACKLOG C1).** The **scrape-to-calibrate**
+heuristic - sample real acceptance in one state, regress on held features, predict nationally,
+gate the predicted column - was the remaining hope for Acceptability, so it was run rather than
+left as a plan: `pipeline.research.validate_acceptability` (`make acceptability`) pulled New
+York's full Medicaid Enrolled Provider Listing (Socrata `keti-qx5t`, ~1.1M rows) and built a
+per-ZIP acceptance rate against the independent NY SPARCS PQI_90 ACSC outcome. Over 1,103 NY ZIPs
+it **collapses**: raw +0.047, and partial r controlling for need + vulnerability + care_access
+**+0.040, 95% CI [−0.037, +0.125]** - the interval includes zero and the sign points the wrong
+way. Acceptance density mostly re-expresses provider supply, which `care_access` already carries.
+Testing the premise on the cleanest available state killed the multi-state national scrape before
+it was built. **Accommodation** was never reachable at all - no free national ZIP-level source for
+hours or appointment availability exists, and the one on-disk candidate (FQHC operating hours) is
+too flat to carry variation. Both axes stay **open and blocked**, not open and promising.
 
 ---
 
@@ -312,4 +324,4 @@ county-MAX) is a wash (0.99 correlated with county-max) and wrong-signed within 
 the Census-Tract *components* to their tract GEOID with a county-WIDE (not county-max) fallback IS a
 win - **shipped this build**: within-county r 0.000 → +0.246, outcome-validation signal roughly
 doubled (amenable mortality 0.25 → 0.49). The earlier "wash" verdict tested only the naive form. See
-docs/SUBCOUNTY_PLAN.md.
+[VALIDATION.md](VALIDATION.md) §3a.

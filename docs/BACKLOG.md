@@ -262,14 +262,15 @@ log; consider committing it as `pipeline/audit.py`.)
   The original plan follows for the record.
 
 - **B5f (P3) - Missouri replication + harmonized three-state pool. PRE-REGISTERED, then SHELVED
-  before any data (2026-08-01). Never run.** Pre-registration and closeout: `docs/PREREG_B5f.md`.
+  before any data (2026-08-01). Never run.** Pre-registration and closeout are archived outside the repo (a 286-line plan for a study that
+  never ran is a notebook, not project documentation).
   The plan was a MOPHIMS/MICA ZIP-level preventable-hospitalization panel for Missouri, a standalone
   Callaway-Sant'Anna replication, and a harmonized NY+TX+MO pool. **Gate 0 passed** (the 2015-and-Prior
   module does expose ZIP geography, giving a continuous 2001-2022 annual ZIP panel), and resolving it
   surfaced a real **2015/16 ICD-9→ICD-10 definitional break** between the two MICA modules, which is
   pre-registered in §8a and enforced in code.
 
-  **Shelved because its premise was already stale.** `PREREG_B5f.md` §0 motivates the whole exercise
+  **Shelved because its premise was already stale.** The pre-registration motivates the whole exercise
   from B5d as a near-significant borderline (−35.5, [−71.7, +2.2]) needing ~+22 treated ZCTAs to cross.
   Both the spatial-inference update and the doubly-robust re-estimate had already landed on `master`
   (see B5d above): the honest CI is [−74.1, +10.5] and the conditional point estimate is −4.3. There is
@@ -281,7 +282,7 @@ log; consider committing it as `pipeline/audit.py`.)
 
   **What exists:** `pipeline/research/build_mo_acsc.py` (Playwright MICA extractor) and `tests/test_mo_acsc.py`
   (24 browser-free parsing tests). No Missouri counts were ever extracted. The parsing path is sound;
-  **the browser path has two unfixed defects** recorded in `PREREG_B5f.md` §7 - `_counties()` reads the
+  **the browser path has two unfixed defects**, now recorded in the module's own docstring - `_counties()` reads the
   wrong `<select>` before the geography cascade, and the scrape requests "Counts and Rates" while the
   parser assumes one column per year. Fix both before any future run.
 

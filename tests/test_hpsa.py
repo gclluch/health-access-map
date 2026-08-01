@@ -1,6 +1,6 @@
 """CI-runnable unit test for the tract-level HPSA resolution (no I/O, no network).
 
-Locks the sub-county build (docs/SUBCOUNTY_PLAN.md): Census-Tract components set a tract's score,
+Locks the sub-county build (docs/VALIDATION.md §3a): Census-Tract components set a tract's score,
 Single-County/County-Subdivision set a county-wide fallback, and a tract in NEITHER reads 0 - never
 its county's worst tract. That last rule is the guard against the wrong-signed hybrid the prototype
 rejected (backfilling non-designated tracts with county-MAX flips the within-county sign).
