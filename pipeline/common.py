@@ -115,6 +115,7 @@ def download_file(url: str, dest: Path, min_bytes: int = 0, force: bool = False)
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and not force and dest.stat().st_size >= max(min_bytes, 1):
         log("download", f"skip (cached {dest.stat().st_size:,}B): {dest.name}")
+        _record_source(url, dest)
         return dest
 
     headers = {}
@@ -140,12 +141,34 @@ def download_file(url: str, dest: Path, min_bytes: int = 0, force: bool = False)
         raise RuntimeError(f"download too small: {written}B < expected {min_bytes}B ({url})")
     part.replace(dest)
     log("download", f"saved {written:,}B -> {dest.name}")
+    _record_source(url, dest)
     return dest
 
 
 # ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
+def _record_source(url: str, dest: Path) -> None:
+    """Log what a download actually got, keyed by URL, under provenance `sources`.
+
+    Some sources cannot be requested by vintage - HRSA rewrites its HPSA and FQHC files in place
+    at one "current" URL - so the retrieval date and byte size are the only things that identify
+    which version a build used. Recorded for every download, since the cheap ones cost nothing
+    and a stranger reading provenance.json shouldn't have to know which URLs are stable.
+    `mtime` (not "now") so a cache hit reports when the bytes were actually fetched."""
+    try:
+        st = dest.stat()
+        prov = json.loads(config.PROVENANCE.read_text()) if config.PROVENANCE.exists() else {}
+        prov.setdefault("sources", {})[url] = {
+            "file": dest.name,
+            "bytes": st.st_size,
+            "retrieved": time.strftime("%Y-%m-%d", time.gmtime(st.st_mtime)),
+        }
+        config.PROVENANCE.write_text(json.dumps(prov, indent=2, default=str))
+    except Exception as e:  # noqa: BLE001 - provenance must never fail a build
+        log("download", f"could not record source for {dest.name} ({type(e).__name__})")
+
+
 def write_provenance(updates: dict) -> None:
     prov = {}
     if config.PROVENANCE.exists():

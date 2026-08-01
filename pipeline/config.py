@@ -1,9 +1,15 @@
 """Central configuration: ALL volatile URLs/IDs/constants live here.
 
-Several identifiers rotate per release. Where possible the pipeline RESOLVES the
-live value at runtime and ASSERTS its shape, so drift fails loudly at a gate
-rather than silently producing a wrong column. The constants below are seeds /
-fallbacks (see brief sections 11.0, 12.5, 16.6).
+Every source that CAN be pinned IS pinned, so two builds a month apart are the same study.
+Where an id rotates per release (PLACES, NUCC) the constant here is the pin and the runtime
+resolver is a rescue path that only fires when the pin 404s - never an auto-upgrade. Shapes are
+asserted at a gate on top of that, so drift fails loudly rather than silently producing a wrong
+column (see brief sections 11.0, 12.5, 16.6).
+
+Two sources cannot be pinned: HRSA republishes the HPSA and FQHC files in place at a single
+"current" URL with no archive. `common.download_file` records the url, byte size and retrieval
+date of every download under `sources` in provenance.json, so a build stays identifiable even
+where a vintage can't be requested.
 """
 from __future__ import annotations
 
@@ -36,11 +42,11 @@ TIGER_YEAR = 2020    # cb_2020_us_zcta520_500k.zip, field ZCTA5CE20
 # ---------------------------------------------------------------------------
 # CDC PLACES (disease burden) -- Socrata, data.cdc.gov
 # ---------------------------------------------------------------------------
-# Known-good GIS-Friendly ZCTA dataset ids (brief 16.6). Resolved at runtime via
-# the catalog; this is the seed/fallback if catalog resolution fails.
-PLACES_DATASET_ID = "kee5-23sr"          # 2025 release (current default)
+# The GIS-Friendly ZCTA dataset id is PINNED (brief 16.6): CDC keeps every release addressable,
+# and picking "newest" would move every disease-burden number between builds. The fallbacks fire
+# only if the pin itself stops resolving.
+PLACES_DATASET_ID = "kee5-23sr"          # 2025 release
 PLACES_DATASET_ID_FALLBACKS = ["c7b2-4ecy", "c76y-7pzg"]  # 2023, 2022
-PLACES_CATALOG_URL = "https://data.cdc.gov/api/catalog/v1?q=PLACES%20ZCTA%20GIS&only=dataset"
 PLACES_EXPORT_TMPL = "https://data.cdc.gov/api/views/{id}/rows.csv?accessType=DOWNLOAD"
 
 # ---------------------------------------------------------------------------
@@ -54,8 +60,9 @@ NPPES_COL_ENTITY = "Entity Type Code"
 NPPES_COL_STATE = "Provider Business Practice Location Address State Name"
 NPPES_COL_CITY = "Provider Business Practice Location Address City Name"
 
-# NUCC Provider Taxonomy crosswalk (free CSV). The download URL rotates by
-# version; resolve from the index page, fall back to the seed below.
+# NUCC Provider Taxonomy crosswalk (free CSV), PINNED to version 25.0. Every published version
+# keeps a stable URL; the index page is scraped only if the pinned one disappears, because a
+# newer crosswalk silently reclassifies providers between primary_care / mental_health / other.
 NUCC_INDEX_URL = "https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40/csv-mainmenu-57"
 NUCC_CSV_SEED = "https://www.nucc.org/images/stories/CSV/nucc_taxonomy_250.csv"
 
@@ -130,6 +137,8 @@ ZCTA_COUNTY_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/"
 # raw provider count cannot see. County-level "HPSA Score" (0-26, higher = worse shortage), max
 # per county, folded into provider_supply. Mental-health/dental HPSA and the MUA/IMU index were
 # gate-tested and add nothing beyond PC-HPSA (subsumed / wrong-signed). See docs/METHODOLOGY.md.
+# UNPINNABLE: HRSA rewrites this file in place, with no dated archive. The retrieval date and
+# size land in provenance.json `sources` so the build stays identifiable.
 HPSA_PC_URL = "https://data.hrsa.gov/DataDownload/DD_Files/BCD_HPSA_FCT_DET_PC.csv"
 HPSA_COL_SCORE = "HPSA Score"
 HPSA_COL_FIPS = "Common State County FIPS Code"
@@ -153,6 +162,7 @@ MEDICAL_DEBT_COL_SHARE = "medcoll"
 # HRSA Health Center (FQHC) service-delivery sites -> the safety-net access layer.
 # ~16,200 sites that serve everyone on a sliding fee scale (the access point for the
 # uninsured/Medicaid). Geocoded; operating hours used as an effective-capacity weight.
+# UNPINNABLE, same as HPSA above - rewritten in place, dated only in provenance `sources`.
 FQHC_URL = ("https://data.hrsa.gov/DataDownload/DD_Files/"
             "Health_Center_Service_Delivery_and_LookAlike_Sites.csv")
 FQHC_COL_LON = "Geocoding Artifact Address Primary X Coordinate"
@@ -173,7 +183,7 @@ ZCTA_TRACT_REL_2020 = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/
 # ZCTA Gazetteer: internal-point lat/lon centroids (for the 2SFCA catchment).
 GAZETTEER_TMPL = ("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
                   "{year}_Gazetteer/{year}_Gaz_zcta_national.zip")
-GAZETTEER_YEARS = [2023, 2022, 2021, 2020]
+GAZETTEER_YEAR = 2023
 
 # --- spatial supply: E2SFCA (Luo & Qi 2009) ---
 CATCHMENT_KM = 16.0          # ~10 mi catchment radius (urban-calibrated; rural reads low)

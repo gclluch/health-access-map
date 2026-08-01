@@ -18,17 +18,19 @@ OUT = config.PROCESSED / "gazetteer.parquet"
 
 
 def _resolve():
-    for year in config.GAZETTEER_YEARS:
-        url = config.GAZETTEER_TMPL.format(year=year)
-        dest = config.RAW / f"gaz_zcta_{year}.zip"
-        try:
-            # Attempt the actual GET (download_file caches a valid file and validates min_bytes).
-            # No HEAD pre-gate: a server that rejects HEAD (405/403) but serves GET must not be skipped.
-            download_file(url, dest, min_bytes=100_000)
-            return dest, year
-        except Exception:  # noqa: BLE001 - vintage missing / too small; try the next year
-            continue
-    die("gazetteer", "no Gazetteer vintage resolved")
+    """Fetch the pinned Gazetteer vintage. Census archives every year at a stable URL, so a
+    miss here is a real failure, not a reason to quietly substitute different centroids."""
+    year = config.GAZETTEER_YEAR
+    url = config.GAZETTEER_TMPL.format(year=year)
+    dest = config.RAW / f"gaz_zcta_{year}.zip"
+    try:
+        # The actual GET, not a HEAD pre-gate: a server that rejects HEAD (405/403) but serves
+        # GET must not be skipped. download_file caches a valid file and validates min_bytes.
+        download_file(url, dest, min_bytes=100_000)
+    except Exception as e:  # noqa: BLE001
+        die("gazetteer", f"pinned {year} Gazetteer unavailable ({type(e).__name__}: {e}); "
+                         f"repin config.GAZETTEER_YEAR rather than letting the vintage drift")
+    return dest, year
 
 
 def build(dev_state: str | None = None, force: bool = False) -> str:

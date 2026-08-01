@@ -39,8 +39,16 @@ def _nppes_zip() -> Path:
 # NUCC taxonomy crosswalk -> code -> {primary_care, mental_health, specialist, other}
 # ---------------------------------------------------------------------------
 def _resolve_nucc_url() -> str:
+    """The pinned crosswalk version, or the newest on the index page if that one is gone.
+
+    NUCC keeps every published version at a stable URL, so the pin holds and the index scrape
+    is only a rescue path - taking "newest" unconditionally would silently reclassify providers
+    between builds."""
+    seed = config.NUCC_CSV_SEED
     try:
         with http_client(30) as c:
+            if c.head(seed).status_code < 400:
+                return seed
             html = c.get(config.NUCC_INDEX_URL).text
         links = re.findall(r'href="([^"]*nucc_taxonomy_(\d+)\.csv)"', html)
         if links:
@@ -48,10 +56,11 @@ def _resolve_nucc_url() -> str:
             url = best[0]
             if url.startswith("/"):
                 url = "https://www.nucc.org" + url
+            log("providers", f"pinned NUCC crosswalk is gone; falling back to {Path(url).name}")
             return url
     except Exception as e:  # noqa: BLE001
-        log("providers", f"NUCC index resolve failed ({type(e).__name__}); using seed")
-    return config.NUCC_CSV_SEED
+        log("providers", f"NUCC index resolve failed ({type(e).__name__}); using the pinned version")
+    return seed
 
 
 def _classify_row(grouping: str, classification: str, specialization: str) -> str:

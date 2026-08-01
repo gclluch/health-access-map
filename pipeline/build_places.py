@@ -9,14 +9,13 @@ in the UI as estimated prevalence (brief 4.1 / 15.3).
 from __future__ import annotations
 
 import os
-import re
 
 import numpy as np
 import pandas as pd
 
 from . import config
-from .common import (assert_zcta, dev_filter, die, download_file, http_client,
-                     log, norm_zcta, write_provenance)
+from .common import (assert_zcta, dev_filter, die, download_file, log,
+                     norm_zcta, write_provenance)
 from .taxonomy import all_places_keys, scored_places_keys
 
 OUT = config.PROCESSED / "places.parquet"
@@ -41,27 +40,6 @@ def _parse_ci_se(series: pd.Series) -> pd.Series:
     return ((hi - lo) / (2 * 1.96)).reindex(series.index)
 
 
-def _resolve_dataset_id() -> str:
-    """Pick the newest ZCTA GIS-Friendly release from the Socrata catalog."""
-    try:
-        with http_client(30) as c:
-            results = c.get(config.PLACES_CATALOG_URL).json().get("results", [])
-        best, best_year = None, -1
-        for r in results:
-            name = r["resource"]["name"]
-            if "zcta" in name.lower() and "gis friendly" in name.lower():
-                years = [int(y) for y in re.findall(r"\b(20\d{2})\b", name)]
-                year = max(years) if years else 0
-                if year > best_year:
-                    best, best_year = r["resource"]["id"], year
-        if best:
-            log("places", f"resolved dataset {best} ({best_year} release)")
-            return best
-    except Exception as e:  # noqa: BLE001
-        log("places", f"catalog resolution failed ({type(e).__name__}); using seed")
-    return config.PLACES_DATASET_ID
-
-
 def _download(dataset_id: str):
     candidates = [dataset_id, config.PLACES_DATASET_ID, *config.PLACES_DATASET_ID_FALLBACKS]
     seen = set()
@@ -84,7 +62,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
         log("places", f"skip (exists): {OUT.name}")
         return str(OUT)
 
-    dest, did = _download(_resolve_dataset_id())
+    dest, did = _download(config.PLACES_DATASET_ID)
     # Read header to map columns case-insensitively.
     header = pd.read_csv(dest, nrows=0)
     lower = {c.lower(): c for c in header.columns}
