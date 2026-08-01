@@ -86,6 +86,25 @@ def test_county_fips_valid(df: pd.DataFrame) -> None:
     assert len(bad) == 0, f"invalid county_fips: {sorted(bad.unique())[:5]}"
 
 
+def test_geometry_and_data_cover_the_same_zctas() -> None:
+    """`build_geometry` defines the ZCTA universe and everything downstream left-joins onto it, so
+    the two sets must be identical - a ZCTA in the geometry with no data paints an empty polygon,
+    and one in the data with no geometry is a row nobody can ever click (audit A4).
+
+    Real build only: the committed slice is a 802-row excerpt, so it cannot match the full geometry.
+    """
+    geojson = ROOT / "data" / "processed" / "zcta.geojson"
+    if not (_REAL.exists() and geojson.exists()):
+        pytest.skip("needs the full geometry + metrics build")
+    import json
+
+    with geojson.open() as fh:
+        geo = {f["properties"]["zcta5"] for f in json.load(fh)["features"]}
+    data = set(pd.read_parquet(_REAL, columns=["zcta5"])["zcta5"])
+    assert not geo - data, f"{len(geo - data)} ZCTA(s) with geometry but no data row"
+    assert not data - geo, f"{len(data - geo)} ZCTA(s) with a data row but no geometry"
+
+
 def test_validate_integrity_rejects_corruption(df: pd.DataFrame) -> None:
     """The guard bites: corrupt one percentile and the build-time check (die -> SystemExit)
     must reject it."""

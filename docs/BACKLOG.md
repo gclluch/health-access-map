@@ -104,6 +104,15 @@ log; consider committing it as `pipeline/audit.py`.)
   isn't checked); geometry-vs-data join gaps (ZCTAs in `zcta.geojson` but missing data, or vice
   versa); `county_fips` validity on the county joins (`build_geonames.py`, `build_medicaldebt.py`,
   `build_amenable.py`); build-over-build distribution drift (snapshot key quantiles, compare).
+- **Status (2026-08-01): DONE - three of the four had already shipped with A3 and the ticket was
+  never updated.** Duplicate ZCTAs (`_validate_integrity` check 6 + `test_no_duplicate_zctas`),
+  `county_fips` validity (check 7 + `test_county_fips_valid`) and the drift fingerprint
+  (`_score_quantiles` → `provenance.score.score_quantiles`, p5/p25/p50/p75/p95 of the raw composite
+  among scoreable ZCTAs) were all in place. Only the **geometry-vs-data join gap** was unmeasured:
+  run against the national build it is **exactly 1:1 - 33,791 geometry features, 33,791 metrics
+  rows, zero on either side** - which is what the left-join-onto-geometry design predicts but
+  nothing checked. Now locked by `test_geometry_and_data_cover_the_same_zctas`, guarded on the real
+  build (the committed 802-row slice cannot match a national geometry).
 
 ---
 
