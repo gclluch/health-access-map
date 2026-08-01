@@ -56,7 +56,8 @@ CO_ACSC_ARCGIS = ("https://www.cohealthmaps.dphe.state.co.us/arcgis/rest/service
                   "cdphe_health_outcomes_census_tract_county/MapServer/17/query")
 ZCTA_TRACT_REL = ("https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/"
                   "tab20_zcta520_tract20_natl.txt")
-XWALK_CACHE = config.PROCESSED / "zcta_tract_xwalk.parquet"   # national tract<->ZCTA, area (fallback)
+# national tract<->ZCTA (area-weighted fallback) lives in common.load_zcta_tract_xwalk();
+# do not re-declare the cache path here - one source of truth.
 # HUD USPS ZIP<->TRACT crosswalk: res_ratio = the share of a ZIP's RESIDENTIAL addresses that fall in
 # each tract - the gold-standard POPULATION weight for aggregating tract values to ZIP/ZCTA (vs the
 # crude land-area weight). Needs a free HUDUSER token in $HUD_TOKEN or ~/.hud_token. type=1 = ZIP-TRACT.

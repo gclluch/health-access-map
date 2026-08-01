@@ -14,8 +14,8 @@ import { buildQuantile, colorFor, SELECT_LINE, CHROME, HOVER_LINE, IDLE_LINE } f
 import { fmtScore } from '../lib/format';
 import { isCompositeFamily, isPartialScore, metricLabel } from '../lib/types';
 
-// Carto Positron - quiet light basemap. Mirrors pipeline/config.py BASEMAP_STYLE
-// (cross-language, so it cannot be a shared import); keep the two in sync if changed.
+// Carto Positron - quiet light basemap, free and token-free (brief 14.1). The frontend is the
+// only consumer, so this is the sole definition.
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 // Hybrid geometry renderer (see pipeline/build_pmtiles.py): below DETAIL_ZOOM the dense national
