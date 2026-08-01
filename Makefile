@@ -3,7 +3,7 @@
 PY = .venv/bin/python
 UVICORN = .venv/bin/uvicorn
 
-.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance gate amenable subcounty causal fqhc-lever prod-check verify-csp trends acceptability
+.PHONY: help setup preflight data data-ca data-national api web build-web clean-nppes acceptance release gate amenable subcounty causal fqhc-lever prod-check verify-csp trends acceptability
 
 help:
 	@echo "make setup        - create venv + install python/node deps"
@@ -14,6 +14,7 @@ help:
 	@echo "make web          - run Vite dev server on :5173"
 	@echo "make build-web    - production build of the frontend"
 	@echo "make acceptance   - run the acceptance test suite"
+	@echo "make release      - bundle parquet + CSV + data dictionary + provenance for a tagged release"
 	@echo "make gate         - diagnostics + bootstrap-CI gate (95% CIs on every margin)"
 	@echo "make amenable     - one-step amenable-mortality re-gate (after a WONDER export)"
 	@echo "make subcounty    - consolidated sub-county validity scorecard (5 states + 2 national)"
@@ -52,6 +53,9 @@ build-web:
 
 acceptance:
 	$(PY) -m pytest tests -v
+
+release:
+	$(PY) -m pipeline.export_release
 
 gate:
 	$(PY) -m pipeline.diagnostics

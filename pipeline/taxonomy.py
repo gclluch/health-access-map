@@ -265,7 +265,6 @@ CONTEXT_ACS = {
     "median_age": "Median age",
     "pct_minority": "People of color",  # context only, never scored (by design)
     "pct_under5": "Under 5",
-    "pct_over65_ctx": "65 and older",
     # Acceptability context: the Medicaid population faces provider-acceptance barriers. Shown,
     # not scored - as a barrier it collapses to the poverty gradient (partial -0.064). The true
     # supply-side acceptance signal needs the scrape-to-calibrate build. See docs/DECISIONS.md.
