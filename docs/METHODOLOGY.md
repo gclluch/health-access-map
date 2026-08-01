@@ -2,7 +2,7 @@
 
 This is the authoritative "follow the logic" document: every major design **choice**, the
 **empirical or theoretical reason** for it, and the **decision log** of what we tried and
-rejected. It is written for a future human or agent who needs to understand *why the model
+rejected. It is written for anyone who needs to understand *why the model
 is the way it is* before changing it. Read this first; the detailed docs below go deeper.
 
 | Doc | What it covers |
@@ -257,7 +257,7 @@ specced in DECISIONS.md), the only remaining lever that could add genuinely new 
 
 ---
 
-## 10. For future agents - how to extend without breaking it
+## 10. For contributors - how to extend without breaking it
 
 1. **Re-baseline first.** Run `pipeline.diagnostics` + `pipeline.verify_bands` and record the
    numbers before touching anything.
@@ -269,7 +269,7 @@ specced in DECISIONS.md), the only remaining lever that could add genuinely new 
    holds (>=0.93 overall), and coverage holds. **Validate against the death-records/ACSC
    outcomes, never flu/mammography** (the anti-circularity rule).
 4. **If it fails, back it out** but leave a documented negative (taxonomy comment + roadmap/this
-   doc), so the next agent does not repeat it. C1 and C2 are the template.
+   doc), so the next contributor does not repeat it. C1 and C2 are the template.
 5. **Outcomes stay out of the composite.** They validate; they never score.
 6. **Pipeline is the source of truth, the backend just serves it.** `data/` and the big payloads
    are gitignored and reproducible via the staged build (`python -m pipeline.run`).

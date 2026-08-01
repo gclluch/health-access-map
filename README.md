@@ -19,7 +19,7 @@ make data-ca                                # CA dev slice, minutes (full `make 
 make web                                    # map at localhost:5173
 ```
 
-Tests need no data download at all - `pytest` runs 134 tests against a committed 800-ZCTA fixture.
+Tests need no data download at all - `pytest` runs 158 tests against a committed 800-ZCTA fixture.
 
 **[Read the model &rarr;](#the-model)** &nbsp;·&nbsp; **[What it can't tell you &rarr;](#limitations-read-this---integrity-hidden-is-integrity-absent)** &nbsp;·&nbsp; **[Methodology &rarr;](docs/METHODOLOGY.md)**
 
@@ -76,7 +76,7 @@ composite). Two distinct claims, kept separate: it is **internally reliable** (s
 **tracks 6 independent outcomes** it never ingests (CMS claims + NCHS vital records, never the
 BRFSS/PLACES inputs): life expectancy (+0.52), premature death (+0.49), and - against the
 access-sensitive ruler the field actually uses - treatable/amenable mortality net of deprivation
-(care-access partial r **+0.419**, state-blocked 95% CI [0.35, 0.48]). Read those correlations'
+(care-access partial r **+0.419**, state-blocked 95% CI [0.33, 0.46]). Read those correlations'
 *precision, not their decimals*: 5 of the 6 outcomes are **county-level**, broadcast to ZCTAs, so
 the honest sample is ~3,225 counties / ~50 state blocks - **not** 33k ZIPs - and every CI here is
 spatially clustered to match (see [`docs/VALIDATION.md`](docs/VALIDATION.md) §1, §4).

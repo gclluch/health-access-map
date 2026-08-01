@@ -2,7 +2,7 @@
 
 A single resource to get intimately familiar with this project: the purpose, the
 problem space, every dataset and field, the metrics and the math behind them, the
-jargon, and the domain knowledge. Written to onboard a human or an agent from zero.
+jargon, and the domain knowledge. Written to onboard someone from zero.
 
 > If you read only one thing: the app turns four federal datasets into one
 > explorable, drill-down map of **where Americans face the biggest gap between

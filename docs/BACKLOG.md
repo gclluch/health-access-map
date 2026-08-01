@@ -1,4 +1,4 @@
-# Backlog - open edges & known limitations (agent hand-off)
+# Backlog - open edges & known limitations
 
 Pick-up-ready tickets for the work we've deliberately deferred, plus the data-integrity findings
 from the 2026-06-24 audit. Each ticket has: **what's wrong**, **why it matters**, **where to look**
