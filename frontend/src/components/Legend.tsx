@@ -68,7 +68,7 @@ export default function Legend() {
         <div className="relative max-w-[200px] max-[520px]:max-w-[210px]">
           <MetricSelect
             ariaLabel="Color the map by metric"
-            className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5 text-right"
+            className="w-full appearance-none text-[12px] bg-transparent text-ink font-medium cursor-pointer rounded pr-5 text-right"
             value={metric}
             onChange={setMetric}
             includeWithinState={!!stateFilter}

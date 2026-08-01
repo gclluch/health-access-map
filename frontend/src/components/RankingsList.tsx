@@ -77,7 +77,7 @@ export default function RankingsList() {
               value={metric}
               onChange={setMetric}
               includeWithinState={!!stateFilter}
-              className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent outline-none cursor-pointer focus:ring-2 focus:ring-accent/40 rounded pr-5"
+              className="w-full appearance-none text-[12px] font-medium text-ink bg-transparent cursor-pointer rounded pr-5"
             />
             <Caret
               open

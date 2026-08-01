@@ -16,12 +16,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          maplibre: ['maplibre-gl', 'react-map-gl'],
-          deck: ['@deck.gl/core', '@deck.gl/layers', '@deck.gl/mapbox', '@deck.gl/react'],
+          // maplibre-gl and the deck.gl bundles import each other (deck's mapbox interop against
+          // maplibre's types), so splitting them into two chunks emits a circular pair. They are
+          // one dependency in practice and are upgraded together -- keep them in one chunk.
+          mapvendor: [
+            'maplibre-gl', 'react-map-gl',
+            '@deck.gl/core', '@deck.gl/layers', '@deck.gl/mapbox', '@deck.gl/react',
+          ],
           d3: ['d3-scale', 'd3-scale-chromatic', 'd3-array'],
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    // mapvendor is ~1.7 MB by design and is lazy-loaded, so it never blocks first paint.
+    chunkSizeWarningLimit: 1800,
   },
 });
