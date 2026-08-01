@@ -1,17 +1,33 @@
 # Care Access Map
 
-A national, ZIP-level (ZCTA) explorer of U.S. health-care access.
+A national, ZIP-level explorer of U.S. health-care access - all 32,879 ZCTAs scored from CDC
+PLACES, CMS NPPES, Census ACS, and HRSA HPSA, with 2SFCA spatial provider supply and a
+drill-down map.
 
-> **New here?** Start with [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) - the "follow the
-> logic" guide: every design choice, its rationale, and how to extend the model safely. Then
-> [`docs/PRIMER.md`](docs/PRIMER.md) (dataset/field dictionary),
-> [`docs/RATIONALE.md`](docs/RATIONALE.md) (per-formula math + precedent),
-> [`docs/DECISIONS.md`](docs/DECISIONS.md) (the ledger of what we tried, kept, and rejected -
-> don't re-run these), [`docs/VALIDATION.md`](docs/VALIDATION.md) (outcomes, the sub-county
-> gate, comparability, and uncertainty), and [`docs/BACKLOG.md`](docs/BACKLOG.md) (open edges &
-> known limitations as pick-up-ready tickets - start here if you're extending the project).
+### **[→ Open the live map](https://care-access-map.netlify.app)**
 
-The model is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
+[![screenshot](docs/screenshot.png)](https://care-access-map.netlify.app)
+
+Click any ZIP to decompose its score. Re-weight the three dimensions live with sliders. Search a
+ZIP, or read the ranked list of worst-access areas.
+
+```bash
+git clone https://github.com/gclluch/health-access-map && cd health-access-map
+make setup                                  # venv + python/node deps
+cp .env.example .env                        # paste a free Census API key
+make data-ca                                # CA dev slice, minutes (full `make data` needs ~25 GB)
+make web                                    # map at localhost:5173
+```
+
+Tests need no data download at all - `pytest` runs 134 tests against a committed 800-ZCTA fixture.
+
+**[Read the model &rarr;](#the-model)** &nbsp;·&nbsp; **[What it can't tell you &rarr;](#limitations-read-this---integrity-hidden-is-integrity-absent)** &nbsp;·&nbsp; **[Methodology &rarr;](docs/METHODOLOGY.md)**
+
+---
+
+## The model
+
+It is **hierarchical**: one tunable **Access Gap** composite → 3 dimensions →
 scored sub-scores plus context/process indicators → ~50 measures, all drill-downable in the detail panel.
 
 1. **Health need** - chronic disease, behavioral risk, mental/social health, disability (CDC PLACES)
@@ -27,7 +43,14 @@ control that rewrites the map**: because the three dimensions are strongly colli
 re-weighting moves ranks by only Spearman ~0.999 / ~±6 pts (see Scoring methodology below) -
 that near-inertness is the finding, surfaced rather than hidden behind a knob.
 
-![screenshot](docs/screenshot.png)
+> **Going deeper?** [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) is the "follow the logic" guide -
+> every design choice, its rationale, and how to extend the model safely. Then
+> [`docs/PRIMER.md`](docs/PRIMER.md) (dataset/field dictionary),
+> [`docs/RATIONALE.md`](docs/RATIONALE.md) (per-formula math + precedent),
+> [`docs/DECISIONS.md`](docs/DECISIONS.md) (the ledger of what we tried, kept, and rejected -
+> don't re-run these), [`docs/VALIDATION.md`](docs/VALIDATION.md) (outcomes, the sub-county
+> gate, comparability, and uncertainty), and [`docs/BACKLOG.md`](docs/BACKLOG.md) (open edges &
+> known limitations as pick-up-ready tickets - start here if you're extending the project).
 
 ---
 
