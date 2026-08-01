@@ -33,17 +33,18 @@ export default function CompareTray() {
       return;
     }
     let live = true;
+    // The shards are optional: the dimension rows still render from the slim metrics. Surface the
+    // gap rather than hiding it - and read it off the result, because apiCompare swallows a failed
+    // shard into a missing record instead of rejecting, so a rejection handler would never fire.
     apiCompare(compareZctas)
       .then((r) => {
         if (!live) return;
         const map: Record<string, ApiZcta> = {};
         for (const rec of r.results) map[rec.zcta5] = rec;
         setExtra(map);
-        setDetailFailed(false);
+        setDetailFailed(r.results.length < compareZctas.length);
       })
       .catch(() => {
-        // API optional: the dimension rows still render from the slim metrics. Surface that the
-        // enriched columns (raw measures) are unavailable rather than hiding the gap silently.
         if (live) setDetailFailed(true);
       });
     return () => {
@@ -120,7 +121,7 @@ export default function CompareTray() {
       </div>
       {detailFailed && (
         <div role="status" className="px-3 py-1 text-[10px] text-graphite bg-paper border-b border-hairline">
-          Detailed measures are unavailable (API unreachable) - showing the dimension scores only.
+          Detailed measures are unavailable for some ZIPs - showing the dimension scores only.
         </div>
       )}
       <div className="overflow-x-auto">
