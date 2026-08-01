@@ -5,7 +5,11 @@ import Caret from './Caret';
 // State quick-jump (§13.2): reach a workable zoom in one action; also filters the
 // rankings. Plus "Use my area" geolocation.
 export default function TopControls() {
-  const { availableStates, stateFilter, locating } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const availableStates = useStore((s) => s.availableStates);
+  const stateFilter = useStore((s) => s.stateFilter);
+  const locating = useStore((s) => s.locating);
   const jumpToState = useStore((s) => s.jumpToState);
   const locateMe = useStore((s) => s.locateMe);
 

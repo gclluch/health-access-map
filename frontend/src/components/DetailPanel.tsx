@@ -467,7 +467,12 @@ function WhoLivesHere({ m, rec }: { m: SlimMetric; rec: Record<string, unknown> 
 }
 
 export default function DetailPanel() {
-  const { metrics, weights, selectedZcta, metric } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const metrics = useStore((s) => s.metrics);
+  const weights = useStore((s) => s.weights);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const metric = useStore((s) => s.metric);
   const select = useStore((s) => s.select);
   const compareZctas = useStore((s) => s.compareZctas);
   const addCompare = useStore((s) => s.addCompare);

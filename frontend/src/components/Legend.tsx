@@ -24,7 +24,13 @@ const LENS_HELP: Record<string, string> = {
 // metric's axis, ramp beneath, and a marker for where the selected ZIP falls.
 // The whole product is about *relative position*; the legend says it directly.
 export default function Legend() {
-  const { metrics, metric, weights, selectedZcta, stateFilter } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const metrics = useStore((s) => s.metrics);
+  const metric = useStore((s) => s.metric);
+  const weights = useStore((s) => s.weights);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const stateFilter = useStore((s) => s.stateFilter);
   const setMetric = useStore((s) => s.setMetric);
   const showWeights = useStore((s) => s.showWeights);
   const toggleWeights = useStore((s) => s.toggleWeights);

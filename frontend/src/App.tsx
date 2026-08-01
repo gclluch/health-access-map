@@ -114,7 +114,10 @@ export default function App() {
 }
 
 function AppInner() {
-  const { status, error } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const status = useStore((s) => s.status);
+  const error = useStore((s) => s.error);
   const load = useStore((s) => s.load);
   const selectedZcta = useStore((s) => s.selectedZcta);
   const compareCount = useStore((s) => s.compareZctas.length);

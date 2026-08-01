@@ -16,7 +16,14 @@ const fmtRank = (v: number, metric: string) =>
 // live slider weights (§13.5). Tri-pane linked: hover highlights the polygon,
 // click flies + selects (§13.1). Low-confidence ZIPs excluded from the headline.
 export default function RankingsList() {
-  const { metrics, metric, weights, stateFilter, selectedZcta, rankOrder } = useStore();
+  // Per-field selectors, not a whole-store destructure: hover() writes on every polygon
+  // crossing, and a whole-store subscription re-renders this tree on each one.
+  const metrics = useStore((s) => s.metrics);
+  const metric = useStore((s) => s.metric);
+  const weights = useStore((s) => s.weights);
+  const stateFilter = useStore((s) => s.stateFilter);
+  const selectedZcta = useStore((s) => s.selectedZcta);
+  const rankOrder = useStore((s) => s.rankOrder);
   const select = useStore((s) => s.select);
   const hover = useStore((s) => s.hover);
   const setMetric = useStore((s) => s.setMetric);
