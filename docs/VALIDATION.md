@@ -926,3 +926,12 @@ the conditional estimate bound the truth from the two sides: **the supply effect
 county-block CI. The supply arm therefore lands where the affordability arm did - **no demonstrated
 lever** - but as a *well-identified bound* rather than an ambiguous borderline: benefits larger than
 ~3% of the ~1,300/100k baseline are ruled out at 95%.
+
+**This closes the supply arm; a Missouri replication was pre-registered and then shelved unrun.** The
+obvious extension - add states to raise treated-N - was written up as B5f (`docs/PREREG_B5f.md`) while
+the unconditional borderline still looked like a near-miss. It was shelved before any data was
+acquired, once the conditional re-estimate above made clear there was no borderline to rescue: a
+third state under *different* condition definitions cannot add N to this estimator, and its own
+standalone interval was pre-registered as expected-wide. Raising N here needs paid all-payer panels
+with 5-digit patient ZIP, not more free states - see `BACKLOG.md` B5d/B5f. The bound above is the
+final read.
