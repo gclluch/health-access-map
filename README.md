@@ -102,6 +102,30 @@ diagnosis.
 
 ## Quickstart
 
+### Just want the data? Don't build it.
+
+The scored table is published as a release asset, so you do not need the pipeline, the API keys,
+or the 11 GB provider download to use, check, or cite this work:
+
+```bash
+# 33,791 ZIP areas x 181 documented columns
+curl -LO https://github.com/gclluch/health-access-map/releases/latest/download/metrics.parquet
+curl -LO https://github.com/gclluch/health-access-map/releases/latest/download/data_dictionary.csv
+```
+
+| Asset | What it is |
+|---|---|
+| `metrics.parquet` (20 MB) | the scored table - every dimension, sub-score, percentile and flag |
+| `metrics.csv.gz` (23 MB) | the same table for anything that doesn't read parquet |
+| `data_dictionary.csv` | one row per shipped column: description + units, generated from `taxonomy.py` so it cannot drift from the model |
+| `provenance.json` | what each stage ingested, written by the build itself |
+
+Dropping `metrics.parquet` into `data/processed/` is also enough to run `make web` and
+`make acceptance` against real national data with no pipeline run at all.
+
+**Build the pipeline instead when** you want to change the model, refresh the vintages, or verify
+the table from source. That is what the rest of this section is for.
+
 ### Prerequisites (two manual steps `make setup` cannot do for you)
 
 **1. `tippecanoe`** builds the vector tiles and is neither pip- nor npm-installable. Preflight
