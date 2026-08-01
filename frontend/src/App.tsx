@@ -307,7 +307,7 @@ function CoverageNote() {
         <button
           key={s}
           onClick={() => jumpToState(s)}
-          className="text-accent hover:underline"
+          className="justify-center min-w-6 text-accent hover:underline"
           title={`Jump to ${s}`}
         >
           {s}

@@ -139,6 +139,8 @@ export default function WeightSliders() {
             <span className="text-graphite">{label}</span>
             <span className="num text-ink font-medium">{weights[key]}</span>
           </div>
+          {/* The input box is the drag target, so it carries the 24px pointer-target minimum
+              (WCAG 2.5.8); the native track still renders thin, centred inside it. */}
           <input
             type="range"
             min={0}
@@ -150,7 +152,7 @@ export default function WeightSliders() {
               commit(next); // throttled recompute
               ensureCompositeVisible(metric, setMetric);
             }}
-            className="w-full accent-accent h-1 cursor-pointer"
+            className="w-full accent-accent h-6 cursor-pointer"
             aria-label={`${label} weight`}
           />
         </div>

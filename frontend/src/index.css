@@ -34,6 +34,19 @@
     outline-offset: 2px;
     border-radius: 3px;
   }
+
+  /* WCAG 2.5.8: 24px minimum pointer target. Several controls are 10-12px text links whose
+     box is only as tall as the glyphs, so the floor lives here rather than on each one.
+     Base layer, so any button that sets its own display/height utility still wins. */
+  button,
+  [role='button'] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+  select {
+    min-height: 24px;
+  }
 }
 
 @layer utilities {
