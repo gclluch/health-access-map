@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pipeline import validate_fqhc_lever as vf
-from pipeline import validate_placebo as vp
-from pipeline import validate_temporal as vt
+from pipeline.research import validate_fqhc_lever as vf
+from pipeline.research import validate_placebo as vp
+from pipeline.research import validate_temporal as vt
 
 
 # --- temporal event study: the two-way FE + DiD estimator --------------------------------------

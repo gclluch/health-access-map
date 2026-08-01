@@ -6,7 +6,7 @@ from the 2026-06-24 audit. Each ticket has: **what's wrong**, **why it matters**
 
 > **Before touching anything that changes scores:** re-baseline, then re-gate. Run
 > `python -m pipeline.diagnostics` + `pipeline.verify_bands` + `pipeline.bootstrap_gate`
-> (+ `pipeline.validate_subcounty --national` for sub-county claims). Ship only if the north star
+> (+ `pipeline.research.validate_subcounty --national` for sub-county claims). Ship only if the north star
 > (`drop_care_access` stays below FULL), reliability (>=0.93), and coverage hold, judged against the
 > **death-records / ACSC** outcomes, never flu/mammography (the anti-circularity rule). See
 > [DECISIONS.md](DECISIONS.md) and [VALIDATION.md](VALIDATION.md).
@@ -115,7 +115,7 @@ log; consider committing it as `pipeline/audit.py`.)
   within-county differences (the resolution the tool actually runs at).
 - **Why it matters.** Sub-county validity still rests on §3 alone (NY ACSC + national USALEEP).
 - **Where to look.** `pipeline/build_amenable.py` (recipe + ICD set), `data/manual/wonder_amenable_county.txt`,
-  [VALIDATION.md](VALIDATION.md) §4; sub-county harness `pipeline/validate_subcounty.py`.
+  [VALIDATION.md](VALIDATION.md) §4; sub-county harness `pipeline/research/validate_subcounty.py`.
 - **External.** No free ZIP-level treatable-mortality exists. Would need **restricted-access NCHS
   mortality microdata** (death records geocoded to ZIP/tract; via the NCHS RDC) - a major data-use
   agreement effort. Not headlessly obtainable.
@@ -188,8 +188,8 @@ log; consider committing it as `pipeline/audit.py`.)
   source (e.g. claims-based prevalence) - none free at ZCTA. Document as inherent, not fixable here.
 
 ### B5 (causal/actionability) - is the index a lever or just a poverty map?
-- **Status (2026-06-25): two of three strategies DONE** (`pipeline.validate_placebo`,
-  `pipeline.validate_temporal`; [VALIDATION.md](VALIDATION.md) §7). The negative-control test is a
+- **Status (2026-06-25): two of three strategies DONE** (`pipeline.research.validate_placebo`,
+  `pipeline.research.validate_temporal`; [VALIDATION.md](VALIDATION.md) §7). The negative-control test is a
   clean cross-sectional **null** (index predicts preventable = non-preventable deaths); the NY 2014
   event study is **suggestive** (ACSC fell more in high-baseline-uninsured ZIPs post-expansion, DiD
   -36.5/100k·SD, CI excludes 0, survives dropping 2009) but parallel-trends is imperfect, so not proof.
@@ -200,7 +200,7 @@ log; consider committing it as `pipeline/audit.py`.)
   panel; reuse the TX PUDF fetcher in `validate_subcounty._fetch_tx_acsc` across years. KFF publishes
   expansion dates (free). Cost is the multi-year TX downloads, not the method.
 - **B5e (built 2026-07-02) - APTC-cliff first stage.** The enhanced-premium-tax-credit expiry
-  (end-2025) is a national affordability shock; `pipeline/validate_aptc_cliff.py` builds the
+  (end-2025) is a national affordability shock; `pipeline/research/validate_aptc_cliff.py` builds the
   ZIP-level first stage from the CMS 2025/2026 OEP ZIP PUFs (cached `data/raw/oep_zip_202[56].zip`;
   output `data/processed/aptc_cliff_zip.parquet`, 15,254 analyzable ZIPs, 31 FFM states).
   Result: enrollment change mean **−8.5%** (median −9.6%, aggregate −6.7%); the drop is larger
@@ -221,8 +221,8 @@ log; consider committing it as `pipeline/audit.py`.)
   scope it as partial up front, or it over-promises.
 - **B5d (P2) - staggered FQHC New Access Point event study. BUILT and CLOSED - verdict NULL, BOUNDED.**
   The full study is done and documented in `docs/VALIDATION.md` §7f (`make fqhc-lever`). Three new
-  read-only pieces, never feed the composite: `pipeline/build_fqhc_openings.py` (HRSA `Site Added to
-  Scope` → per-ZCTA first-open year → `data/processed/fqhc_openings.parquet`), `pipeline/validate_fqhc_lever.py`
+  read-only pieces, never feed the composite: `pipeline/research/build_fqhc_openings.py` (HRSA `Site Added to
+  Scope` → per-ZCTA first-open year → `data/processed/fqhc_openings.parquet`), `pipeline/research/validate_fqhc_lever.py`
   (hand-rolled Callaway-Sant'Anna group-time ATT, within-state controls, NY+TX, + spillover/placebo/loose
   robustness, + a Sant'Anna-Zhao doubly-robust conditional variant), and `validate_subcounty._fetch_tx_year`
   extended to annual TX PUDF 2011-2019. Planted-effect unit tests in `tests/test_causal_validation.py`:
@@ -270,7 +270,7 @@ log; consider committing it as `pipeline/audit.py`.)
   not change the published conclusion, and it cannot add N to the NY+TX estimator because its condition
   definitions differ.
 
-  **What exists:** `pipeline/build_mo_acsc.py` (Playwright MICA extractor) and `tests/test_mo_acsc.py`
+  **What exists:** `pipeline/research/build_mo_acsc.py` (Playwright MICA extractor) and `tests/test_mo_acsc.py`
   (24 browser-free parsing tests). No Missouri counts were ever extracted. The parsing path is sound;
   **the browser path has two unfixed defects** recorded in `PREREG_B5f.md` §7 - `_counties()` reads the
   wrong `<select>` before the geography cascade, and the scrape requests "Counts and Rates" while the
@@ -294,8 +294,8 @@ log; consider committing it as `pipeline/audit.py`.)
   to ground the treated-N; remaining build lift is wiring those cohorts to the state ACSC panels + the
   Callaway-Sant'Anna estimator, not data hunting.
 
-  - **B5d.0 (the go/no-go gate) - DONE, verdict GREEN-LIGHT** (`pipeline/validate_fqhc_power.py`,
-    `python -m pipeline.validate_fqhc_power`; run 2026-06-26). A Monte-Carlo power analysis on the
+  - **B5d.0 (the go/no-go gate) - DONE, verdict GREEN-LIGHT** (`pipeline/research/validate_fqhc_power.py`,
+    `python -m pipeline.research.validate_fqhc_power`; run 2026-06-26). A Monte-Carlo power analysis on the
     REAL noise floor before any treatment-panel assembly. **Result:** the design is well-powered.
     - *Noise floor (real NY SPARCS panel, decomposed):* residual variance = an **irreducible
       heterogeneity floor sqrt(a)=191/100k** + a sampling term b/pop; AR(1) rho=0.32; baseline
@@ -352,7 +352,7 @@ well-covered; two are genuine holes, both hard to fill from free data.
   nationally, gate the predicted column). Real provider-directory scraping (state Medicaid enrolled-
   provider lists, e.g. NY Socrata `keti-qx5t`); CMS NDF assignment flag (near-saturated, weak).
 - **Status (2026-06-25): the scrape-to-calibrate lever was RUN, and it COLLAPSES.**
-  `pipeline/validate_acceptability.py` (`make acceptability`) pulled the full NY Medicaid-enrolled
+  `pipeline/research/validate_acceptability.py` (`make acceptability`) pulled the full NY Medicaid-enrolled
   provider directory (Socrata `keti-qx5t`, ~1.1M rows), built a per-ZIP **acceptance rate** =
   Medicaid-enrolled primary-care NPIs / all local NPPES primary-care providers, and tested it
   against the independent NY SPARCS PQI_90 ACSC O/E outcome with a county-cluster bootstrap.

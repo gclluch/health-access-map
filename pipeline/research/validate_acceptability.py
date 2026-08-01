@@ -20,9 +20,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from . import config
-from .bootstrap_gate import _cluster_groups, _corr, _partial_corr
-from .common import http_client, log, norm_zcta
+from .. import config
+from ..bootstrap_gate import _cluster_groups, _corr, _partial_corr
+from ..common import http_client, log, norm_zcta
 from .validate_subcounty import _fetch_ny_pqi
 
 MEDICAID_URL = "https://health.data.ny.gov/resource/keti-qx5t.json"

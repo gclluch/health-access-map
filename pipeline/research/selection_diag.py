@@ -24,9 +24,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from . import config
-from .common import log, write_provenance
-from .taxonomy import DIMENSIONS, subscore_specs
+from .. import config
+from ..common import log, write_provenance
+from ..taxonomy import DIMENSIONS, subscore_specs
 
 METRICS = config.PROCESSED / "metrics.parquet"
 DIM_COLS = [f"{d}_pctile" for d in DIMENSIONS]

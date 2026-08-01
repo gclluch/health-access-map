@@ -16,9 +16,9 @@ partial r vs treatable mortality, with cluster-bootstrap CIs). Nothing else is n
 """
 from __future__ import annotations
 
-from . import (bootstrap_gate, build_amenable, build_outcomes, config, diagnostics,
+from .. import (bootstrap_gate, build_amenable, build_outcomes, config, diagnostics,
                join_and_score, validate)
-from .common import log
+from ..common import log
 
 
 def main() -> None:

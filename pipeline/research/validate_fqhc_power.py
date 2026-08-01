@@ -34,7 +34,7 @@ from typing import NamedTuple
 
 import numpy as np
 
-from .common import log
+from ..common import log
 
 # Plausible ZIP-level ACSC reduction from ONE new FQHC, as a fraction of the baseline rate.
 # (catchment penetration ~5-20% of residents) x (per-user ACSC reduction ~10-40%) -> ~1-8% at the
@@ -91,7 +91,7 @@ def estimate_noise() -> Noise:
     try:
         import pandas as pd
 
-        from . import config
+        from .. import config
         from .validate_temporal import _build_panel, _twoway_demean
         j, _years = _build_panel()
         m = pd.read_parquet(config.PROCESSED / "metrics.parquet")[["zcta5", "population"]]

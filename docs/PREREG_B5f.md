@@ -63,9 +63,9 @@ Pre-specified, in full:
 - **Denominator.** ZCTA population, same vintage source as the existing pipeline.
 - **Treatment.** First FQHC site opened in the ZCTA per HRSA `Site Added to Scope this Date`,
   restricted to **newly-served** ZCTAs (no prior site), identical to B5d. Reuses
-  `pipeline/build_fqhc_openings.py` unchanged.
+  `pipeline/research/build_fqhc_openings.py` unchanged.
 - **Estimator.** Callaway & Sant'Anna group-time ATT, not-yet-treated + never-treated controls,
-  within-state, identical settings to `pipeline/validate_fqhc_lever.py`. No re-tuning.
+  within-state, identical settings to `pipeline/research/validate_fqhc_lever.py`. No re-tuning.
 - **Inference.** ZIP-cluster bootstrap, same spec and same iteration count as B5d.
 - **Aggregation.** Overall ATT, population-weighted, as the single headline. Event-time path
   reported but not used as the headline.
@@ -191,7 +191,7 @@ before data exists, is the same commitment as recording a null.
 add N to the *existing* NY+TX estimator rather than standing alone. Free-state replication does not.
 That is a spend decision, not an analysis decision.
 
-**Known defects in `pipeline/build_mo_acsc.py`, recorded so shelving does not bury them.** The
+**Known defects in `pipeline/research/build_mo_acsc.py`, recorded so shelving does not bury them.** The
 parsing path is tested (24 cases) and sound; the browser path was never run against the live site
 and has two defects found by reading, not by execution. Fix both before any future run:
 
@@ -257,7 +257,7 @@ extracted, and before any estimate existed.**
 
 ---
 
-## 9. Implementation - `pipeline/build_mo_acsc.py` (added 2026-08-01)
+## 9. Implementation - `pipeline/research/build_mo_acsc.py` (added 2026-08-01)
 
 Extractor written to the plan above, before any counts were pulled.
 

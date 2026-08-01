@@ -39,12 +39,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import config
-from .common import log
-from .taxonomy import DIMENSIONS, subscore_specs
-from .validation_stats import pearson_corr as _corr
-from .validation_stats import weighted_corr as _wcorr
-from .validation_stats import within_residual as _within
+from .. import config
+from ..common import log
+from ..taxonomy import DIMENSIONS, subscore_specs
+from ..validation_stats import pearson_corr as _corr
+from ..validation_stats import weighted_corr as _wcorr
+from ..validation_stats import within_residual as _within
 
 METRICS = config.PROCESSED / "metrics.parquet"
 NY_PQI_SOCRATA = "https://health.data.ny.gov/resource/5q8c-d6xq.json"
@@ -240,7 +240,7 @@ def _load_xwalk() -> pd.DataFrame:
     """National Census 2020 ZCTA<->tract relationship (area-weighted). Shared with build_hpsa via
     common.load_zcta_tract_xwalk (single cache); the HUD population crosswalk is preferred when a
     token is available (see _load_hud_xwalk)."""
-    from .common import load_zcta_tract_xwalk
+    from ..common import load_zcta_tract_xwalk
     return load_zcta_tract_xwalk()
 
 

@@ -147,7 +147,7 @@ marginal. The two fixes - the **amenable-mortality** anchor (§4) and **sub-coun
 change what the ruler sees rather than adding inputs; the amenable anchor confirms care access is
 far from marginal (partial +0.419; §4).
 
-## 3. Sub-county validation - the county-resolution blind spot (`pipeline.validate_subcounty`)
+## 3. Sub-county validation - the county-resolution blind spot (`pipeline.research.validate_subcounty`)
 
 > **Note (HPSA is tract-resolved).** `shortage_designation` (HPSA) was upgraded from a county-MAX
 > broadcast to census-tract resolution (see `docs/SUBCOUNTY_PLAN.md`), lifting its within-county r
@@ -525,7 +525,7 @@ held-out state, pool):
 Optimism is **small** (≤0.03 R², largest for the sparse/noisy outcomes), and the weights are
 **stable** (≤2-point swing when any state is removed). The "data-driven" weighting is not noise.
 
-### 6d. Missingness is mostly benign, with two disclosed selection effects (`pipeline.selection_diag`)
+### 6d. Missingness is mostly benign, with two disclosed selection effects (`pipeline.research.selection_diag`)
 
 - **Scoreability: benign.** The 615 non-scoreable ZCTAs hold **0.000%** of national population
   (they are unpopulated), so they carry no rank to bias.
@@ -643,7 +643,7 @@ shock, §7b/§7e) is a clean, control-disciplined null; **supply** (the FQHC ope
 a powered near-miss until a doubly-robust conditional re-estimate showed the borderline was observable
 siting - it resolves to a null with an informative bound (benefits >~3% of baseline ruled out).
 
-### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.validate_placebo`)
+### 7a. Negative control - the index does NOT separate access from deprivation cross-sectionally (`pipeline.research.validate_placebo`)
 
 A placebo-outcome / negative-control design (Lipsitch, Tchetgen Tchetgen & Cohen 2010) splits
 mortality into two buckets that are **both** deprivation-loaded but differ on one axis - whether timely ambulatory care can prevent the death:
@@ -675,7 +675,7 @@ at county scale with a curated treatable-mortality list, a different and weaker 
 prediction*. But it **bounds** the cross-sectional access claim honestly, and it is exactly why the
 temporal test below is the better question.
 
-### 7b. Temporal quasi-experiment - inconclusive on its own, then overturned by the cross-state control (`pipeline.validate_temporal`)
+### 7b. Temporal quasi-experiment - inconclusive on its own, then overturned by the cross-state control (`pipeline.research.validate_temporal`)
 
 Cross-sectional differential prediction is an extremely hard bar (everything bad loads on the same
 gradient). A within-unit fixed-effects **event study** around a real access shock escapes it. NY
@@ -825,7 +825,7 @@ descriptive validity of §3-§6, is the accurate place to leave the index: a wel
 access is poor, not a demonstrated lever for *fixing* it. The estimator is unit-tested with a planted
 treated-only effect against a common pre-trend (`tests/test_causal_validation.py`).
 
-### 7f. Supply lever - the staggered FQHC opening event study (`pipeline.validate_fqhc_lever`)
+### 7f. Supply lever - the staggered FQHC opening event study (`pipeline.research.validate_fqhc_lever`)
 
 Every test above (§7a-§7e) attacked the **affordability** arm of `care_access` - the ACA coverage shock,
 which moves who can *pay*. It left the other arm untouched: **supply / safety-net** - whether putting a
@@ -906,7 +906,7 @@ trend it must difference out, and a treated-only pre-trend it must expose (`test
 **Conditional re-estimate (doubly robust) - the borderline resolves to a null with an informative
 bound.** The residual pre-trend above is precisely *selection on observables*: HRSA sites clinics
 where ACSC is high and rising, and both the level and the slope are measured by the panel itself. The
-estimator therefore has a conditional variant (`python -m pipeline.validate_fqhc_lever dr`;
+estimator therefore has a conditional variant (`python -m pipeline.research.validate_fqhc_lever dr`;
 `att_gt(dr=True)`): each ATT(g,t) cell applies the Sant'Anna & Zhao (2020) doubly-robust contrast - an
 outcome regression fit on that cell's controls plus a trimmed propensity-odds reweighting - conditioning
 on the ZCTA's pre-window ACSC level and slope (computed from years strictly before *both* the base

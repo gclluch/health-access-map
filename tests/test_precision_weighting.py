@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from pipeline import validate as v
-from pipeline import validate_subcounty as vs
+from pipeline.research import validate_subcounty as vs
 
 
 def test_wcorr_matches_unweighted_under_uniform_weights():

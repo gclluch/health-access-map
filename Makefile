@@ -62,18 +62,18 @@ gate:
 	$(PY) -m pipeline.bootstrap_gate
 
 amenable:
-	$(PY) -m pipeline.regate_amenable
+	$(PY) -m pipeline.research.regate_amenable
 
 subcounty:
-	$(PY) -m pipeline.validate_subcounty --all
+	$(PY) -m pipeline.research.validate_subcounty --all
 
 causal:
-	$(PY) -m pipeline.validate_placebo
-	$(PY) -m pipeline.validate_temporal
+	$(PY) -m pipeline.research.validate_placebo
+	$(PY) -m pipeline.research.validate_temporal
 
 fqhc-lever:
-	$(PY) -m pipeline.build_fqhc_openings
-	$(PY) -m pipeline.validate_fqhc_lever robust
+	$(PY) -m pipeline.research.build_fqhc_openings
+	$(PY) -m pipeline.research.validate_fqhc_lever robust
 
 prod-check:
 	$(PY) -m pytest tests -q
@@ -89,10 +89,10 @@ prod-check:
 	docker compose config >/dev/null
 
 acceptability:
-	$(PY) -m pipeline.validate_acceptability
+	$(PY) -m pipeline.research.validate_acceptability
 
 trends:
-	$(PY) -m pipeline.build_trends
+	$(PY) -m pipeline.research.build_trends
 
 verify-csp:
 	cd frontend && npm run build && node scripts/verify-csp.mjs

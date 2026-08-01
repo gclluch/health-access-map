@@ -19,8 +19,8 @@ import urllib.request
 
 import pandas as pd
 
-from . import config
-from .common import die, log
+from .. import config
+from ..common import die, log
 
 EXPORT = "https://findtreatment.gov/locator/exportsAsJson/v2?pageSize=2000&page={page}"
 OUT = config.PROCESSED / "sud_mh_facilities.parquet"

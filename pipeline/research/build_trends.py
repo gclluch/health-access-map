@@ -22,8 +22,8 @@ import json
 
 import pandas as pd
 
-from . import config
-from .common import die, http_client, load_env, log, norm_zcta, scrub_sentinels
+from .. import config
+from ..common import die, http_client, load_env, log, norm_zcta, scrub_sentinels
 
 # Both on the 2020-ZCTA basis (ACS switched with the 2023 release). Keep adjacent so the 5-year
 # windows overlap minimally and the delta reads as "recent change". Extend this list to add vintages.

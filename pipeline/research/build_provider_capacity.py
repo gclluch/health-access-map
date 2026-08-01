@@ -31,8 +31,8 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from . import config
-from .common import die, log
+from .. import config
+from ..common import die, log
 
 CMS_METASTORE = "https://data.cms.gov/data.json"
 DATASET_TITLE = "Medicare Physician & Other Practitioners - by Provider"

@@ -38,10 +38,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .common import download_file, log
-from .taxonomy import DIMENSIONS, subscore_specs
-from .validation_stats import pearson_corr as _corr
-from .validation_stats import within_residual as _within
+from ..common import download_file, log
+from ..taxonomy import DIMENSIONS, subscore_specs
+from ..validation_stats import pearson_corr as _corr
+from ..validation_stats import within_residual as _within
 from .validate_subcounty import (
     CA_DEATHS_CACHE, CA_DEATHS_URL, MIN_POP, METRICS,
 )

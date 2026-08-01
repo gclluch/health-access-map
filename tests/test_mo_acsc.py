@@ -9,7 +9,7 @@ The fixtures reproduce the real export shape verified against the live MOPHIMS s
 import pandas as pd
 import pytest
 
-from pipeline.build_mo_acsc import (
+from pipeline.research.build_mo_acsc import (
     Cell, combine, parse_cell, parse_table_csv, YEAR_GROUPS,
 )
 

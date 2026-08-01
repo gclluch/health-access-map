@@ -14,7 +14,8 @@ needs_data = pytest.mark.skipif(not METRICS.exists(), reason="run the pipeline f
 
 @needs_data
 def test_selection_diag_shape(tmp_path, monkeypatch):
-    from pipeline import config, selection_diag
+    from pipeline import config
+    from pipeline.research import selection_diag
 
     # run() calls write_provenance; redirect so the test never mutates the production artifact
     monkeypatch.setattr(config, "PROVENANCE", tmp_path / "provenance.json")
@@ -36,7 +37,7 @@ def test_selection_diag_shape(tmp_path, monkeypatch):
 
 def test_cohend_sign_and_zero():
     import numpy as np
-    from pipeline.selection_diag import _cohend
+    from pipeline.research.selection_diag import _cohend
 
     rng = np.random.default_rng(0)
     a = rng.normal(1.0, 1.0, 500)
@@ -50,7 +51,7 @@ def test_two_dim_mechanism_detects_planted_mnar():
     and assert the mechanism diagnostic surfaces it - the evidence T2's headline exclusion rests on."""
     import numpy as np
     import pandas as pd
-    from pipeline.selection_diag import _two_dim_mechanism
+    from pipeline.research.selection_diag import _two_dim_mechanism
 
     n_full, n_part = 100, 20
     df = pd.DataFrame({

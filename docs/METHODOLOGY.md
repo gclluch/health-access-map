@@ -152,7 +152,7 @@ never in the composite.
 - `python -m pipeline.diagnostics` - the **north star**: composite mean-r vs the 6 outcomes,
   FULL vs drop-each-dimension; per-sub-score mean|r|; split-half reliability; coverage.
 - `python -m pipeline.verify_bands` - the rank-uncertainty band gates.
-- `python -m pipeline.validate_subcounty --national` - the **sub-county gate**: within-county
+- `python -m pipeline.research.validate_subcounty --national` - the **sub-county gate**: within-county
   (county fixed-effect) correlation vs NY SPARCS ZIP-ACSC + national USALEEP. ~24% of the
   composite's variance is *within* county and invisible to the two county-level harnesses above;
   this is the only check that sees it. It caught the `safetynet_access` resolution-dependent

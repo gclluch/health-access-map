@@ -54,10 +54,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from .common import die, log
+from ..common import die, log
 
 try:                                    # pragma: no cover - config shape varies by checkout
-    from . import config
+    from .. import config
     PROCESSED = config.PROCESSED
 except Exception:                       # pragma: no cover
     PROCESSED = Path("data/processed")

@@ -41,8 +41,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-from . import config
-from .common import log
+from .. import config
+from ..common import log
 from .validate_fqhc_power import SCENARIOS
 from .validate_temporal import _fetch_ny_panel
 

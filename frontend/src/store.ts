@@ -43,7 +43,7 @@ interface AppState {
   weights: Weights;
   anchors: AnchorPreset[];
   meta: BuildMeta | null;
-  // Display-only poverty-rank trend (pipeline/build_trends.py); never part of the score.
+  // Display-only poverty-rank trend (pipeline/research/build_trends.py); never part of the score.
   trends: { prior: number; curr: number; deltas: Map<string, number> } | null;
   subscoreCorrelations: SubscoreCorrelations;
   selectedZcta: string | null;
@@ -154,7 +154,7 @@ export const useStore = create<AppState>((set, get) => ({
           if (mt?.generated) set({ meta: mt });
         })
         .catch(() => {});
-      // poverty-rank trend (pipeline/build_trends.py), if present - display-only
+      // poverty-rank trend (pipeline/research/build_trends.py), if present - display-only
       fetch('/trends.json')
         .then((r) => (r.ok ? r.json() : null))
         .then((t) => {

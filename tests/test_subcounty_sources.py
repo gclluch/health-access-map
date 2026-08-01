@@ -6,7 +6,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pipeline import validate_subcounty as vs
+from pipeline.research import validate_subcounty as vs
 
 
 def test_acsc_prefix_flags_known_codes():

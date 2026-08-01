@@ -51,8 +51,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from . import config
-from .common import log
+from .. import config
+from ..common import log
 
 METRICS = config.PROCESSED / "metrics.parquet"
 PRE_BARRIER_CACHE = config.PROCESSED / "ny_acs2012_uninsured.parquet"   # pre-treatment barrier

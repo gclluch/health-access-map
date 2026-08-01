@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import BallTree
 
-from . import config
-from .common import assert_zcta, die, download_file, log, write_provenance
+from .. import config
+from ..common import assert_zcta, die, download_file, log, write_provenance
 
 OUT = config.PROCESSED / "fqhc_openings.parquet"
 

@@ -39,10 +39,10 @@ import httpx
 import numpy as np
 import pandas as pd
 
-from . import config
-from .common import log, norm_zcta
-from .validation_stats import pearson_corr, weighted_corr, within_residual
-from .zip_states import zip3_to_state
+from .. import config
+from ..common import log, norm_zcta
+from ..validation_stats import pearson_corr, weighted_corr, within_residual
+from ..zip_states import zip3_to_state
 
 PUF_URLS = {
     2025: "https://www.cms.gov/files/zip/2025-oep-zip-code-level-public-use-file.zip",
