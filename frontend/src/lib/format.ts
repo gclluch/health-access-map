@@ -9,17 +9,20 @@ export const fmtScore = (v: number | null | undefined) =>
 
 // Severity of an access-disadvantage percentile (higher = more disadvantage): a plain word + an
 // intuitive green->amber->red tint. Single source so the detail headline and the compare table
-// signal "higher = worse" identically. Every hue is darkened to clear WCAG 1.4.3 AA contrast
-// (>=4.5:1 on white) so the colored score number and band labels stay legible as text, not just
-// decoration. The badge sits next to the "/ 100 · screening priority" headline, so the word alone
-// (no noun) reads as the magnitude of disadvantage.
+// signal "higher = worse" identically. The badge sits next to the "/ 100 · screening priority"
+// headline, so the word alone (no noun) reads as the magnitude of disadvantage.
+//
+// Each hue clears WCAG 1.4.3 AA (>=4.5:1) against the DARKER of its two backgrounds: the badge
+// paints the same hue at 8% over white (`${color}14`), which costs ~0.4 of the ratio the colour
+// has on white. Calibrating against white alone leaves the badge text just under AA. Ratios below
+// are on the tint; on plain white every hue is >=5:1.
 export function severity(p: number | null | undefined): { label: string; color: string } | null {
   if (p == null || Number.isNaN(p)) return null;
-  if (p >= 80) return { label: 'Highest', color: '#B0382E' }; // red, 6.08:1
-  if (p >= 60) return { label: 'High', color: '#AF6024' }; // orange, 4.63:1
-  if (p >= 40) return { label: 'Moderate', color: '#907021' }; // amber, 4.64:1
-  if (p >= 20) return { label: 'Low', color: '#547F3E' }; // olive-green, 4.67:1
-  return { label: 'Lowest', color: '#2A8365' }; // teal-green, 4.63:1
+  if (p >= 80) return { label: 'Highest', color: '#B0382E' }; // red, 5.41:1
+  if (p >= 60) return { label: 'High', color: '#A55B22' }; // orange, 4.60:1
+  if (p >= 40) return { label: 'Moderate', color: '#886A1F' }; // amber, 4.61:1
+  if (p >= 20) return { label: 'Low', color: '#50793B' }; // olive-green, 4.61:1
+  return { label: 'Lowest', color: '#277B5F' }; // teal-green, 4.63:1
 }
 
 // "worse than 78% of ZIPs" reading for a percentile (correct st/nd/rd/th suffix).

@@ -74,7 +74,9 @@ function ValidationTable() {
       <div className="text-[11px] uppercase tracking-wide text-graphite mb-1.5">
         Validation against independent outcomes
       </div>
-      <div className="overflow-x-auto">
+      {/* Focusable: the table scrolls sideways below ~20rem, and a scroll container that only
+          responds to a pointer strands keyboard users on the columns that fit (WCAG 2.1.1). */}
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Validation against independent outcomes">
       <table className="w-full min-w-[20rem] text-[11px] num whitespace-nowrap">
         <thead>
           <tr className="text-graphite text-left">
@@ -110,7 +112,7 @@ function ValidationTable() {
       </p>
       <div className="text-[10px] text-graphite mt-2 leading-snug">
         <span className="uppercase tracking-wide">Care sub-scores, signed correlation</span>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Care sub-scores, signed correlation">
         <table className="w-full min-w-[26rem] num mt-1 whitespace-nowrap">
           <thead>
             <tr className="text-left">

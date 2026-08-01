@@ -16,6 +16,12 @@ import Caret from './Caret';
 // Profile-chip hues (T5): need-driven and access-driven must read as clearly DIFFERENT at a glance
 // (they imply different interventions); "both" gets a warm neutral. All meet >=4.5:1 on the chip's
 // 8%-tint background.
+// Bounds of the desktop panel's draggable width. Shared by the drag handler, the arrow-key
+// handler and the separator's aria-valuemin/max, which have to agree or the announced range
+// describes a panel the user cannot actually reach.
+const MIN_WIDTH = 320;
+const maxWidth = () => Math.min(720, Math.round(window.innerWidth * 0.6));
+
 const PROFILE_STYLE: Record<ProfileKind, string> = {
   'need-driven': '#7A3E9D', // violet - the demand side
   'access-driven': '#1F6FB0', // blue - the supply side
@@ -500,7 +506,7 @@ export default function DetailPanel() {
   // Desktop-only resizable width (drag the left edge). Persisted across selections.
   const [width, setWidth] = useState<number>(() => {
     const saved = Number(localStorage.getItem('ham_detail_width'));
-    return saved >= 320 ? saved : 348;
+    return saved >= MIN_WIDTH ? saved : 348;
   });
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches,
@@ -519,10 +525,10 @@ export default function DetailPanel() {
     e.preventDefault();
     const startX = e.clientX;
     const startW = width;
-    const maxW = Math.min(720, Math.round(window.innerWidth * 0.6));
+    const maxW = maxWidth();
     let last = startW;
     const onMove = (ev: PointerEvent) => {
-      last = Math.max(320, Math.min(maxW, startW + (startX - ev.clientX))); // drag left = wider
+      last = Math.max(MIN_WIDTH, Math.min(maxW, startW + (startX - ev.clientX))); // drag left = wider
       setWidth(last);
     };
     const detach = () => {
@@ -598,9 +604,9 @@ export default function DetailPanel() {
           onKeyDown={(e) => {
             if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
             e.preventDefault();
-            const maxW = Math.min(720, Math.round(window.innerWidth * 0.6));
+            const maxW = maxWidth();
             setWidth((w) => {
-              const next = Math.max(320, Math.min(maxW, w + (e.key === 'ArrowLeft' ? 24 : -24))); // left = wider
+              const next = Math.max(MIN_WIDTH, Math.min(maxW, w + (e.key === 'ArrowLeft' ? 24 : -24))); // left = wider
               try { localStorage.setItem('ham_detail_width', String(next)); } catch { /* ignore */ }
               return next;
             });
@@ -608,6 +614,11 @@ export default function DetailPanel() {
           tabIndex={0}
           role="separator"
           aria-orientation="vertical"
+          // A focusable separator is a window splitter, and ARIA requires its position: without
+          // these a screen reader announces the handle but never how wide the panel now is.
+          aria-valuenow={width}
+          aria-valuemin={MIN_WIDTH}
+          aria-valuemax={maxWidth()}
           aria-label="Resize panel (arrow keys)"
           title="Drag to resize"
           className="absolute left-0 inset-y-0 z-20 -ml-1.5 flex w-3 cursor-ew-resize items-center justify-center group"
