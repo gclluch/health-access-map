@@ -291,7 +291,7 @@ rather than silently producing a wrong column.
   runs the **amenable-mortality focus**: care_access partial r vs CDC WONDER treatable mortality
   (age-adjusted, 0-74, 2016-2020) is **+0.419** (county-clustered CI [0.39, 0.45]; state-blocked,
   the conservative spatial bound, [0.33, 0.46]) - strong and net of the deprivation gradient, vs
-  only +0.125 against all-cause life expectancy. This is the field's gold-standard
+  only +0.084 against all-cause life expectancy. This is the field's gold-standard
   validation and confirms the care-access dimension is **descriptively** sound (`docs/VALIDATION.md`
   §4). Re-run with `make amenable`.
 - **Descriptive, not (yet) prescriptive - the honest causal ceiling** (`docs/VALIDATION.md` §7). The

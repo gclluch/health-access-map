@@ -1,9 +1,8 @@
-"""CI-runnable unit tests for the T8 two-tier columnar client payload.
+"""CI-runnable unit tests for the two-tier columnar client payload.
 
 join_and_score's full write path needs a real metrics.parquet, so the payload writers are otherwise
 only checkable against a live build. These synthetic tests pin the columnar shape (struct-of-arrays,
 int-quantized percentiles, NaN -> null) and the frame/sub-score partition, no data or network.
-(T8; docs/REMEDIATION_PLAN.md)
 """
 from __future__ import annotations
 

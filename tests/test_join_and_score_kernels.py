@@ -2,8 +2,7 @@
 
 join_and_score's scoring path needs a real metrics.parquet, so the composite≈PC1 proof and the
 taxonomy resolution derivation are otherwise only checkable against live data. These synthetic
-tests pin both against planted-structure oracles with fixed seeds, no data or network. (T3, T7;
-docs/REMEDIATION_PLAN.md)
+tests pin both against planted-structure oracles with fixed seeds, no data or network.
 """
 from __future__ import annotations
 

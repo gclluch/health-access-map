@@ -1,11 +1,10 @@
-"""CI-runnable unit tests for the per-ZCTA rank band's measurement-error decomposition (T4).
+"""CI-runnable unit tests for the per-ZCTA rank band's measurement-error decomposition.
 
 The shipped reliable range (access_gap_rank_lo/hi) combines plausible re-weighting with ACS/PLACES
 measurement noise propagated from published standard errors. These synthetic, fixed-seed tests pin
-the two T4 invariants without live data: (1) measurement noise can only WIDEN the band, and (2) the
+the two invariants without live data: (1) measurement noise can only WIDEN the band, and (2) the
 measurement share is MONOTONE in input noise - a noisier (low-confidence) ZCTA gets a wider band.
 The σ magnitude itself is separately calibrated against an SE-resample by pipeline.verify_bands.
-(docs/REMEDIATION_PLAN.md T4)
 """
 from __future__ import annotations
 

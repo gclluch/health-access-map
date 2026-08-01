@@ -3,7 +3,7 @@
 test_bootstrap_gate.py is gated on a real metrics.parquet, so in CI the bootstrap CI machinery,
 partial correlation, ordinal rank, spatial blocking, and FDR are NOT exercised. These synthetic-data
 tests close that gap: they pin the kernels against planted-signal oracles with fixed seeds and need
-no data or network. (T7, docs/REMEDIATION_PLAN.md)
+no data or network.
 """
 from __future__ import annotations
 

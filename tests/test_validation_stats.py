@@ -3,7 +3,7 @@
 These helpers are reused by every validation gate (diagnostics, bootstrap_gate, the validators), so a
 silent error here corrupts every headline number. The tests pin the math against independent oracles
 (numpy, and weight-by-replication identities) and lock the NaN / min-pairs / zero-variance contracts.
-No data or network needed - they run in CI. (T7, docs/REMEDIATION_PLAN.md)
+No data or network needed - they run in CI.
 """
 from __future__ import annotations
 
