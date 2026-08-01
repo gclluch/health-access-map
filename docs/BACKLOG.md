@@ -219,20 +219,66 @@ log; consider committing it as `pipeline/audit.py`.)
   and crosswalked back - a *partial* MAUP check. **Where:** `pipeline/build_places.py`,
   `pipeline/build_acs.py` (tract geographies), the existing `zcta_tract_xwalk.parquet`. Honestly
   scope it as partial up front, or it over-promises.
-- **B5d (P2) - staggered FQHC New Access Point event study. BUILT - verdict BORDERLINE (2026-06-26).**
+- **B5d (P2) - staggered FQHC New Access Point event study. BUILT and CLOSED - verdict NULL, BOUNDED.**
   The full study is done and documented in `docs/VALIDATION.md` §7f (`make fqhc-lever`). Three new
   read-only pieces, never feed the composite: `pipeline/build_fqhc_openings.py` (HRSA `Site Added to
   Scope` → per-ZCTA first-open year → `data/processed/fqhc_openings.parquet`), `pipeline/validate_fqhc_lever.py`
   (hand-rolled Callaway-Sant'Anna group-time ATT, within-state controls, NY+TX, + spillover/placebo/loose
-  robustness), and `validate_subcounty._fetch_tx_year` extended to annual TX PUDF 2011-2019. **Result:**
-  pooled NY+TX (259 newly-served treated ≈ the gate's powered 277 scenario) → overall ATT **−35.5/100k**
-  (~2.5% of baseline), monotone + dose-responsive, **95% CI [−71.7, +2.2] just includes 0**; pre-trends
-  not fully clean (residual siting). Robust to a <10 km spillover-control drop (−39.5) and passes
-  placebo-in-time (−3.6 ≈ 0); NY-only is an underpowered pilot (−40.8, CI crosses 0). So the **supply**
-  arm is a powered "almost" - right-signed and dose-responsive but short of significance - materially
-  stronger than the affordability arm's clean null (§7e), still not a demonstrated lever. 3 planted-effect
-  unit tests for the CS estimator (`tests/test_causal_validation.py`); suite green. The original plan
-  follows for the record.
+  robustness, + a Sant'Anna-Zhao doubly-robust conditional variant), and `validate_subcounty._fetch_tx_year`
+  extended to annual TX PUDF 2011-2019. Planted-effect unit tests in `tests/test_causal_validation.py`:
+  3 for the CS estimator (recovers a staggered effect, differences out a common trend, exposes a
+  treated-only pre-trend) and 2 for the DR variant (recovers an effect the unconditional estimator
+  misses by >2x under selection-on-observables; agrees with it under random selection). Suite green.
+
+  The verdict arrived in three stages, and only the last one stands:
+
+  | stage | overall ATT | CI | read |
+  |---|---|---|---|
+  | unconditional, ZIP-cluster CI | −35.5/100k | [−71.7, +2.2] | "borderline - a powered almost" |
+  | unconditional, county-block CI | −35.5/100k | [−74.1, +10.5] | ZIP-cluster CI was too narrow (ACSC is spatially autocorrelated); the borderline is already null |
+  | **doubly-robust conditional (final)** | **−4.3/100k** | **[−38.0, +35.4]** | the near-miss was observable *siting* |
+
+  **Final result:** pooled NY+TX, 259 newly-served treated (≈ the gate's powered 277 scenario). HRSA
+  sites clinics where ACSC is high *and rising*, and the panel measures both; conditioning each ATT(g,t)
+  on pre-window ACSC level + slope, poverty and log pop removes roughly +31 of the −35.5. Per Ding & Li
+  (2019) bracketing, the unconditional and conditional estimates bound the truth from either side, so
+  **the supply effect lies in [−35.5, −4.3]/100k with both ends indistinguishable from zero** - benefits
+  larger than ~3% of the ~1,300/100k baseline are ruled out at 95%. The supply arm therefore lands where
+  the affordability arm did (§7e): **no demonstrated lever**, but as a well-identified bound rather than
+  an ambiguous near-miss.
+
+  **Do not reopen this as a near-miss.** The `−35.5 / [−71.7, +2.2]` figure is superseded twice over and
+  survives only as the first row of the table above. Any future extension is an attempt to tighten an
+  already-bounded null, not to rescue a borderline - see **B5f** for why that changed the calculus.
+  The original plan follows for the record.
+
+- **B5f (P3) - Missouri replication + harmonized three-state pool. PRE-REGISTERED, then SHELVED
+  before any data (2026-08-01). Never run.** Pre-registration and closeout: `docs/PREREG_B5f.md`.
+  The plan was a MOPHIMS/MICA ZIP-level preventable-hospitalization panel for Missouri, a standalone
+  Callaway-Sant'Anna replication, and a harmonized NY+TX+MO pool. **Gate 0 passed** (the 2015-and-Prior
+  module does expose ZIP geography, giving a continuous 2001-2022 annual ZIP panel), and resolving it
+  surfaced a real **2015/16 ICD-9→ICD-10 definitional break** between the two MICA modules, which is
+  pre-registered in §8a and enforced in code.
+
+  **Shelved because its premise was already stale.** `PREREG_B5f.md` §0 motivates the whole exercise
+  from B5d as a near-significant borderline (−35.5, [−71.7, +2.2]) needing ~+22 treated ZCTAs to cross.
+  Both the spatial-inference update and the doubly-robust re-estimate had already landed on `master`
+  (see B5d above): the honest CI is [−74.1, +10.5] and the conditional point estimate is −4.3. There is
+  no borderline left to rescue, so the pre-registration's purpose - preventing a marginal positive from
+  being reverse-engineered into significance - no longer applies. Missouri's remaining value is a wide,
+  zero-crossing corroboration of an already-bounded null (§2 predicted 35-50 treated ZCTAs), which does
+  not change the published conclusion, and it cannot add N to the NY+TX estimator because its condition
+  definitions differ.
+
+  **What exists:** `pipeline/build_mo_acsc.py` (Playwright MICA extractor) and `tests/test_mo_acsc.py`
+  (24 browser-free parsing tests). No Missouri counts were ever extracted. The parsing path is sound;
+  **the browser path has two unfixed defects** recorded in `PREREG_B5f.md` §7 - `_counties()` reads the
+  wrong `<select>` before the geography cascade, and the scrape requests "Counts and Rates" while the
+  parser assumes one column per year. Fix both before any future run.
+
+  **Reopen only if** the paid panels are bought (Florida ~$1,100 / Oklahoma ~$550, both confirmed
+  5-digit patient ZIP) - those add N to the *existing* estimator, which free-state replication cannot.
+  That is a spend decision, not an analysis decision.
 
 - **B5d (P2) - staggered FQHC New Access Point event study.** The sharpest free-data shot at a
   *positive* causal lever: HRSA awards New Access Point (NAP) grants in waves, each opening a dated,
@@ -403,3 +449,115 @@ well-covered; two are genuine holes, both hard to fill from free data.
 - Anything marked **BLOCKED** needs external data or a maintainer decision - don't burn cycles trying
   to force it headlessly; the blockers are real (restricted microdata, click-through agreements, no
   free source).
+
+---
+
+## E. Backend / API (from the 2026-08-01 static-analysis sweep)
+
+Found by running a Python AST analyser (`py-ast-mcp`, `dead_code` + `find_errors`) over
+`pipeline/` — 43 files, 500 definitions. The scoring code came back **clean: zero unreferenced
+private symbols.** The findings are all in constants and in the API layer.
+
+### E1 (P1) - `RAW_DISPLAY` has never been wired up; the per-ZIP API returns the entire row
+
+- **Problem.** `pipeline/join_and_score.py:430` defines `RAW_DISPLAY` with the comment
+  *"everything the detail panel shows; served per-ZIP via the API"*. **It is not.** No line in
+  `pipeline/`, `backend/`, `tests/` or `frontend/` reads the name. `git log -S RAW_DISPLAY`
+  returns only the initial commit `62d4143` - it has been dead since the project's first commit.
+
+  Meanwhile `backend/data.py:85` `record()` returns
+  `{k: _clean(v) for k, v in row.to_dict().items()}` - **every column of `metrics.parquet`**,
+  not the intended display subset. So the whitelist was designed, and then never applied.
+
+- **Why it matters.** Three separate consequences, in increasing severity:
+
+  1. *Payload.* `/api/zcta/{zcta5}` ships every internal column - percentile scratch columns,
+     intermediate sub-score inputs, flags - where the client consumes roughly 6 fields read
+     directly in `DetailPanel.tsx` plus ~57 driven by `measures.ts`. The response is several
+     times larger than the UI needs, on the one endpoint the detail panel hits per click.
+  2. *Coupling.* Every column added to the frame silently becomes public API surface. There is
+     no typed contract for this response in `frontend/src/lib/types.ts`, so nothing catches it.
+  3. *Memory - the real one.* `record()` is decorated `@lru_cache(maxsize=None)`. The key space
+     is ~33k ZCTAs and each cached value is a full-width Python dict. A warmed cache (a crawler,
+     a scripted scan, or simply time) therefore accumulates a second, *fatter* copy of the whole
+     frame as Python objects, on top of the ~60 MB pandas frame. `DEPLOY.md` specifies a
+     **minimum 1 vCPU / 1 GB RAM VPS**. This is an unbounded-growth path on a box sized with no
+     headroom for it.
+
+- **Where to look.**
+  - `pipeline/join_and_score.py:430` (`RAW_DISPLAY`) - and note `SUBSCORE_COLS` immediately above
+    it, which *is* used, so the pattern was clearly intended.
+  - `backend/data.py:78-85` (`record()`), `backend/main.py:77-83` (the route).
+  - `frontend/src/components/DetailPanel.tsx`, `frontend/src/lib/measures.ts` (the real consumer set).
+
+- **Suggested approach.** Cheapest first, and do them in this order:
+  1. Bound the cache. `maxsize=None` -> a real bound (e.g. 4096). One-line, removes the OOM path
+     immediately, independent of everything below.
+  2. Emit `RAW_DISPLAY` from `join_and_score` into a small JSON/meta artifact, and have
+     `record()` project onto it. Keep serving the full row behind an explicit
+     `?full=1` for debugging so nothing is lost.
+  3. Mirror the projected shape as a type in `types.ts` so the contract stops being implicit.
+  - **Derive the whitelist from the code, not by hand** - union the `measures.ts` cols with the
+    fields `DetailPanel` reads, and diff against `RAW_DISPLAY` before trusting it. It was written
+    at commit 1 and has never been exercised, so it is very likely stale.
+
+- **Acceptance.** `record()` returns only whitelisted fields; the detail panel renders with no
+  missing values across a sample of ZIPs including a `low_confidence` and an `institutional` one;
+  cache is bounded; a test asserts the response key set equals the whitelist.
+
+- **MEASURED (2026-08-01)**, against `tests/fixtures/metrics_slice.parquet` (802 rows x **181 cols**,
+  the real column set) with the suite un-skipped by copying the slice to `data/processed/metrics.parquet`:
+
+  | quantity | measured |
+  |---|---|
+  | columns returned per `/api/zcta/{zcta5}` | **181** |
+  | JSON bytes per record | ~5.5 KB |
+  | deep `sys.getsizeof` of one cached row dict | **22,829 bytes** |
+  | unbounded cache, fully warmed (33k ZCTAs) | **718 MB** |
+  | bounded at 4096 (shipped fix) | **89 MB** |
+  | pandas frame itself, scaled to 33k | 56 MB |
+
+  Against the `DEPLOY.md` floor of **1 GB RAM**: frame (56 MB) + fully-warmed cache (718 MB) +
+  interpreter + FastAPI/uvicorn does not fit. The bound takes the cache term from 718 MB to 89 MB.
+  The frontend consumes roughly 60 of the 181 columns, so the projection in step 2 is worth
+  roughly a further 3x on payload - but the cache bound is what removes the OOM, and it is shipped.
+
+- **RESOLVED 2026-08-01. Step 1 shipped; steps 2-3 declined; `RAW_DISPLAY` deleted.**
+  - Step 1 (bound the cache) is in `backend/data.py` at `maxsize=4096`. That is what closed the OOM,
+    and it is the whole of the severity here.
+  - Steps 2-3 (whitelist projection + `types.ts` mirror) are **not being done.** They buy ~3x on the
+    payload of one endpoint that is already fast, and cost a generated meta artifact, a `?full=1`
+    debug escape hatch, and a hand-maintained type mirror - three new things to keep in sync to make
+    a non-problem smaller. Revisit only if the detail-panel payload shows up in a real measurement.
+  - `RAW_DISPLAY` itself is **deleted** (`pipeline/join_and_score.py`), along with the now-orphaned
+    `CONTEXT_ACS` / `CONTEXT_PLACES` import. It had been dead since the project's first commit while
+    its comment claimed to describe the live API response - the discrepancy that made this finding
+    look like a contract violation rather than the memory issue it actually was. A constant nothing
+    reads cannot document anything; deleting it is the fix.
+
+- **Do NOT** treat this as a scoring change. It touches display and transport only - `metrics.parquet`
+  is unchanged, so no re-baseline or re-gate is required.
+
+### E2 (P3) - dead constants
+
+Confirmed unreferenced across the entire repo (`*.py`, `*.ts`, `*.tsx`, `*.json`, `Makefile`, docs):
+
+| symbol | location | note |
+|---|---|---|
+| `ACS_BASE_SUBJECT` | `config.py:80` | ACS *subject*-table endpoint; the pipeline uses detailed tables |
+| `ACS_VARS_SUBJECT` | `config.py:82` | same lineage |
+| `ACS_UNINSURED_GROUP` | `config.py:90` | `B27001`; insurance now sourced elsewhere |
+| `BASEMAP_STYLE` | `config.py:209` | unused in Python, but `MapView.tsx:17` says *"Mirrors pipeline/config.py BASEMAP_STYLE"* - a stated mirror of a constant nothing reads, so the two can drift silently |
+| `XWALK_CACHE` | `validate_subcounty.py:59` | duplicates the literal in `common.py:166`; `_xwalk()` delegates to `common.load_zcta_tract_xwalk()`, so this copy is never read and can drift from the real cache path |
+
+- **Suggested approach.** Delete the three ACS constants and `XWALK_CACHE`. For `BASEMAP_STYLE`,
+  either delete it and drop the "mirrors" comment in `MapView.tsx`, or genuinely emit it into
+  `meta.json` so the frontend reads one source of truth. Don't leave it as a comment-only contract.
+- **Acceptance.** `py-ast-mcp dead_code pipeline/` reports zero unreferenced symbols.
+
+- **RESOLVED 2026-08-01 - all five deleted.** The three ACS constants and `XWALK_CACHE` went as
+  suggested. `BASEMAP_STYLE` was **deleted rather than emitted into `meta.json`**: the frontend is
+  the only consumer, so routing a URL that has never changed through a generated artifact and a
+  fetch adds a build step and a failure mode to sync one string to itself. The `MapView.tsx` comment
+  no longer claims to mirror anything - it now states that the frontend holds the sole definition.
+  `RAW_DISPLAY` (E1) was deleted in the same pass.

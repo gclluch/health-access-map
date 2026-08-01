@@ -25,8 +25,7 @@ import pandas as pd
 
 from . import config
 from .common import assert_zcta, die, log, write_provenance
-from .taxonomy import (CONTEXT_ACS, CONTEXT_PLACES, DIMENSION_WEIGHTS, DIMENSIONS,
-                       subscore_specs)
+from .taxonomy import DIMENSION_WEIGHTS, DIMENSIONS, subscore_specs
 from .zip_states import fips_to_state, state_name, zip3_to_state
 
 OUT_PARQUET = config.PROCESSED / "metrics.parquet"
@@ -427,14 +426,6 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
 
 
 SUBSCORE_COLS = [f"{s['key']}_pctile" for s in subscore_specs()]
-RAW_DISPLAY = (
-    # everything the detail panel shows; served per-ZIP via the API
-    [m["col"] for s in subscore_specs() for m in s["members"]]
-    + list(CONTEXT_PLACES) + list(CONTEXT_ACS)
-    + ["primary_per_1k", "providers_total", "providers_primary", "providers_mental",
-       "primary_people_per_provider", "primary_shortage", "population",
-       "fqhc_sites_reachable", "nearest_fqhc_km", "life_expectancy"]
-)
 
 
 # First-paint frame columns: labels + composite inputs + composite-family lenses + the reliable-range

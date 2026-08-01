@@ -77,9 +77,7 @@ OBGYN_CLASSIFICATION = "Obstetrics & Gynecology"         # maternity-care access
 # ---------------------------------------------------------------------------
 CENSUS_API_KEY = os.environ.get("CENSUS_API_KEY", "")
 ACS_BASE_DETAILED = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5"
-ACS_BASE_SUBJECT = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/subject"
 ACS_VARS_DETAILED = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/variables.json"
-ACS_VARS_SUBJECT = f"https://api.census.gov/data/{ACS_YEAR}/acs/acs5/subject/variables.json"
 
 # Expected detailed-table resolutions (asserted by label, not blindly trusted).
 ACS_VAR_MEDIAN_INCOME = "B19013_001E"
@@ -87,7 +85,6 @@ ACS_VAR_POVERTY_TOTAL = "B17001_001E"
 ACS_VAR_POVERTY_BELOW = "B17001_002E"
 ACS_VAR_POPULATION = "B01003_001E"
 ACS_VAR_MEDIAN_AGE = "B01002_001E"      # median age (age-mix context, brief 15.8)
-ACS_UNINSURED_GROUP = "B27001"            # group() call; sum "No health insurance coverage"
 ACS_UNINSURED_LABEL_MATCH = "no health insurance coverage"
 
 # SVI-style rates computed from ACS detailed (B) tables via group() calls.
@@ -202,11 +199,6 @@ TIGER_ZCTA_FIELDS = ["ZCTA5CE20", "ZCTA5CE10"]
 # Scoring
 # ---------------------------------------------------------------------------
 POPULATION_FLOOR = 1000     # low_confidence flag below this
-
-# ---------------------------------------------------------------------------
-# Frontend basemap (free, no token) -- CARTO Positron (brief 14.1)
-# ---------------------------------------------------------------------------
-BASEMAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 
 # Hosts probed by preflight for reachability.
 DATA_HOSTS = [
