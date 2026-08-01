@@ -88,8 +88,13 @@ def _load_taxonomy_map() -> pd.DataFrame:
         ],
     })
     out = out[out["code"] != ""].drop_duplicates("code")
-    assert set(out["class"]).issubset(
-        {"primary_care", "mental_health", "dental", "obgyn", "specialist", "other"})
+    # die(), not assert: asserts are stripped under `python -O`, and every other gate in this
+    # module uses die(). A silently-skipped taxonomy check would let an unknown class reach the
+    # supply build, where it would be dropped rather than raised.
+    _unknown = set(out["class"]) - {"primary_care", "mental_health", "dental",
+                                    "obgyn", "specialist", "other"}
+    if _unknown:
+        die("providers", f"NUCC taxonomy produced unknown class(es): {sorted(_unknown)}")
     log("providers", f"NUCC {dest.name}: {len(out)} codes -> "
                      f"{(out['class']=='primary_care').sum()} primary, "
                      f"{(out['class']=='mental_health').sum()} mental, "
