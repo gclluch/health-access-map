@@ -21,7 +21,18 @@ from .common import (assert_zcta, dev_prefix_sql, die, download_file,
                      http_client, log, write_provenance)
 
 OUT = config.PROCESSED / "providers.parquet"
-NPPES_ZIP = config.RAW / "NPPES_Data_Dissemination_June_2026_V2.zip"
+# CMS serves only the current month, under a new filename each month, so match by
+# pattern and take the newest rather than pinning a month that expires.
+NPPES_GLOB = "NPPES_Data_Dissemination_*.zip"
+
+
+def _nppes_zip() -> Path:
+    zips = sorted(config.RAW.glob(NPPES_GLOB))
+    if not zips:
+        die("providers", f"no {NPPES_GLOB} in {config.RAW}/ -- download the full NPPES "
+                         "file manually from https://download.cms.gov/nppes/NPI_Files.html "
+                         "and drop the zip there (see README 'Prerequisites')")
+    return max(zips, key=lambda p: p.stat().st_mtime)
 
 
 # ---------------------------------------------------------------------------
@@ -107,16 +118,15 @@ def _load_taxonomy_map() -> pd.DataFrame:
 # NPPES extraction + DuckDB aggregate
 # ---------------------------------------------------------------------------
 def _extract_main_csv() -> Path:
-    if not NPPES_ZIP.exists():
-        die("providers", f"NPPES zip not found: {NPPES_ZIP} (run download first)")
-    with zipfile.ZipFile(NPPES_ZIP) as z:
+    nppes_zip = _nppes_zip()
+    with zipfile.ZipFile(nppes_zip) as z:
         members = [
             m for m in z.namelist()
             if re.match(r"npidata_pfile_.*\.csv$", m, re.I)
             and "fileheader" not in m.lower()
         ]
         if not members:
-            die("providers", f"no main npidata_pfile csv in {NPPES_ZIP.name}")
+            die("providers", f"no main npidata_pfile csv in {nppes_zip.name}")
         main = max(members, key=lambda m: z.getinfo(m).file_size)
         dest = config.RAW / Path(main).name
         if dest.exists() and dest.stat().st_size > 1_000_000_000:
@@ -186,7 +196,7 @@ def build(dev_state: str | None = None, force: bool = False) -> str:
     _validate(df, dev_state)
     df.to_parquet(OUT, index=False)
     write_provenance({"providers": {
-        "nppes_zip": NPPES_ZIP.name, "zctas": len(df),
+        "nppes_zip": _nppes_zip().name, "zctas": len(df),
         "providers_total": int(df["providers_total"].sum()),
         "scope": dev_state or "national",
     }})

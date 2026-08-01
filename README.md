@@ -102,13 +102,37 @@ diagnosis.
 
 ## Quickstart
 
+### Prerequisites (two manual steps `make setup` cannot do for you)
+
+**1. `tippecanoe`** builds the vector tiles and is neither pip- nor npm-installable. Preflight
+fails without it and nothing builds:
+
+```bash
+brew install tippecanoe        # or build from source: github.com/felt/tippecanoe
+```
+
+**2. The NPPES provider file** must be downloaded by hand. CMS publishes only the current month,
+under a filename that changes every month, so there is no stable URL to automate:
+
+- Go to <https://download.cms.gov/nppes/NPI_Files.html>
+- Download the **full replacement monthly NPI file** (~1 GB zip, ~11 GB unzipped)
+- Drop it in `data/raw/` unrenamed - the pipeline globs `NPPES_Data_Dissemination_*.zip`
+  and takes the newest
+
+You also need a free [Census API key](https://api.census.gov/data/key_signup.html) in `.env`;
+the build aborts without one.
+
+### Build
+
 ```bash
 make setup            # venv + python deps + mapshaper + frontend deps
-cp .env.example .env  # then paste your free Census API key (api.census.gov/data/key_signup.html)
+cp .env.example .env  # then paste your Census API key
+
+make preflight        # verifies the prerequisites above -- run this first
 
 make data-ca          # fast California vertical slice (minutes) -- recommended first
 # or
-make data             # full national build (~33k ZIPs; NPPES is a ~1 GB download / ~11 GB unzip)
+make data             # full national build (~33k ZIPs, ~1.5-3 h, ~25 GB peak disk)
 
 make api              # FastAPI backend on :8000   (terminal 1)
 make web              # Vite dev server on :5173    (terminal 2)
@@ -120,7 +144,7 @@ hit live data sources. `make fqhc-lever` in particular streams the Texas DSHS PU
 fresh clone (~150-700 MB/quarter; only the small ZIP-level aggregates are cached, never the raw files),
 so its first run is slow. These are read-only diagnostics and never feed the shipped composite.
 
-Requires Python ≥ 3.10, Node ≥ 18, ~25 GB free disk for the national NPPES stage.
+Requires Python ≥ 3.10, Node ≥ 18, and ~25 GB free disk for the national NPPES stage.
 
 ---
 
