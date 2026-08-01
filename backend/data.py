@@ -73,8 +73,10 @@ def _clean(value):
 # (full-sort) rankings responses are pure functions of their args - cache them. This turns the
 # hot rankings path from an O(n log n) sort on every request into a dict lookup. If a reload
 # path is ever added, call record.cache_clear() / rankings.cache_clear() after load().
-# The metrics table is immutable and bounded (~33k rows), so an unbounded cache fully covers it.
-@lru_cache(maxsize=None)
+# BOUNDED deliberately: each cached value is a full-width row dict, so an unbounded cache over
+# the ~33k-ZCTA key space accumulates a second, fatter copy of the whole frame as Python
+# objects - on a 1 GB VPS (see docs/DEPLOY.md) that is an OOM path, not a free win.
+@lru_cache(maxsize=4096)
 def record(zcta5: str) -> dict | None:
     df = load()
     if zcta5 not in df.index:
